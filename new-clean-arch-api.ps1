@@ -562,7 +562,6 @@ EXPOSE 8081
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG Configuration=Release
 WORKDIR /src
-
 COPY src/Api/$ProjectName.Api.csproj src/Api/
 COPY src/Application/$ProjectName.Application.csproj src/Application/
 COPY src/Commands/$ProjectName.Commands.csproj src/Commands/
@@ -573,20 +572,21 @@ COPY src/IoC/$ProjectName.IoC.csproj src/IoC/
 COPY src/Models/$ProjectName.Models.csproj src/Models/
 COPY src/Queries/$ProjectName.Queries.csproj src/Queries/
 COPY src/Validators/$ProjectName.Validators.csproj src/Validators/
-
 RUN dotnet restore src/Api/$ProjectName.Api.csproj
 COPY . .
 WORKDIR /src/src/Api
-RUN dotnet build $ProjectName.Api.csproj -c `$Configuration -o /app/build
+RUN dotnet build $ProjectName.Api.csproj -c `${Configuration} -o /app/build
 
 FROM build AS publish
 ARG Configuration=Release
-RUN dotnet publish $ProjectName.Api.csproj -c `$Configuration -o /app/publish /p:UseAppHost=false
+RUN dotnet publish $ProjectName.Api.csproj -c `${Configuration} -o /app/publish /p:UseAppHost=false
 
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
 ENTRYPOINT ["dotnet", "$ProjectName.Api.dll"]
+
+#docker build -f src/Api/Dockerfile -t "$($ProjectName.ToLower())-api:latest" .
 "@ | Set-Content "src/Api/Dockerfile"
 
 # Git ignore
