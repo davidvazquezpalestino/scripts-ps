@@ -214,7 +214,8 @@ namespace $ProjectName.Application
     public static class DependencyContainer
     {
         public static IServiceCollection AddApplication(this IServiceCollection services)
-        {
+        {  
+            services.AddFromAssembly(Assembly.GetExecutingAssembly());
             return services;
         }
     }
@@ -223,7 +224,10 @@ namespace $ProjectName.Application
 
 # GlobalUsings Application
 @"
+global using System.Reflection;
+global using DevKit.Injection.Extensions;
 global using Microsoft.Extensions.DependencyInjection;
+
 "@ | Set-Content "src/Application/GlobalUsings.cs"
 
 # DependencyContainer class in Commands Project
@@ -234,7 +238,8 @@ namespace $ProjectName.Commands
     public static class DependencyContainer
     {
         public static IServiceCollection AddCommands(this IServiceCollection services)
-        {
+        {  
+            services.AddFromAssembly(Assembly.GetExecutingAssembly());
             return services;
         }
     }
@@ -243,7 +248,10 @@ namespace $ProjectName.Commands
 
 # GlobalUsings Commands
 @"
+global using System.Reflection;
+global using DevKit.Injection.Extensions;
 global using Microsoft.Extensions.DependencyInjection;
+
 "@ | Set-Content "src/Commands/GlobalUsings.cs"
 
 # DependencyContainer class in Models Project
@@ -254,7 +262,8 @@ namespace $ProjectName.Models
     public static class DependencyContainer
     {
         public static IServiceCollection AddModels(this IServiceCollection services)
-        {
+        {  
+            services.AddFromAssembly(Assembly.GetExecutingAssembly());
             return services;
         }
     }
@@ -263,7 +272,10 @@ namespace $ProjectName.Models
 
 # GlobalUsings Models
 @"
+global using System.Reflection;
+global using DevKit.Injection.Extensions;
 global using Microsoft.Extensions.DependencyInjection;
+
 "@ | Set-Content "src/Models/GlobalUsings.cs"
 
 # DependencyContainer class in Queries Project
@@ -274,7 +286,8 @@ namespace $ProjectName.Queries
     public static class DependencyContainer
     {
         public static IServiceCollection AddQueries(this IServiceCollection services)
-        {
+        {  
+            services.AddFromAssembly(Assembly.GetExecutingAssembly());
             return services;
         }
     }
@@ -283,7 +296,10 @@ namespace $ProjectName.Queries
 
 # GlobalUsings Queries
 @"
+global using System.Reflection;
+global using DevKit.Injection.Extensions;
 global using Microsoft.Extensions.DependencyInjection;
+
 "@ | Set-Content "src/Queries/GlobalUsings.cs"
 
 # DependencyContainer class in Validators Project
@@ -294,7 +310,8 @@ namespace $ProjectName.Validators
     public static class DependencyContainer
     {
         public static IServiceCollection AddValidators(this IServiceCollection services)
-        {
+        {  
+            services.AddFromAssembly(Assembly.GetExecutingAssembly());
             return services;
         }
     }
@@ -303,7 +320,10 @@ namespace $ProjectName.Validators
 
 # GlobalUsings Validators
 @"
+global using System.Reflection;
+global using DevKit.Injection.Extensions;
 global using Microsoft.Extensions.DependencyInjection;
+
 "@ | Set-Content "src/Validators/GlobalUsings.cs"
 
 
@@ -313,6 +333,7 @@ global using Microsoft.Extensions.DependencyInjection;
 
 # DependencyContainer class in Infrastructure Project
 @"
+using System.Reflection;
 
 namespace $ProjectName.Infrastructure
 {
@@ -320,6 +341,7 @@ namespace $ProjectName.Infrastructure
     {
         public static IServiceCollection AddInfrastructure(this IServiceCollection services)
         {
+            services.AddFromAssembly(Assembly.GetExecutingAssembly());
             return services;
         }
     }
@@ -328,7 +350,10 @@ namespace $ProjectName.Infrastructure
 
 # GlobalUsings Infrastructure
 @"
+global using System.Reflection;
+global using DevKit.Injection.Extensions;
 global using Microsoft.Extensions.DependencyInjection;
+
 "@ | Set-Content "src/Infrastructure/GlobalUsings.cs"
 
 # GlobalUsings Domain
