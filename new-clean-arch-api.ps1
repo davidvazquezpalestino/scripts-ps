@@ -552,6 +552,41 @@ WebApplication.CreateBuilder(args)
     .Run();
 "@ | Set-Content "src/Api/Program.cs"
 
+# Dockerfile
+@"
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
+WORKDIR /app
+EXPOSE 8080
+EXPOSE 8081
+
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+ARG Configuration=Release
+WORKDIR /src
+COPY [src/Api/$ProjectName.Api.csproj, src/Api/]
+COPY [src/Application/$ProjectName.Application.csproj, src/Application/]
+COPY [src/Commands/$ProjectName.Commands.csproj, src/Commands/]
+COPY [src/Controllers/$ProjectName.Controllers.csproj, src/Controllers/]
+COPY [src/Domain/$ProjectName.Domain.csproj, src/Domain/]
+COPY [src/Infrastructure/$ProjectName.Infrastructure.csproj, src/Infrastructure/]
+COPY [src/IoC/$ProjectName.IoC.csproj, src/IoC/]
+COPY [src/Models/$ProjectName.Models.csproj, src/Models/]
+COPY [src/Queries/$ProjectName.Queries.csproj, src/Queries/]
+COPY [src/Validators/$ProjectName.Validators.csproj, src/Validators/]
+RUN dotnet restore src/Api/$ProjectName.Api.csproj
+COPY . .
+WORKDIR /src/src/Api
+RUN dotnet build $ProjectName.Api.csproj -c `$Configuration -o /app/build
+
+FROM build AS publish
+ARG Configuration=Release
+RUN dotnet publish $ProjectName.Api.csproj -c `$Configuration -o /app/publish /p:UseAppHost=false
+
+FROM base AS final
+WORKDIR /app
+COPY --from=publish /app/publish .
+ENTRYPOINT [dotnet, $ProjectName.Api.dll]
+"@ | Set-Content "src/Api/Dockerfile"
+
 # Git ignore
 dotnet new gitignore
 
