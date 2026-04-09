@@ -58,10 +58,10 @@ Remove-Item "src/Interfaces/Class1.cs" -Force -ErrorAction SilentlyContinue
 Remove-Item "src/Views/Component1.razor" -Force -ErrorAction SilentlyContinue
 Remove-Item "src/Views/Component1.razor.css" -Force -ErrorAction SilentlyContinue
 Remove-Item "src/Views/ExampleJsInterop.cs" -Force -ErrorAction SilentlyContinue
+Remove-Item "src/Client/App.razor" -Force -ErrorAction SilentlyContinue
 
 Remove-Item -Path "src/Client/Layout" -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item -Path "src/Client/Pages" -Recurse -Force -ErrorAction SilentlyContinue
-Remove-Item -Path "src/Client/App.razor" -Recurse -Force -ErrorAction SilentlyContinue
 
 Write-Host "Creating Views folder structure..." -ForegroundColor Yellow
 New-Item -ItemType Directory -Path "src/Views/Layout" -Force | Out-Null
@@ -178,22 +178,6 @@ builder.Services.AddIoC();
 await builder.Build().RunAsync();
 "@ | Set-Content "src/Client/Program.cs"
 
-# Client App.razor update
-@"
-
-<Router AppAssembly="@typeof(App).Assembly">
-    <Found Context="routeData">
-        <RouteView RouteData="@routeData" />
-        <FocusOnNavigate RouteData="@routeData" Selector="h1" />
-    </Found>
-    <NotFound>
-        <PageTitle>Not found</PageTitle>
-        <p role="alert">Sorry, there's nothing at this address.</p>
-    </NotFound>
-</Router>
-
-"@ | Set-Content "src/Client/App.razor"
-
 # Interfaces GlobalUsings
 @"
 "@ | Set-Content "src/Interfaces/GlobalUsings.cs"
@@ -211,11 +195,15 @@ await builder.Build().RunAsync();
 
 # App.razor in Views root
 @"
-<Router AppAssembly="@typeof(App).Assembly" NotFoundPage="typeof(Pages.NotFound)">
+<Router AppAssembly="@typeof(App).Assembly">
     <Found Context="routeData">
-        <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)"/>
+        <RouteView RouteData="@routeData" />
         <FocusOnNavigate RouteData="@routeData" Selector="h1" />
     </Found>
+    <NotFound>
+        <PageTitle>Not found</PageTitle>
+        <p role="alert">Sorry, there's nothing at this address.</p>
+    </NotFound>
 </Router>
 
 "@ | Set-Content "src/Views/App.razor"
