@@ -178,6 +178,37 @@ builder.Services.AddIoC();
 await builder.Build().RunAsync();
 "@ | Set-Content "src/Client/Program.cs"
 
+Remove-Item "src/Client/App.razor" -Force -ErrorAction SilentlyContinue
+
+# Client Index.razor update
+New-Item -ItemType Directory -Path "src/Client/Pages" -Force | Out-Null
+@"
+@page "/"
+
+<PageTitle>Index</PageTitle>
+
+<h1>Hello, world!</h1>
+
+Welcome to your new app.
+
+"@ | Set-Content "src/Client/Pages/Index.razor"
+
+# Client _Imports.razor update
+@"
+@using Microsoft.AspNetCore.Components.Web
+"@ | Set-Content "src/Client/_Imports.razor"
+
+# Client index.html update
+$content = Get-Content "src/Client/wwwroot/index.html" -Raw
+$content = $content -replace "<link href=`"$ProjectName.Client.styles.css`" rel=`"stylesheet`" />", @"
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+<link href="$ProjectName.Client.styles.css" rel="stylesheet" />
+<link href="_content/$ProjectName.Views/css/icons-custom.css" rel="stylesheet" />
+<link href="_content/$ProjectName.Views/css/hero-logo.css" rel="stylesheet" />
+"@
+
+$content | Set-Content "src/Client/wwwroot/index.html"
+
 # Interfaces GlobalUsings
 @"
 "@ | Set-Content "src/Interfaces/GlobalUsings.cs"
