@@ -70,6 +70,7 @@ New-Item -ItemType Directory -Path "src/Domain/Enums" -Force | Out-Null
 "" | Set-Content "src/Domain/Enums/.gitkeep"
 New-Item -ItemType Directory -Path "src/Views/Layout" -Force | Out-Null
 New-Item -ItemType Directory -Path "src/Views/Pages" -Force | Out-Null
+New-Item -ItemType Directory -Path "src/Infrastructure/Options" -Force | Out-Null
 
 Write-Host "Adding projects to solution..." -ForegroundColor Yellow
 dotnet sln add src/Client
@@ -103,6 +104,7 @@ dotnet add src/Validators package FluentValidation
 dotnet add src/Infrastructure package DependencyInjection.ReflectionExtensions
 dotnet add src/IoC package DependencyInjection.ReflectionExtensions
 dotnet add src/IoC package FluentValidation
+dotnet add src/IoC package Microsoft.Extensions.Configuration.Abstractions
 
 Write-Host "Creating GlobalUsings files..." -ForegroundColor Yellow
 
@@ -170,8 +172,10 @@ namespace $ProjectName.IoC
 {
     public static class DependencyContainer
     {
-        public static IServiceCollection AddIoC(this IServiceCollection services)
+        public static IServiceCollection AddIoC(this IServiceCollection services, IConfiguration configuration)
         {
+            services.Configure<ApiOptions>(configuration.GetSection(ApiOptions.SectionKey));
+
             services.AddApplication()
                     .AddValidators()
                     .AddInfrastructure();
@@ -181,11 +185,25 @@ namespace $ProjectName.IoC
 }
 "@ | Set-Content "src/IoC/DependencyContainer.cs"
 
+# Infrastructure Options
+# ApiOptions class in Infrastructure
+@"
+namespace $ProjectName.Infrastructure.Options
+{
+    public class ApiOptions
+    {
+        public const string SectionKey = nameof(ApiOptions);
+        public string BaseUrl { get; set; }
+    }
+}
+"@ | Set-Content "src/Infrastructure/Options/ApiOptions.cs"
+
 # Infrastructure GlobalUsings
 @"
 global using System.Reflection;
 global using DevKit.Injection.Extensions;
 global using Microsoft.Extensions.DependencyInjection;
+global using $ProjectName.Infrastructure.Options;
 "@ | Set-Content "src/Infrastructure/GlobalUsings.cs"
 
 # Validators GlobalUsings
@@ -199,9 +217,11 @@ global using FluentValidation;
 # IoC GlobalUsings
 @"
 global using Microsoft.Extensions.DependencyInjection;
+global using Microsoft.Extensions.Configuration;
 global using FluentValidation;
 global using $ProjectName.Application;
 global using $ProjectName.Infrastructure;
+global using $ProjectName.Infrastructure.Options;
 global using $ProjectName.Validators;
 "@ | Set-Content "src/IoC/GlobalUsings.cs"
 
@@ -221,10 +241,19 @@ WebAssemblyHostBuilder builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
-builder.Services.AddIoC();
+builder.Services.AddIoC(builder.Configuration);
 
 await builder.Build().RunAsync();
 "@ | Set-Content "src/Client/Program.cs"
+
+# Client appsettings.json
+@"
+{
+  "ApiOptions": {
+    "BaseUrl": "https://localhost:5001"
+  }
+}
+"@ | Set-Content "src/Client/wwwroot/appsettings.json"
 
 Remove-Item "src/Client/App.razor" -Force -ErrorAction SilentlyContinue
 

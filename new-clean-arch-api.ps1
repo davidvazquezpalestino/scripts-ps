@@ -179,6 +179,7 @@ New-Item -ItemType Directory -Path "src/Domain/ValueObjects"
 New-Item -ItemType Directory -Path "src/Domain/Enums"
 New-Item -ItemType Directory -Path "src/Domain/Interfaces"
 New-Item -ItemType Directory -Path "src/Domain/Options"
+New-Item -ItemType Directory -Path "src/Infrastructure/Options" -Force
 
 # Keep domain folders visible in Visual Studio Solution Explorer
 "" | Set-Content "src/Domain/Entities/.gitkeep"
@@ -458,6 +459,7 @@ global using $ProjectName.Models;
 global using $ProjectName.Queries;
 global using $ProjectName.Validators;
 global using $ProjectName.Domain.Options;
+global using $ProjectName.Infrastructure.Options;
 global using Serilog;
 global using Microsoft.AspNetCore.Builder;
 global using Microsoft.Extensions.Configuration;
@@ -478,10 +480,10 @@ global using DevKit.ExecutionEngine.Redis.Options;
 
 "@ | Set-Content "src/Domain/GlobalUsings.cs"
 
-# DataBaseOptions class in Domain
+# DataBaseOptions class in Infrastructure
 @"
 
-namespace $ProjectName.Domain.Options
+namespace $ProjectName.Infrastructure.Options
 {
     public class DataBaseOptions
     {
@@ -489,7 +491,7 @@ namespace $ProjectName.Domain.Options
         public string DefaultConnection { get; set; } 
     }
 }
-"@ | Set-Content "src/Domain/Options/DataBaseOptions.cs"
+"@ | Set-Content "src/Infrastructure/Options/DataBaseOptions.cs"
 
 # EnvironmentOptions class in Domain
 @"
