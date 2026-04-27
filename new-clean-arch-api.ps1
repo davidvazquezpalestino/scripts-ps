@@ -272,7 +272,7 @@ namespace $ProjectName.Application
     {
         public static IServiceCollection AddApplication(this IServiceCollection services)
         {  
-            services.AddFromAssembly(Assembly.GetExecutingAssembly());
+            services.AddCurrentAssembly();
             return services;
         }
     }
@@ -296,7 +296,7 @@ namespace $ProjectName.Commands
     {
         public static IServiceCollection AddCommands(this IServiceCollection services)
         {  
-            services.AddFromAssembly(Assembly.GetExecutingAssembly());
+            services.AddCurrentAssembly();
             return services;
         }
     }
@@ -320,7 +320,7 @@ namespace $ProjectName.Models
     {
         public static IServiceCollection AddModels(this IServiceCollection services)
         {  
-            services.AddFromAssembly(Assembly.GetExecutingAssembly());
+            services.AddCurrentAssembly();
             return services;
         }
     }
@@ -344,7 +344,7 @@ namespace $ProjectName.Queries
     {
         public static IServiceCollection AddQueries(this IServiceCollection services)
         {  
-            services.AddFromAssembly(Assembly.GetExecutingAssembly());
+            services.AddCurrentAssembly();
             return services;
         }
     }
@@ -359,6 +359,8 @@ global using Microsoft.Extensions.DependencyInjection;
 
 "@ | Set-Content "src/Queries/GlobalUsings.cs"
 
+# DependencyContainers
+
 # DependencyContainer class in Validators Project
 @"
 
@@ -368,25 +370,12 @@ namespace $ProjectName.Validators
     {
         public static IServiceCollection AddValidators(this IServiceCollection services)
         {  
-            services.AddFromAssembly(Assembly.GetExecutingAssembly());
+            services.AddCurrentAssembly();
             return services;
         }
     }
 }
 "@ | Set-Content "src/Validators/DependencyContainer.cs"
-
-# GlobalUsings Validators
-@"
-global using System.Reflection;
-global using DevKit.Injection.Extensions;
-global using Microsoft.Extensions.DependencyInjection;
-
-"@ | Set-Content "src/Validators/GlobalUsings.cs"
-
-
-# GlobalUsings Controllers
-@"
-"@ | Set-Content "src/Controllers/GlobalUsings.cs"
 
 # DependencyContainer class in Infrastructure Project
 @"
@@ -398,51 +387,12 @@ namespace $ProjectName.Infrastructure
     {
         public static IServiceCollection AddInfrastructure(this IServiceCollection services)
         {
-            services.AddFromAssembly(Assembly.GetExecutingAssembly());
+            services.AddCurrentAssembly();
             return services;
         }
     }
 }
 "@ | Set-Content "src/Infrastructure/DependencyContainer.cs"
-
-# GlobalUsings Infrastructure
-@"
-global using System.Reflection;
-global using DevKit.Injection.Extensions;
-global using Microsoft.Extensions.DependencyInjection;
-
-"@ | Set-Content "src/Infrastructure/GlobalUsings.cs"
-
-# GlobalUsings Domain
-@"
-
-"@ | Set-Content "src/Domain/GlobalUsings.cs"
-
-# DataBaseOptions class in Domain
-@"
-
-namespace $ProjectName.Domain.Options
-{
-    public class DataBaseOptions
-    {
-        public const string SectionKey = nameof(DataBaseOptions);
-        public string DefaultConnection { get; set; } 
-    }
-}
-"@ | Set-Content "src/Domain/Options/DataBaseOptions.cs"
-
-# EnvironmentOptions class in Domain
-@"
-
-namespace $ProjectName.Domain.Options
-{
-    public class EnvironmentOptions
-    {
-        public const string SectionKey = nameof(EnvironmentOptions);
-        public string EnvironmentName { get; set; } 
-    }
-}
-"@ | Set-Content "src/Domain/Options/EnvironmentOptions.cs"
 
 # DependencyContainer class in IoC Project
 @"
@@ -481,6 +431,24 @@ namespace $ProjectName.IoC
 }
 "@ | Set-Content "src/IoC/DependencyContainer.cs"
 
+# GlobalUsings
+
+# GlobalUsings Validators
+@"
+global using System.Reflection;
+global using DevKit.Injection.Extensions;
+global using Microsoft.Extensions.DependencyInjection;
+
+"@ | Set-Content "src/Validators/GlobalUsings.cs"
+
+# GlobalUsings Infrastructure
+@"
+global using System.Reflection;
+global using DevKit.Injection.Extensions;
+global using Microsoft.Extensions.DependencyInjection;
+
+"@ | Set-Content "src/Infrastructure/GlobalUsings.cs"
+
 # GlobalUsings class in IoC Project
 @"
 global using $ProjectName.Application;
@@ -500,6 +468,41 @@ global using DevKit.ExecutionEngine.Redis;
 global using DevKit.ExecutionEngine.Redis.Options;
 
 "@ | Set-Content "src/IoC/GlobalUsings.cs"
+
+# GlobalUsings Controllers
+@"
+"@ | Set-Content "src/Controllers/GlobalUsings.cs"
+
+# GlobalUsings Domain
+@"
+
+"@ | Set-Content "src/Domain/GlobalUsings.cs"
+
+# DataBaseOptions class in Domain
+@"
+
+namespace $ProjectName.Domain.Options
+{
+    public class DataBaseOptions
+    {
+        public const string SectionKey = nameof(DataBaseOptions);
+        public string DefaultConnection { get; set; } 
+    }
+}
+"@ | Set-Content "src/Domain/Options/DataBaseOptions.cs"
+
+# EnvironmentOptions class in Domain
+@"
+
+namespace $ProjectName.Domain.Options
+{
+    public class EnvironmentOptions
+    {
+        public const string SectionKey = nameof(EnvironmentOptions);
+        public string EnvironmentName { get; set; } 
+    }
+}
+"@ | Set-Content "src/Domain/Options/EnvironmentOptions.cs"
 
 # GlobalUsings Api
 @"

@@ -126,20 +126,14 @@ namespace $ProjectName.Application
     {
         public static IServiceCollection AddApplication(this IServiceCollection services)
         {  
-            services.AddFromAssembly(Assembly.GetExecutingAssembly());
+            services.AddCurrentAssembly();
             return services;
         }
     }
 }
 "@ | Set-Content "src/Application/DependencyContainer.cs"
 
-# Infrastructure GlobalUsings
-@"
-global using System.Reflection;
-global using DevKit.Injection.Extensions;
-global using Microsoft.Extensions.DependencyInjection;
-"@ | Set-Content "src/Infrastructure/GlobalUsings.cs"
-
+# DependencyContainers
 # Infrastructure DependencyContainer
 @"
 namespace $ProjectName.Infrastructure
@@ -148,12 +142,68 @@ namespace $ProjectName.Infrastructure
     {
         public static IServiceCollection AddInfrastructure(this IServiceCollection services)
         {  
-            services.AddFromAssembly(Assembly.GetExecutingAssembly());
+           services.AddCurrentAssembly();
             return services;
         }
     }
 }
 "@ | Set-Content "src/Infrastructure/DependencyContainer.cs"
+
+# Validators DependencyContainer
+@"
+namespace $ProjectName.Validators
+{
+    public static class DependencyContainer
+    {
+        public static IServiceCollection AddValidators(this IServiceCollection services)
+        {  
+            services.AddCurrentAssembly();
+            return services;
+        }
+    }
+}
+"@ | Set-Content "src/Validators/DependencyContainer.cs"
+
+# IoC DependencyContainer
+@"
+namespace $ProjectName.IoC
+{
+    public static class DependencyContainer
+    {
+        public static IServiceCollection AddIoC(this IServiceCollection services)
+        {
+            services.AddApplication()
+                    .AddValidators()
+                    .AddInfrastructure();
+            return services;
+        }
+    }
+}
+"@ | Set-Content "src/IoC/DependencyContainer.cs"
+
+# Infrastructure GlobalUsings
+@"
+global using System.Reflection;
+global using DevKit.Injection.Extensions;
+global using Microsoft.Extensions.DependencyInjection;
+"@ | Set-Content "src/Infrastructure/GlobalUsings.cs"
+
+# Validators GlobalUsings
+@"
+global using System.Reflection;
+global using Microsoft.Extensions.DependencyInjection;
+global using DevKit.Injection.Extensions;
+global using FluentValidation;
+"@ | Set-Content "src/Validators/GlobalUsings.cs"
+
+# IoC GlobalUsings
+@"
+global using Microsoft.Extensions.DependencyInjection;
+global using FluentValidation;
+global using $ProjectName.Application;
+global using $ProjectName.Infrastructure;
+global using $ProjectName.Validators;
+"@ | Set-Content "src/IoC/GlobalUsings.cs"
 
 # Client GlobalUsings
 @"
@@ -302,58 +352,6 @@ $content | Set-Content "src/Client/wwwroot/index.html"
 }
 
 "@ | Set-Content "src/Views/Layout/NavMenu.razor"
-
-
-
-# Validators GlobalUsings
-@"
-global using System.Reflection;
-global using Microsoft.Extensions.DependencyInjection;
-global using DevKit.Injection.Extensions;
-global using FluentValidation;
-"@ | Set-Content "src/Validators/GlobalUsings.cs"
-
-# Validators DependencyContainer
-@"
-namespace $ProjectName.Validators
-{
-    public static class DependencyContainer
-    {
-        public static IServiceCollection AddValidators(this IServiceCollection services)
-        {  
-            services.AddFromAssembly(Assembly.GetExecutingAssembly());
-            return services;
-        }
-    }
-}
-"@ | Set-Content "src/Validators/DependencyContainer.cs"
-
-# IoC GlobalUsings
-@"
-global using Microsoft.Extensions.DependencyInjection;
-global using FluentValidation;
-global using $ProjectName.Application;
-global using $ProjectName.Infrastructure;
-global using $ProjectName.Validators;
-"@ | Set-Content "src/IoC/GlobalUsings.cs"
-
-# IoC DependencyContainer
-@"
-namespace $ProjectName.IoC
-{
-    public static class DependencyContainer
-    {
-        public static IServiceCollection AddIoC(this IServiceCollection services)
-        {
-            services.AddApplication()
-                    .AddValidators()
-                    .AddInfrastructure();
-            return services;
-        }
-    }
-}
-"@ | Set-Content "src/IoC/DependencyContainer.cs"
-
 Write-Host "Restoring packages..." -ForegroundColor Yellow
 dotnet restore
 
