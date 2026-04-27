@@ -22,7 +22,7 @@ New-Item -ItemType Directory -Path "src" -Force | Out-Null
 dotnet new sln -n $ProjectName
 
 Write-Host "Creating Blazor Web Assembly project..." -ForegroundColor Yellow
-dotnet new blazorwasm -n "$ProjectName.Client" -o "src/Client" --no-https
+dotnet new blazorwasm -n "$ProjectName.Web" -o "src/Client" --no-https
 
 Write-Host "Removing Shared folder from Client..." -ForegroundColor Yellow
 Remove-Item "src/Client/Shared" -Recurse -Force -ErrorAction SilentlyContinue
@@ -42,9 +42,6 @@ dotnet new classlib -n "$ProjectName.IoC" -o "src/IoC"
 Write-Host "Creating Class Library (Validators)..." -ForegroundColor Yellow
 dotnet new classlib -n "$ProjectName.Validators" -o "src/Validators"
 
-Write-Host "Creating Class Library (Interfaces)..." -ForegroundColor Yellow
-dotnet new classlib -n "$ProjectName.Interfaces" -o "src/Interfaces"
-
 Write-Host "Creating Class Library (Views)..." -ForegroundColor Yellow
 dotnet new razorclasslib -n "$ProjectName.Views" -o "src/Views"
 
@@ -54,7 +51,6 @@ Remove-Item "src/Application/Class1.cs" -Force -ErrorAction SilentlyContinue
 Remove-Item "src/Infrastructure/Class1.cs" -Force -ErrorAction SilentlyContinue
 Remove-Item "src/IoC/Class1.cs" -Force -ErrorAction SilentlyContinue
 Remove-Item "src/Validators/Class1.cs" -Force -ErrorAction SilentlyContinue
-Remove-Item "src/Interfaces/Class1.cs" -Force -ErrorAction SilentlyContinue
 Remove-Item "src/Views/Component1.razor" -Force -ErrorAction SilentlyContinue
 Remove-Item "src/Views/Component1.razor.css" -Force -ErrorAction SilentlyContinue
 Remove-Item "src/Views/ExampleJsInterop.cs" -Force -ErrorAction SilentlyContinue
@@ -63,7 +59,15 @@ Remove-Item "src/Client/App.razor" -Force -ErrorAction SilentlyContinue
 Remove-Item -Path "src/Client/Layout" -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item -Path "src/Client/Pages" -Recurse -Force -ErrorAction SilentlyContinue
 
-Write-Host "Creating Views folder structure..." -ForegroundColor Yellow
+Write-Host "Creating folder structure..." -ForegroundColor Yellow
+New-Item -ItemType Directory -Path "src/Domain/Interfaces" -Force | Out-Null
+New-Item -ItemType Directory -Path "src/Domain/Entities" -Force | Out-Null
+New-Item -ItemType Directory -Path "src/Domain/ValueObjects" -Force | Out-Null
+New-Item -ItemType Directory -Path "src/Domain/Enums" -Force | Out-Null
+"" | Set-Content "src/Domain/Interfaces/.gitkeep"
+"" | Set-Content "src/Domain/Entities/.gitkeep"
+"" | Set-Content "src/Domain/ValueObjects/.gitkeep"
+"" | Set-Content "src/Domain/Enums/.gitkeep"
 New-Item -ItemType Directory -Path "src/Views/Layout" -Force | Out-Null
 New-Item -ItemType Directory -Path "src/Views/Pages" -Force | Out-Null
 
@@ -74,27 +78,21 @@ dotnet sln add src/Application
 dotnet sln add src/Infrastructure
 dotnet sln add src/IoC
 dotnet sln add src/Validators
-dotnet sln add src/Interfaces
 dotnet sln add src/Views
 
 Write-Host "Adding project references..." -ForegroundColor Yellow
 dotnet add src/Application reference src/Domain
-dotnet add src/Application reference src/Interfaces
 dotnet add src/Validators reference src/Domain
-dotnet add src/Validators reference src/Interfaces
 dotnet add src/Infrastructure reference src/Application
 dotnet add src/Infrastructure reference src/Domain
-dotnet add src/Infrastructure reference src/Interfaces
 dotnet add src/IoC reference src/Application
 dotnet add src/IoC reference src/Domain
 dotnet add src/IoC reference src/Infrastructure
 dotnet add src/IoC reference src/Validators
-dotnet add src/IoC reference src/Interfaces
 dotnet add src/IoC reference src/Views
 dotnet add src/Client reference src/IoC
 dotnet add src/Client reference src/Views
 dotnet add src/Views reference src/Domain
-dotnet add src/Views reference src/Interfaces
 dotnet add src/Views reference src/Application
 
 Write-Host "Adding NuGet packages..." -ForegroundColor Yellow
@@ -200,18 +198,14 @@ Welcome to your new app.
 
 # Client index.html update
 $content = Get-Content "src/Client/wwwroot/index.html" -Raw
-$content = $content -replace "<link href=`"$ProjectName.Client.styles.css`" rel=`"stylesheet`" />", @"
+$content = $content -replace "<link href=`"$ProjectName.Web.styles.css`" rel=`"stylesheet`" />", @"
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
-<link href="$ProjectName.Client.styles.css" rel="stylesheet" />
+<link href="$ProjectName.Web.styles.css" rel="stylesheet" />
 <link href="_content/$ProjectName.Views/css/icons-custom.css" rel="stylesheet" />
 <link href="_content/$ProjectName.Views/css/hero-logo.css" rel="stylesheet" />
 "@
 
 $content | Set-Content "src/Client/wwwroot/index.html"
-
-# Interfaces GlobalUsings
-@"
-"@ | Set-Content "src/Interfaces/GlobalUsings.cs"
 
 # Views _Imports.razor
 @"
@@ -269,7 +263,7 @@ $content | Set-Content "src/Client/wwwroot/index.html"
 @"
 <div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
-        <a class="navbar-brand" href="">test.Client</a>
+        <a class="navbar-brand" href="">$ProjectName.Web</a>
         <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
             <span class="navbar-toggler-icon"></span>
         </button>
@@ -368,9 +362,8 @@ Write-Host "Solution created successfully!" -ForegroundColor Green
 Set-Location ..
 
 Write-Host "`nProject Structure:" -ForegroundColor White
-Write-Host "  $ProjectName.Client/       (Blazor Web Assembly)" -ForegroundColor Gray
-Write-Host "  $ProjectName.Domain/       (Entities)" -ForegroundColor Gray
-Write-Host "  $ProjectName.Interfaces/   (Repository Interfaces)" -ForegroundColor Gray
+Write-Host "  $ProjectName.Web/          (Blazor Web Assembly)" -ForegroundColor Gray
+Write-Host "  $ProjectName.Domain/       (Entities + Interfaces/)" -ForegroundColor Gray
 Write-Host "  $ProjectName.Application/  (Use Cases, Services)" -ForegroundColor Gray
 Write-Host "  $ProjectName.Validators/   (FluentValidation)" -ForegroundColor Gray
 Write-Host "  $ProjectName.Infrastructure/ (Data, External Services)" -ForegroundColor Gray
