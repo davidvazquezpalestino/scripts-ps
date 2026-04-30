@@ -40,7 +40,7 @@ dotnet new classlib -n "$ProjectName.IoC" -o "src/IoC"
 dotnet new classlib -n "$ProjectName.Domain" -o "src/Domain"
 
 # Infrastructure
-dotnet new classlib -n "$ProjectName.Infrastructure" -o "src/Infrastructure"
+dotnet new classlib -n "$ProjectName.DataSource" -o "src/Infrastructure"
 
 # Tests
 dotnet new xunit -n "$ProjectName.UnitTests" -o "tests/UnitTests"
@@ -382,7 +382,7 @@ namespace $ProjectName.Validators
 @"
 using System.Reflection;
 
-namespace $ProjectName.Infrastructure
+namespace $ProjectName.DataSource
 {
     public static class DependencyContainer
     {
@@ -454,12 +454,12 @@ global using Microsoft.Extensions.DependencyInjection;
 @"
 global using $ProjectName.Application;
 global using $ProjectName.Commands;
-global using $ProjectName.Infrastructure;
+global using $ProjectName.DataSource;
 global using $ProjectName.Models;
 global using $ProjectName.Queries;
 global using $ProjectName.Validators;
 global using $ProjectName.Domain.Options;
-global using $ProjectName.Infrastructure.Options;
+global using $ProjectName.DataSource.Options;
 global using Serilog;
 global using Microsoft.AspNetCore.Builder;
 global using Microsoft.Extensions.Configuration;
@@ -483,7 +483,7 @@ global using DevKit.ExecutionEngine.Redis.Options;
 # DataBaseOptions class in Infrastructure
 @"
 
-namespace $ProjectName.Infrastructure.Options
+namespace $ProjectName.DataSource.Options
 {
     public class DataBaseOptions
     {
@@ -678,7 +678,7 @@ COPY src/Application/$ProjectName.Application.csproj src/Application/
 COPY src/Commands/$ProjectName.Commands.csproj src/Commands/
 COPY src/Controllers/$ProjectName.Controllers.csproj src/Controllers/
 COPY src/Domain/$ProjectName.Domain.csproj src/Domain/
-COPY src/Infrastructure/$ProjectName.Infrastructure.csproj src/Infrastructure/
+COPY src/Infrastructure/$ProjectName.DataSource.csproj src/Infrastructure/
 COPY src/IoC/$ProjectName.IoC.csproj src/IoC/
 COPY src/Models/$ProjectName.Models.csproj src/Models/
 COPY src/Queries/$ProjectName.Queries.csproj src/Queries/

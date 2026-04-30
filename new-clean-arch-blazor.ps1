@@ -34,7 +34,7 @@ Write-Host "Creating Class Library (Application)..." -ForegroundColor Yellow
 dotnet new classlib -n "$ProjectName.Application" -o "src/Application"
 
 Write-Host "Creating Class Library (Infrastructure)..." -ForegroundColor Yellow
-dotnet new classlib -n "$ProjectName.Infrastructure" -o "src/Infrastructure"
+dotnet new classlib -n "$ProjectName.WebApi" -o "src/Infrastructure"
 
 Write-Host "Creating Class Library (IoC)..." -ForegroundColor Yellow
 dotnet new classlib -n "$ProjectName.IoC" -o "src/IoC"
@@ -138,7 +138,7 @@ namespace $ProjectName.Application
 # DependencyContainers
 # Infrastructure DependencyContainer
 @"
-namespace $ProjectName.Infrastructure
+namespace $ProjectName.WebApi
 {
     public static class DependencyContainer
     {
@@ -188,7 +188,7 @@ namespace $ProjectName.IoC
 # Infrastructure Options
 # ApiOptions class in Infrastructure
 @"
-namespace $ProjectName.Infrastructure.Options
+namespace $ProjectName.WebApi.Options
 {
     public class ApiOptions
     {
@@ -203,7 +203,7 @@ namespace $ProjectName.Infrastructure.Options
 global using System.Reflection;
 global using DevKit.Injection.Extensions;
 global using Microsoft.Extensions.DependencyInjection;
-global using $ProjectName.Infrastructure.Options;
+global using $ProjectName.WebApi.Options;
 "@ | Set-Content "src/Infrastructure/GlobalUsings.cs"
 
 # Validators GlobalUsings
@@ -220,8 +220,8 @@ global using Microsoft.Extensions.DependencyInjection;
 global using Microsoft.Extensions.Configuration;
 global using FluentValidation;
 global using $ProjectName.Application;
-global using $ProjectName.Infrastructure;
-global using $ProjectName.Infrastructure.Options;
+global using $ProjectName.WebApi;
+global using $ProjectName.WebApi.Options;
 global using $ProjectName.Validators;
 "@ | Set-Content "src/IoC/GlobalUsings.cs"
 
