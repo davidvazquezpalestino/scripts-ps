@@ -381,6 +381,141 @@ $content | Set-Content "src/Client/wwwroot/index.html"
 }
 
 "@ | Set-Content "src/Views/Layout/NavMenu.razor"
+
+Write-Host "Creating CI/CD files..." -ForegroundColor Yellow
+
+# Dockerfile
+@"
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+ARG Configuration=Release
+WORKDIR /src
+COPY src/Client/$ProjectName.Web.csproj src/Client/
+COPY src/Domain/$ProjectName.Domain.csproj src/Domain/
+COPY src/Application/$ProjectName.Application.csproj src/Application/
+COPY src/Infrastructure/$ProjectName.WebApi.csproj src/Infrastructure/
+COPY src/IoC/$ProjectName.IoC.csproj src/IoC/
+COPY src/Validators/$ProjectName.Validators.csproj src/Validators/
+COPY src/Views/$ProjectName.Views.csproj src/Views/
+RUN dotnet restore src/Client/$ProjectName.Web.csproj
+COPY . .
+WORKDIR /src/src/Client
+RUN dotnet publish $ProjectName.Web.csproj -c `${Configuration} -o /app/publish
+
+FROM nginx:alpine AS final
+WORKDIR /usr/share/nginx/html
+COPY --from=build /app/publish/wwwroot .
+COPY src/Client/nginx.conf /etc/nginx/nginx.conf
+EXPOSE 80
+
+#docker build -f src/Client/Dockerfile -t "$($ProjectName.ToLower())-web:latest" .
+#docker container create --name "$($ProjectName.ToLower())-web" -p 8080:80 "$($ProjectName.ToLower())-web:latest"
+"@ | Set-Content "src/Client/Dockerfile"
+
+# nginx.conf
+@'
+events { }
+http {
+    include /etc/nginx/mime.types;
+    server {
+        listen 80;
+        root /usr/share/nginx/html;
+        index index.html;
+        location / {
+            try_files $uri $uri/ /index.html;
+        }
+    }
+}
+'@ | Set-Content "src/Client/nginx.conf"
+
+# azure-pipelines.yml
+@'
+trigger:
+    branches:
+        include:
+            - main
+
+pool:
+    vmImage: ubuntu-latest
+
+steps:
+- checkout: none
+
+- task: SSH@0
+    displayName: Deploy Web __PROJECT_NAME__
+    inputs:
+        sshEndpoint: UbuntuServer
+        runOptions: inline
+        inline: |
+            cd /var/www/__PROJECT_DIR__/__PROJECT_NAME__
+            chmod +x src/Client/deploy.sh
+            ./src/Client/deploy.sh
+        failOnStdErr: false
+'@ | Set-Content "src/Client/azure-pipelines.yml"
+
+$projectDirName = "web-$($ProjectName.ToLower())"
+$projectSlug = $ProjectName.ToLower().Replace('.', '-').Replace('_', '-')
+$azurePipelinesContent = Get-Content -Raw "src/Client/azure-pipelines.yml"
+$azurePipelinesContent = $azurePipelinesContent.Replace("__PROJECT_DIR__", $projectDirName).Replace("__PROJECT_NAME__", $ProjectName)
+$azurePipelinesContent | Set-Content "src/Client/azure-pipelines.yml"
+
+# deploy.sh
+@'
+#!/bin/bash
+set -e
+
+BASE_DIR="/var/www/__PROJECT_DIR__"
+APP_DIR="$BASE_DIR/__PROJECT_NAME__"
+IMAGE_NAME="web-__PROJECT_SLUG__"
+BRANCH="main"
+TZ="America/Mexico_City"
+REPO_URL="https://davidvazquezpalestino.visualstudio.com/__PROJECT_NAME__/_git/__PROJECT_NAME__"
+
+echo "====================================="
+echo "Deploy Web __PROJECT_NAME__ (simple)"
+echo "Rama: $BRANCH"
+echo "Timezone: $TZ"
+echo "====================================="
+
+# 1. Obtener codigo
+if [ ! -d "$APP_DIR/.git" ]; then
+    echo "Clonando repositorio..."
+    cd "$BASE_DIR"
+    git clone -b $BRANCH $REPO_URL
+else
+    echo "Actualizando repositorio..."
+    cd "$APP_DIR"
+    git fetch origin
+    git checkout $BRANCH
+    git reset --hard origin/$BRANCH
+fi
+
+# 2. Build de imagen
+echo "Construyendo imagen Docker..."
+docker build -f src/Client/Dockerfile -t $IMAGE_NAME .
+
+# 3. Detener y eliminar contenedores existentes
+echo "Eliminando contenedores previos..."
+docker rm -f web-__PROJECT_SLUG__1 web-__PROJECT_SLUG__2 web-__PROJECT_SLUG__3 web-__PROJECT_SLUG__4 || true
+
+# 4. Levantar nuevas instancias
+echo "Levantando contenedores..."
+docker run -d -p 8020:80 --name web-__PROJECT_SLUG__1 $IMAGE_NAME
+docker run -d -p 8021:80 --name web-__PROJECT_SLUG__2 $IMAGE_NAME
+docker run -d -p 8022:80 --name web-__PROJECT_SLUG__3 $IMAGE_NAME
+docker run -d -p 8023:80 --name web-__PROJECT_SLUG__4 $IMAGE_NAME
+
+echo "====================================="
+echo "Deploy finalizado correctamente"
+echo "====================================="
+'@ | Set-Content "src/Client/deploy.sh"
+
+$deployScriptContent = Get-Content -Raw "src/Client/deploy.sh"
+$deployScriptContent = $deployScriptContent.Replace("__PROJECT_DIR__", $projectDirName).Replace("__PROJECT_NAME__", $ProjectName).Replace("__PROJECT_SLUG__", $projectSlug)
+$deployScriptContent | Set-Content "src/Client/deploy.sh"
+
+# Git ignore
+dotnet new gitignore
+
 Write-Host "Restoring packages..." -ForegroundColor Yellow
 dotnet restore
 
