@@ -656,7 +656,6 @@ WebApplication.CreateBuilder(args)
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
 WORKDIR /app
 EXPOSE 8080
-EXPOSE 8081
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG Configuration=Release
@@ -762,10 +761,10 @@ docker rm -f webapi-__PROJECT_SLUG__1 webapi-__PROJECT_SLUG__2 webapi-__PROJECT_
 
 # 4. Levantar nuevas instancias
 echo "Levantando contenedores..."
-docker run -d -e TZ=$TZ -p 8010:80 --name webapi-__PROJECT_SLUG__1 $IMAGE_NAME
-docker run -d -e TZ=$TZ -p 8011:80 --name webapi-__PROJECT_SLUG__2 $IMAGE_NAME
-docker run -d -e TZ=$TZ -p 8012:80 --name webapi-__PROJECT_SLUG__3 $IMAGE_NAME
-docker run -d -e TZ=$TZ -p 8013:80 --name webapi-__PROJECT_SLUG__4 $IMAGE_NAME
+docker run -d -e TZ=$TZ -p 8010:8080 --name webapi-__PROJECT_SLUG__1 $IMAGE_NAME
+docker run -d -e TZ=$TZ -p 8011:8080 --name webapi-__PROJECT_SLUG__2 $IMAGE_NAME
+docker run -d -e TZ=$TZ -p 8012:8080 --name webapi-__PROJECT_SLUG__3 $IMAGE_NAME
+docker run -d -e TZ=$TZ -p 8013:8080 --name webapi-__PROJECT_SLUG__4 $IMAGE_NAME
 
 echo "====================================="
 echo "Deploy finalizado correctamente"
