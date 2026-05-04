@@ -84,7 +84,6 @@ dotnet sln add src/Views
 Write-Host "Adding project references..." -ForegroundColor Yellow
 dotnet add src/Application reference src/Domain
 dotnet add src/Validators reference src/Domain
-dotnet add src/Infrastructure reference src/Application
 dotnet add src/Infrastructure reference src/Domain
 dotnet add src/IoC reference src/Application
 dotnet add src/IoC reference src/Domain
@@ -94,7 +93,6 @@ dotnet add src/IoC reference src/Views
 dotnet add src/Client reference src/IoC
 dotnet add src/Client reference src/Views
 dotnet add src/Views reference src/Domain
-dotnet add src/Views reference src/Application
 
 Write-Host "Adding NuGet packages..." -ForegroundColor Yellow
 dotnet add src/Application package DependencyInjection.ReflectionExtensions

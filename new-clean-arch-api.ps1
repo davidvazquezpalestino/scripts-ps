@@ -79,12 +79,17 @@ dotnet sln add tests/UnitTests
 # =========================
 
 # Application sub-projects depend on Domain
+dotnet add src/Application reference src/Domain
 dotnet add src/Commands reference src/Domain
 dotnet add src/Models reference src/Domain
 dotnet add src/Queries reference src/Domain
 dotnet add src/Validators reference src/Domain
 
+# Controllers depend on Application layer projects
 dotnet add src/Controllers reference src/Domain
+dotnet add src/Controllers reference src/Commands
+dotnet add src/Controllers reference src/Queries
+dotnet add src/Controllers reference src/Models
 # IoC depends on all Application projects + Infrastructure + Domain
 dotnet add src/IoC reference src/Application
 dotnet add src/IoC reference src/Commands
@@ -95,8 +100,7 @@ dotnet add src/IoC reference src/Controllers
 dotnet add src/IoC reference src/Infrastructure
 dotnet add src/IoC reference src/Domain
 
-# Infrastructure depends on Application + Domain
-dotnet add src/Infrastructure reference src/Application
+# Infrastructure depends only on Domain (implements interfaces defined there)
 dotnet add src/Infrastructure reference src/Domain
 
 # API depends on IoC
@@ -127,7 +131,6 @@ dotnet add src/Validators package FluentValidation
 dotnet add src/Validators package Microsoft.Extensions.DependencyInjection.Abstractions
 dotnet add src/Validators package DependencyInjection.ReflectionExtensions
 
-dotnet add src/Controllers package FluentValidation
 dotnet add src/Controllers package Microsoft.Extensions.DependencyInjection.Abstractions
 dotnet add src/Controllers package DependencyInjection.ReflectionExtensions
 
