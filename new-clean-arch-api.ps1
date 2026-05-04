@@ -44,7 +44,6 @@ dotnet new classlib -n "$ProjectName.DataSource" -o "src/Infrastructure"
 
 # Tests
 dotnet new xunit -n "$ProjectName.UnitTests" -o "tests/UnitTests"
-dotnet new xunit -n "$ProjectName.IntegrationTests" -o "tests/IntegrationTests"
 
 # Remove default Class1.cs files
 Remove-Item "src/Application/Class1.cs" -Force -ErrorAction SilentlyContinue
@@ -57,7 +56,7 @@ Remove-Item "src/Domain/Class1.cs" -Force -ErrorAction SilentlyContinue
 Remove-Item "src/Validators/Class1.cs" -Force -ErrorAction SilentlyContinue
 Remove-Item "src/Infrastructure/Class1.cs" -Force -ErrorAction SilentlyContinue
 Remove-Item "tests/UnitTests/Class1.cs" -Force -ErrorAction SilentlyContinue
-Remove-Item "tests/IntegrationTests/Class1.cs" -Force -ErrorAction SilentlyContinue
+Remove-Item "tests/UnitTests/UnitTest1.cs" -Force -ErrorAction SilentlyContinue
 
 # =========================
 # ADD TO SOLUTION
@@ -74,7 +73,6 @@ dotnet sln add src/IoC
 dotnet sln add src/Domain
 dotnet sln add src/Infrastructure
 dotnet sln add tests/UnitTests
-dotnet sln add tests/IntegrationTests
 
 # =========================
 # PROJECT REFERENCES
@@ -107,8 +105,6 @@ dotnet add src/Api reference src/IoC
 # Tests
 dotnet add tests/UnitTests reference src/Application
 dotnet add tests/UnitTests reference src/Domain
-
-dotnet add tests/IntegrationTests reference src/Api
 
 # =========================
 # ADD PACKAGES
@@ -166,8 +162,6 @@ dotnet add src/Api package Swashbuckle.AspNetCore
 
 # Tests
 dotnet add tests/UnitTests package FluentAssertions
-dotnet add tests/IntegrationTests package FluentAssertions
-dotnet add tests/IntegrationTests package Microsoft.AspNetCore.Mvc.Testing
 
 # =========================
 # CREATE BASE FOLDERS
@@ -380,7 +374,6 @@ namespace $ProjectName.Validators
 
 # DependencyContainer class in Infrastructure Project
 @"
-using System.Reflection;
 
 namespace $ProjectName.DataSource
 {
