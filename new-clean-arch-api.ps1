@@ -520,11 +520,6 @@ global using FluentAssertions;
 global using Xunit;
 "@ | Set-Content "tests/UnitTests/GlobalUsings.cs"
 
-@"
-global using FluentAssertions;
-global using Xunit;
-"@ | Set-Content "tests/IntegrationTests/GlobalUsings.cs"
-
 # API Configuration files
 @"
 
