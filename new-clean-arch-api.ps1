@@ -321,30 +321,6 @@ global using Microsoft.Extensions.DependencyInjection;
 
 "@ | Set-Content "src/Commands/GlobalUsings.cs"
 
-# DependencyContainer class in Models Project
-@"
-
-namespace $ProjectName.Models
-{
-    public static class DependencyContainer
-    {
-        public static IServiceCollection AddModels(this IServiceCollection services)
-        {  
-            services.AddCurrentAssembly();
-            return services;
-        }
-    }
-}
-"@ | Set-Content "src/Models/DependencyContainer.cs"
-
-# GlobalUsings Models
-@"
-global using System.Reflection;
-global using DevKit.Injection.Extensions;
-global using Microsoft.Extensions.DependencyInjection;
-
-"@ | Set-Content "src/Models/GlobalUsings.cs"
-
 # DependencyContainer class in Queries Project
 @"
 
@@ -420,7 +396,6 @@ namespace $ProjectName.IoC
 
             services.AddApplication()
                         .AddCommands()
-                        .AddModels()
                         .AddQueries()
                         .AddValidators()
                         .AddInfrastructure()
@@ -481,6 +456,8 @@ global using DevKit.ExecutionEngine.Redis.Options;
 
 # GlobalUsings Controllers
 @"
+global using Microsoft.AspNetCore.Mvc;
+global using Microsoft.AspNetCore.Http;
 "@ | Set-Content "src/Controllers/GlobalUsings.cs"
 
 # GlobalUsings Domain
