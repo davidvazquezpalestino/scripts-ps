@@ -134,6 +134,18 @@ dotnet add src/Validators package DependencyInjection.ReflectionExtensions
 dotnet add src/Controllers package Microsoft.Extensions.DependencyInjection.Abstractions
 dotnet add src/Controllers package DependencyInjection.ReflectionExtensions
 
+# Controllers needs ASP.NET Core framework reference (ControllerBase, [ApiController], etc.)
+$controllersCsproj = "src/Controllers/$ProjectName.Controllers.csproj"
+[xml]$controllersXml = Get-Content $controllersCsproj
+if (-not ($controllersXml.Project.ItemGroup | Where-Object { $_.FrameworkReference.Include -eq "Microsoft.AspNetCore.App" })) {
+    $itemGroup = $controllersXml.CreateElement("ItemGroup")
+    $frameworkRef = $controllersXml.CreateElement("FrameworkReference")
+    $frameworkRef.SetAttribute("Include", "Microsoft.AspNetCore.App")
+    $itemGroup.AppendChild($frameworkRef) | Out-Null
+    $controllersXml.Project.AppendChild($itemGroup) | Out-Null
+    $controllersXml.Save((Resolve-Path $controllersCsproj))
+}
+
 # Application
 dotnet add src/Application package Microsoft.Extensions.DependencyInjection.Abstractions
 dotnet add src/Application package DependencyInjection.ReflectionExtensions
