@@ -42,8 +42,8 @@ dotnet new classlib -n "$ProjectName.Domain" -o "src/Domain"
 # Infrastructure
 dotnet new classlib -n "$ProjectName.DataSource" -o "src/Infrastructure"
 
-# Tests
-dotnet new xunit -n "$ProjectName.UnitTests" -o "tests/UnitTests"
+# Tests (xUnit.net v3)
+dotnet new xunit3 -n "$ProjectName.UnitTests" -o "tests/UnitTests"
 
 # Remove default Class1.cs files
 Remove-Item "src/Application/Class1.cs" -Force -ErrorAction SilentlyContinue
