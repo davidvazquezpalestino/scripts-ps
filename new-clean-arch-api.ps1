@@ -43,7 +43,21 @@ dotnet new classlib -n "$ProjectName.Domain" -o "src/Domain"
 dotnet new classlib -n "$ProjectName.DataSource" -o "src/Infrastructure"
 
 # Tests (xUnit.net v3)
+# Asegurar que la plantilla xunit3 esté disponible (paquete xunit.v3.templates)
+$templateList = dotnet new list xunit3 2>&1 | Out-String
+if ($templateList -notmatch "(?m)^\s*xunit3\b") {
+    Write-Host "Instalando plantillas de xUnit.net v3 (xunit.v3.templates)..."
+    dotnet new install xunit.v3.templates
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "Falló la instalación de xunit.v3.templates. No se puede crear el proyecto de pruebas."
+        exit 1
+    }
+}
 dotnet new xunit3 -n "$ProjectName.UnitTests" -o "tests/UnitTests"
+if ($LASTEXITCODE -ne 0 -or -not (Test-Path "tests/UnitTests")) {
+    Write-Error "No se pudo crear el proyecto tests/UnitTests con la plantilla xunit3."
+    exit 1
+}
 
 # Remove default Class1.cs files
 Remove-Item "src/Application/Class1.cs" -Force -ErrorAction SilentlyContinue
@@ -438,7 +452,6 @@ global using Microsoft.Extensions.DependencyInjection;
 global using $ProjectName.Application;
 global using $ProjectName.Commands;
 global using $ProjectName.DataSource;
-global using $ProjectName.Models;
 global using $ProjectName.Queries;
 global using $ProjectName.Validators;
 global using $ProjectName.Domain.Options;
