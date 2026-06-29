@@ -33,7 +33,7 @@ New-Item -ItemType Directory -Path $ProjectName
 Set-Location $ProjectName
 
 # Solution
-dotnet new sln -n $ProjectName
+dotnet new sln -n "Sln$ProjectName"
 
 # Folders
 New-Item -ItemType Directory -Path "src"

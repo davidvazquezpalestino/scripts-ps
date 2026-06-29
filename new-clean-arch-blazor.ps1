@@ -40,7 +40,7 @@ Set-Location $ProjectName
 
 New-Item -ItemType Directory -Path "src" -Force | Out-Null
 
-dotnet new sln -n $ProjectName
+dotnet new sln -n "Sln$ProjectName"
 
 Write-Host "Creating Blazor Web Assembly project..." -ForegroundColor Yellow
 dotnet new blazorwasm -n "$ProjectName.Web" -o "src/Client" --no-https
