@@ -8,11 +8,32 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+# =========================
+# COMPUTE PORT (deterministic per project name)
+# =========================
+function Get-DeterministicPort {
+    param(
+        [string]$Name,
+        [int]$Base,
+        [int]$Range = 1000
+    )
+    $hash = 0
+    foreach ($c in $Name.ToCharArray()) {
+        $hash = ($hash * 31 + [int]$c)
+        # Mantener dentro de Int32 evitando overflow
+        $hash = $hash -band 0x7FFFFFFF
+    }
+    return $Base + ($hash % $Range)
+}
+
+$HttpPort = Get-DeterministicPort -Name $ProjectName -Base 5000 -Range 1000
+
 if ($OutputPath -ne ".") {
     Set-Location $OutputPath
 }
 
 Write-Host "Creating Clean Architecture solution: $ProjectName" -ForegroundColor Cyan
+Write-Host "  HTTP -> http://localhost:$HttpPort" -ForegroundColor Cyan
 
 New-Item -ItemType Directory -Path $ProjectName -Force | Out-Null
 Set-Location $ProjectName
@@ -24,33 +45,51 @@ dotnet new sln -n $ProjectName
 Write-Host "Creating Blazor Web Assembly project..." -ForegroundColor Yellow
 dotnet new blazorwasm -n "$ProjectName.Web" -o "src/Client" --no-https
 
+Write-Host "Writing launchSettings.json with deterministic port ($HttpPort)..." -ForegroundColor Yellow
+New-Item -ItemType Directory -Path "src/Client/Properties" -Force | Out-Null
+@"
+{
+  "`$schema": "https://json.schemastore.org/launchsettings.json",
+  "profiles": {
+    "http": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "applicationUrl": "http://localhost:$HttpPort",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    }
+  }
+}
+"@ | Set-Content "src/Client/Properties/launchSettings.json"
+
 Write-Host "Removing Shared folder from Client..." -ForegroundColor Yellow
 Remove-Item "src/Client/Shared" -Recurse -Force -ErrorAction SilentlyContinue
 
 Write-Host "Creating Class Library (Domain)..." -ForegroundColor Yellow
-dotnet new classlib -n "$ProjectName.Domain" -o "src/Domain"
+dotnet new classlib -n "$ProjectName.Domain" -o "src/Domain/Domain"
 
-Write-Host "Creating Class Library (Application)..." -ForegroundColor Yellow
-dotnet new classlib -n "$ProjectName.Application" -o "src/Application"
+Write-Host "Creating Class Library (ViewModels)..." -ForegroundColor Yellow
+dotnet new classlib -n "$ProjectName.ViewModels" -o "src/Application/ViewModels"
 
 Write-Host "Creating Class Library (Infrastructure)..." -ForegroundColor Yellow
-dotnet new classlib -n "$ProjectName.WebApi" -o "src/Infrastructure"
+dotnet new classlib -n "$ProjectName.WebApi" -o "src/Infrastructure/WebApi"
 
 Write-Host "Creating Class Library (IoC)..." -ForegroundColor Yellow
 dotnet new classlib -n "$ProjectName.IoC" -o "src/IoC"
 
 Write-Host "Creating Class Library (Validators)..." -ForegroundColor Yellow
-dotnet new classlib -n "$ProjectName.Validators" -o "src/Validators"
+dotnet new classlib -n "$ProjectName.Validators" -o "src/Application/Validators"
 
 Write-Host "Creating Class Library (Views)..." -ForegroundColor Yellow
 dotnet new razorclasslib -n "$ProjectName.Views" -o "src/Views"
 
 Write-Host "Removing default Class1.cs files..." -ForegroundColor Yellow
-Remove-Item "src/Domain/Class1.cs" -Force -ErrorAction SilentlyContinue
-Remove-Item "src/Application/Class1.cs" -Force -ErrorAction SilentlyContinue
-Remove-Item "src/Infrastructure/Class1.cs" -Force -ErrorAction SilentlyContinue
+Remove-Item "src/Domain/Domain/Class1.cs" -Force -ErrorAction SilentlyContinue
+Remove-Item "src/Application/ViewModels/Class1.cs" -Force -ErrorAction SilentlyContinue
+Remove-Item "src/Infrastructure/WebApi/Class1.cs" -Force -ErrorAction SilentlyContinue
 Remove-Item "src/IoC/Class1.cs" -Force -ErrorAction SilentlyContinue
-Remove-Item "src/Validators/Class1.cs" -Force -ErrorAction SilentlyContinue
+Remove-Item "src/Application/Validators/Class1.cs" -Force -ErrorAction SilentlyContinue
 Remove-Item "src/Views/Component1.razor" -Force -ErrorAction SilentlyContinue
 Remove-Item "src/Views/Component1.razor.css" -Force -ErrorAction SilentlyContinue
 Remove-Item "src/Views/ExampleJsInterop.cs" -Force -ErrorAction SilentlyContinue
@@ -60,46 +99,46 @@ Remove-Item -Path "src/Client/Layout" -Recurse -Force -ErrorAction SilentlyConti
 Remove-Item -Path "src/Client/Pages" -Recurse -Force -ErrorAction SilentlyContinue
 
 Write-Host "Creating folder structure..." -ForegroundColor Yellow
-New-Item -ItemType Directory -Path "src/Domain/Interfaces" -Force | Out-Null
-New-Item -ItemType Directory -Path "src/Domain/Entities" -Force | Out-Null
-New-Item -ItemType Directory -Path "src/Domain/ValueObjects" -Force | Out-Null
-New-Item -ItemType Directory -Path "src/Domain/Enums" -Force | Out-Null
-"" | Set-Content "src/Domain/Interfaces/.gitkeep"
-"" | Set-Content "src/Domain/Entities/.gitkeep"
-"" | Set-Content "src/Domain/ValueObjects/.gitkeep"
-"" | Set-Content "src/Domain/Enums/.gitkeep"
+New-Item -ItemType Directory -Path "src/Domain/Domain/Interfaces" -Force | Out-Null
+New-Item -ItemType Directory -Path "src/Domain/Domain/Entities" -Force | Out-Null
+New-Item -ItemType Directory -Path "src/Domain/Domain/ValueObjects" -Force | Out-Null
+New-Item -ItemType Directory -Path "src/Domain/Domain/Enums" -Force | Out-Null
+"" | Set-Content "src/Domain/Domain/Interfaces/.gitkeep"
+"" | Set-Content "src/Domain/Domain/Entities/.gitkeep"
+"" | Set-Content "src/Domain/Domain/ValueObjects/.gitkeep"
+"" | Set-Content "src/Domain/Domain/Enums/.gitkeep"
 New-Item -ItemType Directory -Path "src/Views/Layout" -Force | Out-Null
 New-Item -ItemType Directory -Path "src/Views/Pages" -Force | Out-Null
-New-Item -ItemType Directory -Path "src/Infrastructure/Options" -Force | Out-Null
+New-Item -ItemType Directory -Path "src/Infrastructure/WebApi/Options" -Force | Out-Null
 
 Write-Host "Adding projects to solution..." -ForegroundColor Yellow
 dotnet sln add src/Client
-dotnet sln add src/Domain
-dotnet sln add src/Application
-dotnet sln add src/Infrastructure
+dotnet sln add src/Domain/Domain
+dotnet sln add src/Application/ViewModels
+dotnet sln add src/Infrastructure/WebApi
 dotnet sln add src/IoC
-dotnet sln add src/Validators
+dotnet sln add src/Application/Validators
 dotnet sln add src/Views
 
 Write-Host "Adding project references..." -ForegroundColor Yellow
-dotnet add src/Application reference src/Domain
-dotnet add src/Validators reference src/Domain
-dotnet add src/Infrastructure reference src/Domain
-dotnet add src/IoC reference src/Application
-dotnet add src/IoC reference src/Domain
-dotnet add src/IoC reference src/Infrastructure
-dotnet add src/IoC reference src/Validators
+dotnet add src/Application/ViewModels reference src/Domain/Domain
+dotnet add src/Application/Validators reference src/Domain/Domain
+dotnet add src/Infrastructure/WebApi reference src/Domain/Domain
+dotnet add src/IoC reference src/Application/ViewModels
+dotnet add src/IoC reference src/Domain/Domain
+dotnet add src/IoC reference src/Infrastructure/WebApi
+dotnet add src/IoC reference src/Application/Validators
 dotnet add src/IoC reference src/Views
 dotnet add src/Client reference src/IoC
 dotnet add src/Client reference src/Views
-dotnet add src/Views reference src/Domain
+dotnet add src/Views reference src/Domain/Domain
 
 Write-Host "Adding NuGet packages..." -ForegroundColor Yellow
-dotnet add src/Application package DependencyInjection.ReflectionExtensions
-dotnet add src/Application package FluentValidation
-dotnet add src/Validators package DependencyInjection.ReflectionExtensions
-dotnet add src/Validators package FluentValidation
-dotnet add src/Infrastructure package DependencyInjection.ReflectionExtensions
+dotnet add src/Application/ViewModels package DependencyInjection.ReflectionExtensions
+dotnet add src/Application/ViewModels package FluentValidation
+dotnet add src/Application/Validators package DependencyInjection.ReflectionExtensions
+dotnet add src/Application/Validators package FluentValidation
+dotnet add src/Infrastructure/WebApi package DependencyInjection.ReflectionExtensions
 dotnet add src/IoC package DependencyInjection.ReflectionExtensions
 dotnet add src/IoC package FluentValidation
 dotnet add src/IoC package Microsoft.Extensions.Configuration.Abstractions
@@ -108,30 +147,30 @@ Write-Host "Creating GlobalUsings files..." -ForegroundColor Yellow
 
 # Domain GlobalUsings
 @"
-"@ | Set-Content "src/Domain/GlobalUsings.cs"
+"@ | Set-Content "src/Domain/Domain/GlobalUsings.cs"
 
-# Application GlobalUsings
+# Application (ViewModels) GlobalUsings
 @"
 global using DevKit.Injection.Extensions;
 global using Microsoft.Extensions.DependencyInjection;
 global using System.Reflection;
 
-"@ | Set-Content "src/Application/GlobalUsings.cs"
+"@ | Set-Content "src/Application/ViewModels/GlobalUsings.cs"
 
-# Application DependencyContainer
+# Application (ViewModels) DependencyContainer
 @"
-namespace $ProjectName.Application
+namespace $ProjectName.ViewModels
 {
     public static class DependencyContainer
     {
-        public static IServiceCollection AddApplication(this IServiceCollection services)
+        public static IServiceCollection AddViewModels(this IServiceCollection services)
         {  
             services.AddCurrentAssembly();
             return services;
         }
     }
 }
-"@ | Set-Content "src/Application/DependencyContainer.cs"
+"@ | Set-Content "src/Application/ViewModels/DependencyContainer.cs"
 
 # DependencyContainers
 # Infrastructure DependencyContainer
@@ -147,7 +186,7 @@ namespace $ProjectName.WebApi
         }
     }
 }
-"@ | Set-Content "src/Infrastructure/DependencyContainer.cs"
+"@ | Set-Content "src/Infrastructure/WebApi/DependencyContainer.cs"
 
 # Validators DependencyContainer
 @"
@@ -162,7 +201,7 @@ namespace $ProjectName.Validators
         }
     }
 }
-"@ | Set-Content "src/Validators/DependencyContainer.cs"
+"@ | Set-Content "src/Application/Validators/DependencyContainer.cs"
 
 # IoC DependencyContainer
 @"
@@ -174,7 +213,7 @@ namespace $ProjectName.IoC
         {
             services.Configure<ApiOptions>(configuration.GetSection(ApiOptions.SectionKey));
 
-            services.AddApplication()
+            services.AddViewModels()
                     .AddValidators()
                     .AddInfrastructure();
             return services;
@@ -194,7 +233,7 @@ namespace $ProjectName.WebApi.Options
         public string BaseUrl { get; set; }
     }
 }
-"@ | Set-Content "src/Infrastructure/Options/ApiOptions.cs"
+"@ | Set-Content "src/Infrastructure/WebApi/Options/ApiOptions.cs"
 
 # Infrastructure GlobalUsings
 @"
@@ -202,7 +241,7 @@ global using System.Reflection;
 global using DevKit.Injection.Extensions;
 global using Microsoft.Extensions.DependencyInjection;
 global using $ProjectName.WebApi.Options;
-"@ | Set-Content "src/Infrastructure/GlobalUsings.cs"
+"@ | Set-Content "src/Infrastructure/WebApi/GlobalUsings.cs"
 
 # Validators GlobalUsings
 @"
@@ -210,14 +249,14 @@ global using System.Reflection;
 global using Microsoft.Extensions.DependencyInjection;
 global using DevKit.Injection.Extensions;
 global using FluentValidation;
-"@ | Set-Content "src/Validators/GlobalUsings.cs"
+"@ | Set-Content "src/Application/Validators/GlobalUsings.cs"
 
 # IoC GlobalUsings
 @"
 global using Microsoft.Extensions.DependencyInjection;
 global using Microsoft.Extensions.Configuration;
 global using FluentValidation;
-global using $ProjectName.Application;
+global using $ProjectName.ViewModels;
 global using $ProjectName.WebApi;
 global using $ProjectName.WebApi.Options;
 global using $ProjectName.Validators;
@@ -255,8 +294,7 @@ await builder.Build().RunAsync();
 
 Remove-Item "src/Client/App.razor" -Force -ErrorAction SilentlyContinue
 
-# Client Index.razor update
-New-Item -ItemType Directory -Path "src/Client/Pages" -Force | Out-Null
+# Index.razor lives in the Views assembly so the Router (AppAssembly = typeof(App).Assembly) can discover it.
 @"
 @page "/"
 
@@ -266,7 +304,7 @@ New-Item -ItemType Directory -Path "src/Client/Pages" -Force | Out-Null
 
 Welcome to your new app.
 
-"@ | Set-Content "src/Client/Pages/Index.razor"
+"@ | Set-Content "src/Views/Pages/Index.razor"
 
 # Client _Imports.razor update
 @"
@@ -388,11 +426,11 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG Configuration=Release
 WORKDIR /src
 COPY src/Client/$ProjectName.Web.csproj src/Client/
-COPY src/Domain/$ProjectName.Domain.csproj src/Domain/
-COPY src/Application/$ProjectName.Application.csproj src/Application/
-COPY src/Infrastructure/$ProjectName.WebApi.csproj src/Infrastructure/
+COPY src/Domain/Domain/$ProjectName.Domain.csproj src/Domain/Domain/
+COPY src/Application/ViewModels/$ProjectName.ViewModels.csproj src/Application/ViewModels/
+COPY src/Infrastructure/WebApi/$ProjectName.WebApi.csproj src/Infrastructure/WebApi/
 COPY src/IoC/$ProjectName.IoC.csproj src/IoC/
-COPY src/Validators/$ProjectName.Validators.csproj src/Validators/
+COPY src/Application/Validators/$ProjectName.Validators.csproj src/Application/Validators/
 COPY src/Views/$ProjectName.Views.csproj src/Views/
 RUN dotnet restore src/Client/$ProjectName.Web.csproj
 COPY . .
@@ -511,6 +549,63 @@ $deployScriptContent = Get-Content -Raw "src/Client/deploy.sh"
 $deployScriptContent = $deployScriptContent.Replace("__PROJECT_DIR__", $projectDirName).Replace("__PROJECT_NAME__", $ProjectName).Replace("__PROJECT_SLUG__", $projectSlug)
 $deployScriptContent | Set-Content "src/Client/deploy.sh"
 
+# =========================
+# VS CODE: Startup config (F5 -> Web)
+# =========================
+Write-Host "Creating .vscode/launch.json and tasks.json (F5 -> $ProjectName.Web)..." -ForegroundColor Yellow
+New-Item -ItemType Directory -Path ".vscode" -Force | Out-Null
+
+@"
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Launch $ProjectName.Web",
+      "type": "blazorwasm",
+      "request": "launch",
+      "cwd": "`${workspaceFolder}/src/Client",
+      "url": "http://localhost:$HttpPort",
+      "preLaunchTask": "build"
+    }
+  ]
+}
+"@ | Set-Content ".vscode/launch.json"
+
+@"
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build",
+      "command": "dotnet",
+      "type": "process",
+      "args": [
+        "build",
+        "`${workspaceFolder}/src/Client/$ProjectName.Web.csproj",
+        "/property:GenerateFullPaths=true",
+        "/consoleloggerparameters:NoSummary"
+      ],
+      "problemMatcher": "`$msCompile",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "run",
+      "command": "dotnet",
+      "type": "process",
+      "args": [
+        "run",
+        "--project",
+        "`${workspaceFolder}/src/Client/$ProjectName.Web.csproj"
+      ],
+      "problemMatcher": "`$msCompile"
+    }
+  ]
+}
+"@ | Set-Content ".vscode/tasks.json"
+
 # Git ignore
 dotnet new gitignore
 
@@ -522,10 +617,10 @@ Write-Host "Solution created successfully!" -ForegroundColor Green
 Set-Location ..
 
 Write-Host "`nProject Structure:" -ForegroundColor White
-Write-Host "  $ProjectName.Web/          (Blazor Web Assembly)" -ForegroundColor Gray
-Write-Host "  $ProjectName.Domain/       (Entities + Interfaces/)" -ForegroundColor Gray
-Write-Host "  $ProjectName.Application/  (Use Cases, Services)" -ForegroundColor Gray
-Write-Host "  $ProjectName.Validators/   (FluentValidation)" -ForegroundColor Gray
-Write-Host "  $ProjectName.Infrastructure/ (Data, External Services)" -ForegroundColor Gray
-Write-Host "  $ProjectName.Views/        (View Models, DTOs)" -ForegroundColor Gray
-Write-Host "  $ProjectName.IoC/          (Dependency Injection Orchestrator)" -ForegroundColor Gray
+Write-Host "  src/Client/                   ($ProjectName.Web - Blazor Web Assembly)"           -ForegroundColor Gray
+Write-Host "  src/Domain/Domain/            ($ProjectName.Domain - Entities, Interfaces)"        -ForegroundColor Gray
+Write-Host "  src/Application/ViewModels/   ($ProjectName.ViewModels - Use Cases, Services)"     -ForegroundColor Gray
+Write-Host "  src/Application/Validators/   ($ProjectName.Validators - FluentValidation)"        -ForegroundColor Gray
+Write-Host "  src/Infrastructure/WebApi/    ($ProjectName.WebApi - External Services, HTTP)"     -ForegroundColor Gray
+Write-Host "  src/Views/                    ($ProjectName.Views - Razor Components, Layouts)"    -ForegroundColor Gray
+Write-Host "  src/IoC/                      ($ProjectName.IoC - Dependency Injection)"           -ForegroundColor Gray
