@@ -3,7 +3,30 @@ param(
     [string]$ProjectName
 )
 
+# =========================
+# COMPUTE PORTS (deterministic per project name)
+# =========================
+function Get-DeterministicPort {
+    param(
+        [string]$Name,
+        [int]$Base,
+        [int]$Range = 1000
+    )
+    $hash = 0
+    foreach ($c in $Name.ToCharArray()) {
+        $hash = ($hash * 31 + [int]$c)
+        # Mantener dentro de Int32 evitando overflow
+        $hash = $hash -band 0x7FFFFFFF
+    }
+    return $Base + ($hash % $Range)
+}
+
+$HttpPort  = Get-DeterministicPort -Name $ProjectName -Base 5000 -Range 1000
+$HttpsPort = Get-DeterministicPort -Name $ProjectName -Base 7000 -Range 1000
+
 Write-Host "Creating Clean Architecture solution: $ProjectName"
+Write-Host "  HTTP  -> http://localhost:$HttpPort"
+Write-Host "  HTTPS -> https://localhost:$HttpsPort"
 
 # Root
 New-Item -ItemType Directory -Path $ProjectName
@@ -19,28 +42,30 @@ New-Item -ItemType Directory -Path "tests"
 # =========================
 # CREATE PROJECTS
 # =========================
+# Cada proyecto vive dentro de su propia subcarpeta para que bin/obj queden aislados
+# y la carpeta-capa (Application, Infrastructure, etc.) pueda alojar proyectos hermanos.
 
 # API
 dotnet new web -n "$ProjectName.Api" -o "src/Api"
 
 # Application
-dotnet new classlib -n "$ProjectName.Application" -o "src/Application"
+dotnet new classlib -n "$ProjectName.UseCases" -o "src/Application/UseCases"
 
 # Application sub-projects (separate projects)
-dotnet new classlib -n "$ProjectName.Commands" -o "src/Commands"
-dotnet new classlib -n "$ProjectName.Models" -o "src/Models"
-dotnet new classlib -n "$ProjectName.Queries" -o "src/Queries"
-dotnet new classlib -n "$ProjectName.Validators" -o "src/Validators"
-dotnet new classlib -n "$ProjectName.Controllers" -o "src/Controllers"
+dotnet new classlib -n "$ProjectName.Commands" -o "src/Application/Commands"
+dotnet new classlib -n "$ProjectName.Models" -o "src/Application/Models"
+dotnet new classlib -n "$ProjectName.Queries" -o "src/Application/Queries"
+dotnet new classlib -n "$ProjectName.Validators" -o "src/Application/Validators"
+dotnet new classlib -n "$ProjectName.Controllers" -o "src/Infrastructure/Controllers"
 
 # IoC Project at same level as Application
 dotnet new classlib -n "$ProjectName.IoC" -o "src/IoC"
 
 # Domain
-dotnet new classlib -n "$ProjectName.Domain" -o "src/Domain"
+dotnet new classlib -n "$ProjectName.Domain" -o "src/Domain/Domain"
 
 # Infrastructure
-dotnet new classlib -n "$ProjectName.DataSource" -o "src/Infrastructure"
+dotnet new classlib -n "$ProjectName.DataSource" -o "src/Infrastructure/DataSource"
 
 # Tests (xUnit.net v3)
 # Asegurar que la plantilla xunit3 esté disponible (paquete xunit.v3.templates)
@@ -60,15 +85,15 @@ if ($LASTEXITCODE -ne 0 -or -not (Test-Path "tests/UnitTests")) {
 }
 
 # Remove default Class1.cs files
-Remove-Item "src/Application/Class1.cs" -Force -ErrorAction SilentlyContinue
-Remove-Item "src/Commands/Class1.cs" -Force -ErrorAction SilentlyContinue
-Remove-Item "src/Models/Class1.cs" -Force -ErrorAction SilentlyContinue
-Remove-Item "src/Queries/Class1.cs" -Force -ErrorAction SilentlyContinue
-Remove-Item "src/Controllers/Class1.cs" -Force -ErrorAction SilentlyContinue
+Remove-Item "src/Application/UseCases/Class1.cs" -Force -ErrorAction SilentlyContinue
+Remove-Item "src/Application/Commands/Class1.cs" -Force -ErrorAction SilentlyContinue
+Remove-Item "src/Application/Models/Class1.cs" -Force -ErrorAction SilentlyContinue
+Remove-Item "src/Application/Queries/Class1.cs" -Force -ErrorAction SilentlyContinue
+Remove-Item "src/Infrastructure/Controllers/Class1.cs" -Force -ErrorAction SilentlyContinue
 Remove-Item "src/IoC/Class1.cs" -Force -ErrorAction SilentlyContinue
-Remove-Item "src/Domain/Class1.cs" -Force -ErrorAction SilentlyContinue
-Remove-Item "src/Validators/Class1.cs" -Force -ErrorAction SilentlyContinue
-Remove-Item "src/Infrastructure/Class1.cs" -Force -ErrorAction SilentlyContinue
+Remove-Item "src/Domain/Domain/Class1.cs" -Force -ErrorAction SilentlyContinue
+Remove-Item "src/Application/Validators/Class1.cs" -Force -ErrorAction SilentlyContinue
+Remove-Item "src/Infrastructure/DataSource/Class1.cs" -Force -ErrorAction SilentlyContinue
 Remove-Item "tests/UnitTests/Class1.cs" -Force -ErrorAction SilentlyContinue
 Remove-Item "tests/UnitTests/UnitTest1.cs" -Force -ErrorAction SilentlyContinue
 
@@ -77,15 +102,15 @@ Remove-Item "tests/UnitTests/UnitTest1.cs" -Force -ErrorAction SilentlyContinue
 # =========================
 
 dotnet sln add src/Api
-dotnet sln add src/Application
-dotnet sln add src/Commands
-dotnet sln add src/Models
-dotnet sln add src/Queries
-dotnet sln add src/Validators
-dotnet sln add src/Controllers
+dotnet sln add src/Application/UseCases
+dotnet sln add src/Application/Commands
+dotnet sln add src/Application/Models
+dotnet sln add src/Application/Queries
+dotnet sln add src/Application/Validators
+dotnet sln add src/Infrastructure/Controllers
 dotnet sln add src/IoC
-dotnet sln add src/Domain
-dotnet sln add src/Infrastructure
+dotnet sln add src/Domain/Domain
+dotnet sln add src/Infrastructure/DataSource
 dotnet sln add tests/UnitTests
 
 # =========================
@@ -93,63 +118,63 @@ dotnet sln add tests/UnitTests
 # =========================
 
 # Application sub-projects depend on Domain
-dotnet add src/Application reference src/Domain
-dotnet add src/Commands reference src/Domain
-dotnet add src/Models reference src/Domain
-dotnet add src/Queries reference src/Domain
-dotnet add src/Validators reference src/Domain
+dotnet add src/Application/UseCases reference src/Domain/Domain
+dotnet add src/Application/Commands reference src/Domain/Domain
+dotnet add src/Application/Models reference src/Domain/Domain
+dotnet add src/Application/Queries reference src/Domain/Domain
+dotnet add src/Application/Validators reference src/Domain/Domain
 
 # Controllers depend on Application layer projects
-dotnet add src/Controllers reference src/Domain
-dotnet add src/Controllers reference src/Commands
-dotnet add src/Controllers reference src/Queries
-dotnet add src/Controllers reference src/Models
+dotnet add src/Infrastructure/Controllers reference src/Domain/Domain
+dotnet add src/Infrastructure/Controllers reference src/Application/Commands
+dotnet add src/Infrastructure/Controllers reference src/Application/Queries
+dotnet add src/Infrastructure/Controllers reference src/Application/Models
 # IoC depends on all Application projects + Infrastructure + Domain
-dotnet add src/IoC reference src/Application
-dotnet add src/IoC reference src/Commands
-dotnet add src/IoC reference src/Models
-dotnet add src/IoC reference src/Queries
-dotnet add src/IoC reference src/Validators
-dotnet add src/IoC reference src/Controllers
-dotnet add src/IoC reference src/Infrastructure
-dotnet add src/IoC reference src/Domain
+dotnet add src/IoC reference src/Application/UseCases
+dotnet add src/IoC reference src/Application/Commands
+dotnet add src/IoC reference src/Application/Models
+dotnet add src/IoC reference src/Application/Queries
+dotnet add src/IoC reference src/Application/Validators
+dotnet add src/IoC reference src/Infrastructure/Controllers
+dotnet add src/IoC reference src/Infrastructure/DataSource
+dotnet add src/IoC reference src/Domain/Domain
 
 # Infrastructure depends only on Domain (implements interfaces defined there)
-dotnet add src/Infrastructure reference src/Domain
+dotnet add src/Infrastructure/DataSource reference src/Domain/Domain
 
 # API depends on IoC
 dotnet add src/Api reference src/IoC
 
 # Tests
-dotnet add tests/UnitTests reference src/Application
-dotnet add tests/UnitTests reference src/Domain
+dotnet add tests/UnitTests reference src/Application/UseCases
+dotnet add tests/UnitTests reference src/Domain/Domain
 
 # =========================
 # ADD PACKAGES
 # =========================
 
 # Application sub-projects
-dotnet add src/Commands package FluentValidation
-dotnet add src/Commands package Microsoft.Extensions.DependencyInjection.Abstractions
-dotnet add src/Commands package DependencyInjection.ReflectionExtensions
+dotnet add src/Application/Commands package FluentValidation
+dotnet add src/Application/Commands package Microsoft.Extensions.DependencyInjection.Abstractions
+dotnet add src/Application/Commands package DependencyInjection.ReflectionExtensions
 
-dotnet add src/Models package FluentValidation
-dotnet add src/Models package Microsoft.Extensions.DependencyInjection.Abstractions
-dotnet add src/Models package DependencyInjection.ReflectionExtensions
+dotnet add src/Application/Models package FluentValidation
+dotnet add src/Application/Models package Microsoft.Extensions.DependencyInjection.Abstractions
+dotnet add src/Application/Models package DependencyInjection.ReflectionExtensions
 
-dotnet add src/Queries package FluentValidation
-dotnet add src/Queries package Microsoft.Extensions.DependencyInjection.Abstractions
-dotnet add src/Queries package DependencyInjection.ReflectionExtensions
+dotnet add src/Application/Queries package FluentValidation
+dotnet add src/Application/Queries package Microsoft.Extensions.DependencyInjection.Abstractions
+dotnet add src/Application/Queries package DependencyInjection.ReflectionExtensions
 
-dotnet add src/Validators package FluentValidation
-dotnet add src/Validators package Microsoft.Extensions.DependencyInjection.Abstractions
-dotnet add src/Validators package DependencyInjection.ReflectionExtensions
+dotnet add src/Application/Validators package FluentValidation
+dotnet add src/Application/Validators package Microsoft.Extensions.DependencyInjection.Abstractions
+dotnet add src/Application/Validators package DependencyInjection.ReflectionExtensions
 
-dotnet add src/Controllers package Microsoft.Extensions.DependencyInjection.Abstractions
-dotnet add src/Controllers package DependencyInjection.ReflectionExtensions
+dotnet add src/Infrastructure/Controllers package Microsoft.Extensions.DependencyInjection.Abstractions
+dotnet add src/Infrastructure/Controllers package DependencyInjection.ReflectionExtensions
 
 # Controllers needs ASP.NET Core framework reference (ControllerBase, [ApiController], etc.)
-$controllersCsproj = "src/Controllers/$ProjectName.Controllers.csproj"
+$controllersCsproj = "src/Infrastructure/Controllers/$ProjectName.Controllers.csproj"
 [xml]$controllersXml = Get-Content $controllersCsproj
 if (-not ($controllersXml.Project.ItemGroup | Where-Object { $_.FrameworkReference.Include -eq "Microsoft.AspNetCore.App" })) {
     $itemGroup = $controllersXml.CreateElement("ItemGroup")
@@ -161,8 +186,8 @@ if (-not ($controllersXml.Project.ItemGroup | Where-Object { $_.FrameworkReferen
 }
 
 # Application
-dotnet add src/Application package Microsoft.Extensions.DependencyInjection.Abstractions
-dotnet add src/Application package DependencyInjection.ReflectionExtensions
+dotnet add src/Application/UseCases package Microsoft.Extensions.DependencyInjection.Abstractions
+dotnet add src/Application/UseCases package DependencyInjection.ReflectionExtensions
 
 # IoC
 dotnet add src/IoC package Microsoft.Extensions.DependencyInjection
@@ -176,10 +201,10 @@ dotnet add src/IoC package CoreJsonWebToken
 dotnet add src/IoC package DevKit.ExecutionEngine.Redis
 
 # Infrastructure
-dotnet add src/Infrastructure package Microsoft.EntityFrameworkCore
-dotnet add src/Infrastructure package Microsoft.EntityFrameworkCore.SqlServer
-dotnet add src/Infrastructure package Microsoft.Extensions.DependencyInjection.Abstractions
-dotnet add src/Infrastructure package DependencyInjection.ReflectionExtensions
+dotnet add src/Infrastructure/DataSource package Microsoft.EntityFrameworkCore
+dotnet add src/Infrastructure/DataSource package Microsoft.EntityFrameworkCore.SqlServer
+dotnet add src/Infrastructure/DataSource package Microsoft.Extensions.DependencyInjection.Abstractions
+dotnet add src/Infrastructure/DataSource package DependencyInjection.ReflectionExtensions
 
 # API
 dotnet add src/Api package Microsoft.EntityFrameworkCore.Design
@@ -197,19 +222,19 @@ dotnet add tests/UnitTests package FluentAssertions
 # =========================
 
 # Domain structure
-New-Item -ItemType Directory -Path "src/Domain/Entities"
-New-Item -ItemType Directory -Path "src/Domain/ValueObjects"
-New-Item -ItemType Directory -Path "src/Domain/Enums"
-New-Item -ItemType Directory -Path "src/Domain/Interfaces"
-New-Item -ItemType Directory -Path "src/Domain/Options"
-New-Item -ItemType Directory -Path "src/Infrastructure/Options" -Force
+New-Item -ItemType Directory -Path "src/Domain/Domain/Entities"
+New-Item -ItemType Directory -Path "src/Domain/Domain/ValueObjects"
+New-Item -ItemType Directory -Path "src/Domain/Domain/Enums"
+New-Item -ItemType Directory -Path "src/Domain/Domain/Interfaces"
+New-Item -ItemType Directory -Path "src/Domain/Domain/Options"
+New-Item -ItemType Directory -Path "src/Infrastructure/DataSource/Options" -Force
 
 # Keep domain folders visible in Visual Studio Solution Explorer
-"" | Set-Content "src/Domain/Entities/.gitkeep"
-"" | Set-Content "src/Domain/ValueObjects/.gitkeep"
-"" | Set-Content "src/Domain/Enums/.gitkeep"
-"" | Set-Content "src/Domain/Interfaces/.gitkeep"
-"" | Set-Content "src/Domain/Options/.gitkeep"
+"" | Set-Content "src/Domain/Domain/Entities/.gitkeep"
+"" | Set-Content "src/Domain/Domain/ValueObjects/.gitkeep"
+"" | Set-Content "src/Domain/Domain/Enums/.gitkeep"
+"" | Set-Content "src/Domain/Domain/Interfaces/.gitkeep"
+"" | Set-Content "src/Domain/Domain/Options/.gitkeep"
 
 # API structure
 
@@ -217,14 +242,25 @@ New-Item -ItemType Directory -Path "src/Api/Middleware" -Force
 New-Item -ItemType Directory -Path "src/Api/Configurations" -Force
 New-Item -ItemType Directory -Path "src/Api/Properties" -Force
 
-# launchSettings.json
+# launchSettings.json (puertos determinísticos por proyecto para evitar choques)
 @"
 {
+  "`$schema": "https://json.schemastore.org/launchsettings.json",
   "profiles": {
-    "$ProjectName.Api": {
+    "http": {
       "commandName": "Project",
       "launchBrowser": true,
       "launchUrl": "swagger",
+      "applicationUrl": "http://localhost:$HttpPort",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    },
+    "https": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "launchUrl": "swagger",
+      "applicationUrl": "https://localhost:$HttpsPort;http://localhost:$HttpPort",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       }
@@ -290,18 +326,18 @@ New-Item -ItemType Directory -Path "src/Api/Properties" -Force
 # DependencyContainer class in Application Project
 @"
 
-namespace $ProjectName.Application
+namespace $ProjectName.UseCases
 {
     public static class DependencyContainer
     {
-        public static IServiceCollection AddApplication(this IServiceCollection services)
+        public static IServiceCollection AddUseCases(this IServiceCollection services)
         {  
             services.AddCurrentAssembly();
             return services;
         }
     }
 }
-"@ | Set-Content "src/Application/DependencyContainer.cs"
+"@ | Set-Content "src/Application/UseCases/DependencyContainer.cs"
 
 # GlobalUsings Application
 @"
@@ -309,7 +345,7 @@ global using System.Reflection;
 global using DevKit.Injection.Extensions;
 global using Microsoft.Extensions.DependencyInjection;
 
-"@ | Set-Content "src/Application/GlobalUsings.cs"
+"@ | Set-Content "src/Application/UseCases/GlobalUsings.cs"
 
 # DependencyContainer class in Commands Project
 @"
@@ -325,7 +361,7 @@ namespace $ProjectName.Commands
         }
     }
 }
-"@ | Set-Content "src/Commands/DependencyContainer.cs"
+"@ | Set-Content "src/Application/Commands/DependencyContainer.cs"
 
 # GlobalUsings Commands
 @"
@@ -333,7 +369,7 @@ global using System.Reflection;
 global using DevKit.Injection.Extensions;
 global using Microsoft.Extensions.DependencyInjection;
 
-"@ | Set-Content "src/Commands/GlobalUsings.cs"
+"@ | Set-Content "src/Application/Commands/GlobalUsings.cs"
 
 # DependencyContainer class in Queries Project
 @"
@@ -349,7 +385,7 @@ namespace $ProjectName.Queries
         }
     }
 }
-"@ | Set-Content "src/Queries/DependencyContainer.cs"
+"@ | Set-Content "src/Application/Queries/DependencyContainer.cs"
 
 # GlobalUsings Queries
 @"
@@ -357,7 +393,7 @@ global using System.Reflection;
 global using DevKit.Injection.Extensions;
 global using Microsoft.Extensions.DependencyInjection;
 
-"@ | Set-Content "src/Queries/GlobalUsings.cs"
+"@ | Set-Content "src/Application/Queries/GlobalUsings.cs"
 
 # DependencyContainers
 
@@ -375,7 +411,7 @@ namespace $ProjectName.Validators
         }
     }
 }
-"@ | Set-Content "src/Validators/DependencyContainer.cs"
+"@ | Set-Content "src/Application/Validators/DependencyContainer.cs"
 
 # DependencyContainer class in Infrastructure Project
 @"
@@ -391,7 +427,7 @@ namespace $ProjectName.DataSource
         }
     }
 }
-"@ | Set-Content "src/Infrastructure/DependencyContainer.cs"
+"@ | Set-Content "src/Infrastructure/DataSource/DependencyContainer.cs"
 
 # DependencyContainer class in IoC Project
 @"
@@ -408,7 +444,7 @@ namespace $ProjectName.IoC
             services.AddJwtServices(options => configuration.GetSection(JwtOptions.SectionKey).Bind(options));
             services.AddRedisCache();
 
-            services.AddApplication()
+            services.AddUseCases()
                         .AddCommands()
                         .AddQueries()
                         .AddValidators()
@@ -437,7 +473,7 @@ global using System.Reflection;
 global using DevKit.Injection.Extensions;
 global using Microsoft.Extensions.DependencyInjection;
 
-"@ | Set-Content "src/Validators/GlobalUsings.cs"
+"@ | Set-Content "src/Application/Validators/GlobalUsings.cs"
 
 # GlobalUsings Infrastructure
 @"
@@ -445,11 +481,11 @@ global using System.Reflection;
 global using DevKit.Injection.Extensions;
 global using Microsoft.Extensions.DependencyInjection;
 
-"@ | Set-Content "src/Infrastructure/GlobalUsings.cs"
+"@ | Set-Content "src/Infrastructure/DataSource/GlobalUsings.cs"
 
 # GlobalUsings class in IoC Project
 @"
-global using $ProjectName.Application;
+global using $ProjectName.UseCases;
 global using $ProjectName.Commands;
 global using $ProjectName.DataSource;
 global using $ProjectName.Queries;
@@ -471,12 +507,12 @@ global using DevKit.ExecutionEngine.Redis.Options;
 @"
 global using Microsoft.AspNetCore.Mvc;
 global using Microsoft.AspNetCore.Http;
-"@ | Set-Content "src/Controllers/GlobalUsings.cs"
+"@ | Set-Content "src/Infrastructure/Controllers/GlobalUsings.cs"
 
 # GlobalUsings Domain
 @"
 
-"@ | Set-Content "src/Domain/GlobalUsings.cs"
+"@ | Set-Content "src/Domain/Domain/GlobalUsings.cs"
 
 # DataBaseOptions class in Infrastructure
 @"
@@ -489,7 +525,7 @@ namespace $ProjectName.DataSource.Options
         public string DefaultConnection { get; set; } 
     }
 }
-"@ | Set-Content "src/Infrastructure/Options/DataBaseOptions.cs"
+"@ | Set-Content "src/Infrastructure/DataSource/Options/DataBaseOptions.cs"
 
 # EnvironmentOptions class in Domain
 @"
@@ -502,7 +538,7 @@ namespace $ProjectName.Domain.Options
         public string EnvironmentName { get; set; } 
     }
 }
-"@ | Set-Content "src/Domain/Options/EnvironmentOptions.cs"
+"@ | Set-Content "src/Domain/Domain/Options/EnvironmentOptions.cs"
 
 # GlobalUsings Api
 @"
@@ -666,15 +702,15 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG Configuration=Release
 WORKDIR /src
 COPY src/Api/$ProjectName.Api.csproj src/Api/
-COPY src/Application/$ProjectName.Application.csproj src/Application/
-COPY src/Commands/$ProjectName.Commands.csproj src/Commands/
-COPY src/Controllers/$ProjectName.Controllers.csproj src/Controllers/
-COPY src/Domain/$ProjectName.Domain.csproj src/Domain/
-COPY src/Infrastructure/$ProjectName.DataSource.csproj src/Infrastructure/
+COPY src/Application/UseCases/$ProjectName.UseCases.csproj src/Application/UseCases/
+COPY src/Application/Commands/$ProjectName.Commands.csproj src/Application/Commands/
+COPY src/Infrastructure/Controllers/$ProjectName.Controllers.csproj src/Infrastructure/Controllers/
+COPY src/Domain/Domain/$ProjectName.Domain.csproj src/Domain/Domain/
+COPY src/Infrastructure/DataSource/$ProjectName.DataSource.csproj src/Infrastructure/DataSource/
 COPY src/IoC/$ProjectName.IoC.csproj src/IoC/
-COPY src/Models/$ProjectName.Models.csproj src/Models/
-COPY src/Queries/$ProjectName.Queries.csproj src/Queries/
-COPY src/Validators/$ProjectName.Validators.csproj src/Validators/
+COPY src/Application/Models/$ProjectName.Models.csproj src/Application/Models/
+COPY src/Application/Queries/$ProjectName.Queries.csproj src/Application/Queries/
+COPY src/Application/Validators/$ProjectName.Validators.csproj src/Application/Validators/
 RUN dotnet restore src/Api/$ProjectName.Api.csproj
 COPY . .
 WORKDIR /src/src/Api
