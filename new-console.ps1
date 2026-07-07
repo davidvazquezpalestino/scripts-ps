@@ -10,7 +10,7 @@ New-Item -ItemType Directory -Path $ProjectName | Out-Null
 Set-Location $ProjectName
 
 # Solution
-dotnet new sln -n "Sln$ProjectName"
+dotnet new sln -n "$ProjectName"
 
 # Console project
 dotnet new console -n $ProjectName -o "src/$ProjectName"

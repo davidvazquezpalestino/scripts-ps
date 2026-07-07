@@ -28,19 +28,29 @@ function Get-DeterministicPort {
 
 $HttpPort = Get-DeterministicPort -Name $ProjectName -Base 5000 -Range 1000
 
+# Puertos del host para los contenedores Docker (4 instancias consecutivas por proyecto).
+# Se usa el mismo hash determinista para que cada proyecto tenga puertos distintos
+# y no siempre sean los mismos al levantarlo.
+$DockerBasePort = Get-DeterministicPort -Name $ProjectName -Base 9000 -Range 990
+$DockerPort1 = $DockerBasePort
+$DockerPort2 = $DockerBasePort + 1
+$DockerPort3 = $DockerBasePort + 2
+$DockerPort4 = $DockerBasePort + 3
+
 if ($OutputPath -ne ".") {
     Set-Location $OutputPath
 }
 
 Write-Host "Creating Clean Architecture solution: $ProjectName" -ForegroundColor Cyan
 Write-Host "  HTTP -> http://localhost:$HttpPort" -ForegroundColor Cyan
+Write-Host "  Docker host ports -> $DockerPort1, $DockerPort2, $DockerPort3, $DockerPort4" -ForegroundColor Cyan
 
 New-Item -ItemType Directory -Path $ProjectName -Force | Out-Null
 Set-Location $ProjectName
 
 New-Item -ItemType Directory -Path "src" -Force | Out-Null
 
-dotnet new sln -n "Sln$ProjectName"
+dotnet new sln -n "$ProjectName"
 
 Write-Host "Creating Blazor Web Assembly project..." -ForegroundColor Yellow
 dotnet new blazorwasm -n "$ProjectName.Web" -o "src/Client" --no-https
@@ -67,7 +77,7 @@ Write-Host "Removing Shared folder from Client..." -ForegroundColor Yellow
 Remove-Item "src/Client/Shared" -Recurse -Force -ErrorAction SilentlyContinue
 
 Write-Host "Creating Class Library (Domain)..." -ForegroundColor Yellow
-dotnet new classlib -n "$ProjectName.Domain" -o "src/Domain/Domain"
+dotnet new classlib -n "$ProjectName.Domain" -o "src/Domain"
 
 Write-Host "Creating Class Library (ViewModels)..." -ForegroundColor Yellow
 dotnet new classlib -n "$ProjectName.ViewModels" -o "src/Application/ViewModels"
@@ -85,7 +95,7 @@ Write-Host "Creating Class Library (Views)..." -ForegroundColor Yellow
 dotnet new razorclasslib -n "$ProjectName.Views" -o "src/Views"
 
 Write-Host "Removing default Class1.cs files..." -ForegroundColor Yellow
-Remove-Item "src/Domain/Domain/Class1.cs" -Force -ErrorAction SilentlyContinue
+Remove-Item "src/Domain/Class1.cs" -Force -ErrorAction SilentlyContinue
 Remove-Item "src/Application/ViewModels/Class1.cs" -Force -ErrorAction SilentlyContinue
 Remove-Item "src/Infrastructure/WebApi/Class1.cs" -Force -ErrorAction SilentlyContinue
 Remove-Item "src/IoC/Class1.cs" -Force -ErrorAction SilentlyContinue
@@ -99,21 +109,21 @@ Remove-Item -Path "src/Client/Layout" -Recurse -Force -ErrorAction SilentlyConti
 Remove-Item -Path "src/Client/Pages" -Recurse -Force -ErrorAction SilentlyContinue
 
 Write-Host "Creating folder structure..." -ForegroundColor Yellow
-New-Item -ItemType Directory -Path "src/Domain/Domain/Interfaces" -Force | Out-Null
-New-Item -ItemType Directory -Path "src/Domain/Domain/Entities" -Force | Out-Null
-New-Item -ItemType Directory -Path "src/Domain/Domain/ValueObjects" -Force | Out-Null
-New-Item -ItemType Directory -Path "src/Domain/Domain/Enums" -Force | Out-Null
-"" | Set-Content "src/Domain/Domain/Interfaces/.gitkeep"
-"" | Set-Content "src/Domain/Domain/Entities/.gitkeep"
-"" | Set-Content "src/Domain/Domain/ValueObjects/.gitkeep"
-"" | Set-Content "src/Domain/Domain/Enums/.gitkeep"
+New-Item -ItemType Directory -Path "src/Domain/Interfaces" -Force | Out-Null
+New-Item -ItemType Directory -Path "src/Domain/Entities" -Force | Out-Null
+New-Item -ItemType Directory -Path "src/Domain/ValueObjects" -Force | Out-Null
+New-Item -ItemType Directory -Path "src/Domain/Enums" -Force | Out-Null
+"" | Set-Content "src/Domain/Interfaces/.gitkeep"
+"" | Set-Content "src/Domain/Entities/.gitkeep"
+"" | Set-Content "src/Domain/ValueObjects/.gitkeep"
+"" | Set-Content "src/Domain/Enums/.gitkeep"
 New-Item -ItemType Directory -Path "src/Views/Layout" -Force | Out-Null
 New-Item -ItemType Directory -Path "src/Views/Pages" -Force | Out-Null
 New-Item -ItemType Directory -Path "src/Infrastructure/WebApi/Options" -Force | Out-Null
 
 Write-Host "Adding projects to solution..." -ForegroundColor Yellow
 dotnet sln add src/Client
-dotnet sln add src/Domain/Domain
+dotnet sln add src/Domain
 dotnet sln add src/Application/ViewModels
 dotnet sln add src/Infrastructure/WebApi
 dotnet sln add src/IoC
@@ -121,17 +131,17 @@ dotnet sln add src/Application/Validators
 dotnet sln add src/Views
 
 Write-Host "Adding project references..." -ForegroundColor Yellow
-dotnet add src/Application/ViewModels reference src/Domain/Domain
-dotnet add src/Application/Validators reference src/Domain/Domain
-dotnet add src/Infrastructure/WebApi reference src/Domain/Domain
+dotnet add src/Application/ViewModels reference src/Domain
+dotnet add src/Application/Validators reference src/Domain
+dotnet add src/Infrastructure/WebApi reference src/Domain
 dotnet add src/IoC reference src/Application/ViewModels
-dotnet add src/IoC reference src/Domain/Domain
+dotnet add src/IoC reference src/Domain
 dotnet add src/IoC reference src/Infrastructure/WebApi
 dotnet add src/IoC reference src/Application/Validators
 dotnet add src/IoC reference src/Views
 dotnet add src/Client reference src/IoC
 dotnet add src/Client reference src/Views
-dotnet add src/Views reference src/Domain/Domain
+dotnet add src/Views reference src/Domain
 
 Write-Host "Adding NuGet packages..." -ForegroundColor Yellow
 dotnet add src/Application/ViewModels package DependencyInjection.ReflectionExtensions
@@ -147,7 +157,7 @@ Write-Host "Creating GlobalUsings files..." -ForegroundColor Yellow
 
 # Domain GlobalUsings
 @"
-"@ | Set-Content "src/Domain/Domain/GlobalUsings.cs"
+"@ | Set-Content "src/Domain/GlobalUsings.cs"
 
 # Application (ViewModels) GlobalUsings
 @"
@@ -426,7 +436,7 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG Configuration=Release
 WORKDIR /src
 COPY src/Client/$ProjectName.Web.csproj src/Client/
-COPY src/Domain/Domain/$ProjectName.Domain.csproj src/Domain/Domain/
+COPY src/Domain/$ProjectName.Domain.csproj src/Domain/
 COPY src/Application/ViewModels/$ProjectName.ViewModels.csproj src/Application/ViewModels/
 COPY src/Infrastructure/WebApi/$ProjectName.WebApi.csproj src/Infrastructure/WebApi/
 COPY src/IoC/$ProjectName.IoC.csproj src/IoC/
@@ -444,7 +454,8 @@ COPY src/Client/nginx.conf /etc/nginx/nginx.conf
 EXPOSE 80
 
 #docker build -f src/Client/Dockerfile -t "$($ProjectName.ToLower())-web:latest" .
-#docker container create --name "$($ProjectName.ToLower())-web" -p 8080:80 "$($ProjectName.ToLower())-web:latest"
+#docker container rm -f "$($ProjectName.ToLower())-web"
+#docker run -d --name "$($ProjectName.ToLower())-web" -p $($DockerPort1):80 "$($ProjectName.ToLower())-web:latest"
 "@ | Set-Content "src/Client/Dockerfile"
 
 # nginx.conf
@@ -535,10 +546,10 @@ docker rm -f web-__PROJECT_SLUG__1 web-__PROJECT_SLUG__2 web-__PROJECT_SLUG__3 w
 
 # 4. Levantar nuevas instancias
 echo "Levantando contenedores..."
-docker run -d -p 8020:80 --name web-__PROJECT_SLUG__1 $IMAGE_NAME
-docker run -d -p 8021:80 --name web-__PROJECT_SLUG__2 $IMAGE_NAME
-docker run -d -p 8022:80 --name web-__PROJECT_SLUG__3 $IMAGE_NAME
-docker run -d -p 8023:80 --name web-__PROJECT_SLUG__4 $IMAGE_NAME
+docker run -d -p __DOCKER_PORT_1__:80 --name web-__PROJECT_SLUG__1 $IMAGE_NAME
+docker run -d -p __DOCKER_PORT_2__:80 --name web-__PROJECT_SLUG__2 $IMAGE_NAME
+docker run -d -p __DOCKER_PORT_3__:80 --name web-__PROJECT_SLUG__3 $IMAGE_NAME
+docker run -d -p __DOCKER_PORT_4__:80 --name web-__PROJECT_SLUG__4 $IMAGE_NAME
 
 echo "====================================="
 echo "Deploy finalizado correctamente"
@@ -546,7 +557,7 @@ echo "====================================="
 '@ | Set-Content "src/Client/deploy.sh"
 
 $deployScriptContent = Get-Content -Raw "src/Client/deploy.sh"
-$deployScriptContent = $deployScriptContent.Replace("__PROJECT_DIR__", $projectDirName).Replace("__PROJECT_NAME__", $ProjectName).Replace("__PROJECT_SLUG__", $projectSlug)
+$deployScriptContent = $deployScriptContent.Replace("__PROJECT_DIR__", $projectDirName).Replace("__PROJECT_NAME__", $ProjectName).Replace("__PROJECT_SLUG__", $projectSlug).Replace("__DOCKER_PORT_1__", "$DockerPort1").Replace("__DOCKER_PORT_2__", "$DockerPort2").Replace("__DOCKER_PORT_3__", "$DockerPort3").Replace("__DOCKER_PORT_4__", "$DockerPort4")
 $deployScriptContent | Set-Content "src/Client/deploy.sh"
 
 # =========================
@@ -618,7 +629,7 @@ Set-Location ..
 
 Write-Host "`nProject Structure:" -ForegroundColor White
 Write-Host "  src/Client/                   ($ProjectName.Web - Blazor Web Assembly)"           -ForegroundColor Gray
-Write-Host "  src/Domain/Domain/            ($ProjectName.Domain - Entities, Interfaces)"        -ForegroundColor Gray
+Write-Host "  src/Domain/                   ($ProjectName.Domain - Entities, Interfaces)"        -ForegroundColor Gray
 Write-Host "  src/Application/ViewModels/   ($ProjectName.ViewModels - Use Cases, Services)"     -ForegroundColor Gray
 Write-Host "  src/Application/Validators/   ($ProjectName.Validators - FluentValidation)"        -ForegroundColor Gray
 Write-Host "  src/Infrastructure/WebApi/    ($ProjectName.WebApi - External Services, HTTP)"     -ForegroundColor Gray

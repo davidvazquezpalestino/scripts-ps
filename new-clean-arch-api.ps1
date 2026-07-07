@@ -24,16 +24,26 @@ function Get-DeterministicPort {
 $HttpPort  = Get-DeterministicPort -Name $ProjectName -Base 5000 -Range 1000
 $HttpsPort = Get-DeterministicPort -Name $ProjectName -Base 7000 -Range 1000
 
+# Puertos del host para los contenedores Docker (4 instancias consecutivas por proyecto).
+# Se usa el mismo hash determinista para que cada proyecto tenga puertos distintos
+# y no siempre sean los mismos al levantarlo.
+$DockerBasePort = Get-DeterministicPort -Name $ProjectName -Base 8000 -Range 990
+$DockerPort1 = $DockerBasePort
+$DockerPort2 = $DockerBasePort + 1
+$DockerPort3 = $DockerBasePort + 2
+$DockerPort4 = $DockerBasePort + 3
+
 Write-Host "Creating Clean Architecture solution: $ProjectName"
 Write-Host "  HTTP  -> http://localhost:$HttpPort"
 Write-Host "  HTTPS -> https://localhost:$HttpsPort"
+Write-Host "  Docker host ports -> $DockerPort1, $DockerPort2, $DockerPort3, $DockerPort4"
 
 # Root
 New-Item -ItemType Directory -Path $ProjectName
 Set-Location $ProjectName
 
 # Solution
-dotnet new sln -n "Sln$ProjectName"
+dotnet new sln -n "$ProjectName"
 
 # Folders
 New-Item -ItemType Directory -Path "src"
@@ -726,7 +736,8 @@ COPY --from=publish /app/publish .
 ENTRYPOINT ["dotnet", "$ProjectName.Api.dll"]
 
 #docker build -f src/Api/Dockerfile -t "$($ProjectName.ToLower())-api:latest" .
-#docker container create --name "$($ProjectName.ToLower())-api" -p 8080:8080 "$($ProjectName.ToLower())-api:latest"
+#docker container rm -f "$($ProjectName.ToLower())-api"
+#docker run -d --name "$($ProjectName.ToLower())-api" -p $($DockerPort1):8080 "$($ProjectName.ToLower())-api:latest"
 
 "@ | Set-Content "src/Api/Dockerfile"
 
@@ -802,10 +813,10 @@ docker rm -f webapi-__PROJECT_SLUG__1 webapi-__PROJECT_SLUG__2 webapi-__PROJECT_
 
 # 4. Levantar nuevas instancias
 echo "Levantando contenedores..."
-docker run -d -e TZ=$TZ -p 8010:8080 --name webapi-__PROJECT_SLUG__1 $IMAGE_NAME
-docker run -d -e TZ=$TZ -p 8011:8080 --name webapi-__PROJECT_SLUG__2 $IMAGE_NAME
-docker run -d -e TZ=$TZ -p 8012:8080 --name webapi-__PROJECT_SLUG__3 $IMAGE_NAME
-docker run -d -e TZ=$TZ -p 8013:8080 --name webapi-__PROJECT_SLUG__4 $IMAGE_NAME
+docker run -d -e TZ=$TZ -p __DOCKER_PORT_1__:8080 --name webapi-__PROJECT_SLUG__1 $IMAGE_NAME
+docker run -d -e TZ=$TZ -p __DOCKER_PORT_2__:8080 --name webapi-__PROJECT_SLUG__2 $IMAGE_NAME
+docker run -d -e TZ=$TZ -p __DOCKER_PORT_3__:8080 --name webapi-__PROJECT_SLUG__3 $IMAGE_NAME
+docker run -d -e TZ=$TZ -p __DOCKER_PORT_4__:8080 --name webapi-__PROJECT_SLUG__4 $IMAGE_NAME
 
 echo "====================================="
 echo "Deploy finalizado correctamente"
@@ -813,7 +824,7 @@ echo "====================================="
 '@ | Set-Content "src/Api/deploy.sh"
 
 $deployScriptContent = Get-Content -Raw "src/Api/deploy.sh"
-$deployScriptContent = $deployScriptContent.Replace("__PROJECT_DIR__", $projectDirName).Replace("__PROJECT_NAME__", $ProjectName).Replace("__PROJECT_SLUG__", $projectSlug)
+$deployScriptContent = $deployScriptContent.Replace("__PROJECT_DIR__", $projectDirName).Replace("__PROJECT_NAME__", $ProjectName).Replace("__PROJECT_SLUG__", $projectSlug).Replace("__DOCKER_PORT_1__", "$DockerPort1").Replace("__DOCKER_PORT_2__", "$DockerPort2").Replace("__DOCKER_PORT_3__", "$DockerPort3").Replace("__DOCKER_PORT_4__", "$DockerPort4")
 $deployScriptContent | Set-Content "src/Api/deploy.sh"
 
 # Git ignore
