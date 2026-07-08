@@ -348,25 +348,35 @@ Remove-Item "src/Presentation/Client/App.razor" -Force -ErrorAction SilentlyCont
 
 <PageTitle>Index — 100% Clean Architecture (o eso dice el README)</PageTitle>
 
-<h1><i class="bi bi-hand-thumbs-up-fill text-primary"></i> ¡Hola, mundo!</h1>
+<div class="card shadow-sm my-4">
+    <div class="card-header d-flex align-items-center bg-primary text-white">
+        <i class="bi bi-hand-thumbs-up-fill me-2"></i>
+        <h5 class="mb-0">¡Hola, mundo!</h5>
+    </div>
+    <div class="card-body">
+        <p class="lead">
+            Bienvenido a <strong>$ProjectName</strong>, una app Blazor recién salida del horno
+            y con la Regla de la Dependencia apuntando religiosamente hacia adentro.
+            <i class="bi bi-bullseye text-danger"></i>
+        </p>
 
-<p class="lead">
-    Bienvenido a <strong>$ProjectName</strong>, una app Blazor recién salida del horno
-    y con la Regla de la Dependencia apuntando religiosamente hacia adentro.
-    <i class="bi bi-bullseye text-danger"></i>
-</p>
+        <ul class="list-unstyled mb-3">
+            <li><i class="bi bi-cup-hot-fill text-warning"></i> Café: <em>opcional pero recomendado</em>.</li>
+            <li><i class="bi bi-layers-fill text-success"></i> Capas: como una cebolla, pero sin llorar (Onion Architecture approved).</li>
+            <li><i class="bi bi-shield-lock-fill text-secondary"></i> Domain no sabe que existe la base de datos. Y así queremos que siga.</li>
+            <li><i class="bi bi-bug-fill text-danger"></i> Si compila a la primera, revisa que no estés soñando.</li>
+        </ul>
 
-<ul class="list-unstyled">
-    <li><i class="bi bi-cup-hot-fill text-warning"></i> Café: <em>opcional pero recomendado</em>.</li>
-    <li><i class="bi bi-layers-fill text-success"></i> Capas: como una cebolla, pero sin llorar (Onion Architecture approved).</li>
-    <li><i class="bi bi-shield-lock-fill text-secondary"></i> Domain no sabe que existe la base de datos. Y así queremos que siga.</li>
-    <li><i class="bi bi-bug-fill text-danger"></i> Si compila a la primera, revisa que no estés soñando.</li>
-</ul>
-
-<div class="alert alert-info d-flex align-items-center" role="alert">
-    <i class="bi bi-info-circle-fill me-2"></i>
-    <small>Borra esta página cuando decidas escribir código de verdad.
-    Mientras tanto, disfruta del silencio productivo.</small>
+        <div class="alert alert-info d-flex align-items-center mb-0" role="alert">
+            <i class="bi bi-info-circle-fill me-2"></i>
+            <small>Borra esta página cuando decidas escribir código de verdad.
+            Mientras tanto, disfruta del silencio productivo.</small>
+        </div>
+    </div>
+    <div class="card-footer text-muted d-flex align-items-center">
+        <i class="bi bi-tools me-2"></i>
+        <small>Generado con <code>new-clean-arch-blazor.ps1</code> · Clean Architecture · Tío Bob approved</small>
+    </div>
 </div>
 
 "@ | Set-Content "src/Presentation/Views/Pages/Index.razor"
