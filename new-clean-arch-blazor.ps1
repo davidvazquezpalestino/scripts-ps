@@ -697,6 +697,12 @@ New-Item -ItemType Directory -Path ".vscode" -Force | Out-Null
 Write-Host "Writing documentation/Architecture.md..." -ForegroundColor Yellow
 New-Item -ItemType Directory -Path "documentation" -Force | Out-Null
 @'
+> Solución generada con el script `new-clean-arch-blazor.ps1` desde PowerShell:
+>
+> ```powershell
+> .\new-clean-arch-blazor.ps1 -ProjectName <NombreProyecto> [-OutputPath <ruta>]
+> ```
+
 # Clean Architecture (Arquitectura Limpia) — Tío Bob
 
 Este documento resume las reglas de la **Arquitectura Limpia** propuestas por
