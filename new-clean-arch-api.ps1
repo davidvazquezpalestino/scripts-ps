@@ -1,4 +1,4 @@
-param(
+﻿param(
     [Parameter(Mandatory = $true)]
     [string]$ProjectName
 )
@@ -56,7 +56,7 @@ New-Item -ItemType Directory -Path "tests"
 # y la carpeta-capa (Application, Infrastructure, etc.) pueda alojar proyectos hermanos.
 
 # API
-dotnet new web -n "$ProjectName.Api" -o "src/Api"
+dotnet new web -n "$ProjectName.Api" -o "src/Presentation/Api"
 
 # Application
 dotnet new classlib -n "$ProjectName.UseCases" -o "src/Application/UseCases"
@@ -69,10 +69,10 @@ dotnet new classlib -n "$ProjectName.Validators" -o "src/Application/Validators"
 dotnet new classlib -n "$ProjectName.Controllers" -o "src/Infrastructure/Controllers"
 
 # IoC Project at same level as Application
-dotnet new classlib -n "$ProjectName.IoC" -o "src/IoC"
+dotnet new classlib -n "$ProjectName.IoC" -o "src/Presentation/IoC"
 
 # Domain
-dotnet new classlib -n "$ProjectName.Domain" -o "src/Domain/Domain"
+dotnet new classlib -n "$ProjectName.Domain" -o "src/Domain"
 
 # Infrastructure
 dotnet new classlib -n "$ProjectName.DataSource" -o "src/Infrastructure/DataSource"
@@ -100,26 +100,33 @@ Remove-Item "src/Application/Commands/Class1.cs" -Force -ErrorAction SilentlyCon
 Remove-Item "src/Application/Models/Class1.cs" -Force -ErrorAction SilentlyContinue
 Remove-Item "src/Application/Queries/Class1.cs" -Force -ErrorAction SilentlyContinue
 Remove-Item "src/Infrastructure/Controllers/Class1.cs" -Force -ErrorAction SilentlyContinue
-Remove-Item "src/IoC/Class1.cs" -Force -ErrorAction SilentlyContinue
-Remove-Item "src/Domain/Domain/Class1.cs" -Force -ErrorAction SilentlyContinue
+Remove-Item "src/Presentation/IoC/Class1.cs" -Force -ErrorAction SilentlyContinue
+Remove-Item "src/Domain/Class1.cs" -Force -ErrorAction SilentlyContinue
 Remove-Item "src/Application/Validators/Class1.cs" -Force -ErrorAction SilentlyContinue
 Remove-Item "src/Infrastructure/DataSource/Class1.cs" -Force -ErrorAction SilentlyContinue
 Remove-Item "tests/UnitTests/Class1.cs" -Force -ErrorAction SilentlyContinue
 Remove-Item "tests/UnitTests/UnitTest1.cs" -Force -ErrorAction SilentlyContinue
 
+# Remove <Nullable>enable</Nullable> from every generated .csproj
+Get-ChildItem -Path 'src','tests' -Recurse -Filter *.csproj | ForEach-Object {
+    $c = Get-Content -Raw -Path $_.FullName
+    $n = $c -replace '(?m)^[ \t]*<Nullable>\s*enable\s*</Nullable>[ \t]*\r?\n', ''
+    if ($n -ne $c) { Set-Content -Path $_.FullName -Value $n -NoNewline }
+}
+
 # =========================
 # ADD TO SOLUTION
 # =========================
 
-dotnet sln add src/Api
+dotnet sln add src/Presentation/Api
 dotnet sln add src/Application/UseCases
 dotnet sln add src/Application/Commands
 dotnet sln add src/Application/Models
 dotnet sln add src/Application/Queries
 dotnet sln add src/Application/Validators
 dotnet sln add src/Infrastructure/Controllers
-dotnet sln add src/IoC
-dotnet sln add src/Domain/Domain
+dotnet sln add src/Presentation/IoC
+dotnet sln add src/Domain
 dotnet sln add src/Infrastructure/DataSource
 dotnet sln add tests/UnitTests
 
@@ -128,36 +135,36 @@ dotnet sln add tests/UnitTests
 # =========================
 
 # Application sub-projects depend on Domain
-dotnet add src/Application/UseCases reference src/Domain/Domain
-dotnet add src/Application/Commands reference src/Domain/Domain
-dotnet add src/Application/Models reference src/Domain/Domain
-dotnet add src/Application/Queries reference src/Domain/Domain
-dotnet add src/Application/Validators reference src/Domain/Domain
+dotnet add src/Application/UseCases reference src/Domain
+dotnet add src/Application/Commands reference src/Domain
+dotnet add src/Application/Models reference src/Domain
+dotnet add src/Application/Queries reference src/Domain
+dotnet add src/Application/Validators reference src/Domain
 
 # Controllers depend on Application layer projects
-dotnet add src/Infrastructure/Controllers reference src/Domain/Domain
+dotnet add src/Infrastructure/Controllers reference src/Domain
 dotnet add src/Infrastructure/Controllers reference src/Application/Commands
 dotnet add src/Infrastructure/Controllers reference src/Application/Queries
 dotnet add src/Infrastructure/Controllers reference src/Application/Models
 # IoC depends on all Application projects + Infrastructure + Domain
-dotnet add src/IoC reference src/Application/UseCases
-dotnet add src/IoC reference src/Application/Commands
-dotnet add src/IoC reference src/Application/Models
-dotnet add src/IoC reference src/Application/Queries
-dotnet add src/IoC reference src/Application/Validators
-dotnet add src/IoC reference src/Infrastructure/Controllers
-dotnet add src/IoC reference src/Infrastructure/DataSource
-dotnet add src/IoC reference src/Domain/Domain
+dotnet add src/Presentation/IoC reference src/Application/UseCases
+dotnet add src/Presentation/IoC reference src/Application/Commands
+dotnet add src/Presentation/IoC reference src/Application/Models
+dotnet add src/Presentation/IoC reference src/Application/Queries
+dotnet add src/Presentation/IoC reference src/Application/Validators
+dotnet add src/Presentation/IoC reference src/Infrastructure/Controllers
+dotnet add src/Presentation/IoC reference src/Infrastructure/DataSource
+dotnet add src/Presentation/IoC reference src/Domain
 
 # Infrastructure depends only on Domain (implements interfaces defined there)
-dotnet add src/Infrastructure/DataSource reference src/Domain/Domain
+dotnet add src/Infrastructure/DataSource reference src/Domain
 
 # API depends on IoC
-dotnet add src/Api reference src/IoC
+dotnet add src/Presentation/Api reference src/Presentation/IoC
 
 # Tests
 dotnet add tests/UnitTests reference src/Application/UseCases
-dotnet add tests/UnitTests reference src/Domain/Domain
+dotnet add tests/UnitTests reference src/Domain
 
 # =========================
 # ADD PACKAGES
@@ -200,15 +207,15 @@ dotnet add src/Application/UseCases package Microsoft.Extensions.DependencyInjec
 dotnet add src/Application/UseCases package DependencyInjection.ReflectionExtensions
 
 # IoC
-dotnet add src/IoC package Microsoft.Extensions.DependencyInjection
-dotnet add src/IoC package Microsoft.EntityFrameworkCore
-dotnet add src/IoC package Microsoft.EntityFrameworkCore.SqlServer
-dotnet add src/IoC package FluentValidation
-dotnet add src/IoC package DependencyInjection.ReflectionExtensions
-dotnet add src/IoC package Serilog
-dotnet add src/IoC package Serilog.Settings.Configuration
-dotnet add src/IoC package CoreJsonWebToken
-dotnet add src/IoC package DevKit.ExecutionEngine.Redis
+dotnet add src/Presentation/IoC package Microsoft.Extensions.DependencyInjection
+dotnet add src/Presentation/IoC package Microsoft.EntityFrameworkCore
+dotnet add src/Presentation/IoC package Microsoft.EntityFrameworkCore.SqlServer
+dotnet add src/Presentation/IoC package FluentValidation
+dotnet add src/Presentation/IoC package DependencyInjection.ReflectionExtensions
+dotnet add src/Presentation/IoC package Serilog
+dotnet add src/Presentation/IoC package Serilog.Settings.Configuration
+dotnet add src/Presentation/IoC package CoreJsonWebToken
+dotnet add src/Presentation/IoC package DevKit.ExecutionEngine.Redis
 
 # Infrastructure
 dotnet add src/Infrastructure/DataSource package Microsoft.EntityFrameworkCore
@@ -217,12 +224,12 @@ dotnet add src/Infrastructure/DataSource package Microsoft.Extensions.Dependency
 dotnet add src/Infrastructure/DataSource package DependencyInjection.ReflectionExtensions
 
 # API
-dotnet add src/Api package Microsoft.EntityFrameworkCore.Design
-dotnet add src/Api package Scalar.AspNetCore
-dotnet add src/Api package Serilog
-dotnet add src/Api package Serilog.Extensions.Hosting
-dotnet add src/Api package Serilog.Sinks.Console
-dotnet add src/Api package Swashbuckle.AspNetCore
+dotnet add src/Presentation/Api package Microsoft.EntityFrameworkCore.Design
+dotnet add src/Presentation/Api package Scalar.AspNetCore
+dotnet add src/Presentation/Api package Serilog
+dotnet add src/Presentation/Api package Serilog.Extensions.Hosting
+dotnet add src/Presentation/Api package Serilog.Sinks.Console
+dotnet add src/Presentation/Api package Swashbuckle.AspNetCore
 
 # Tests
 dotnet add tests/UnitTests package FluentAssertions
@@ -232,25 +239,25 @@ dotnet add tests/UnitTests package FluentAssertions
 # =========================
 
 # Domain structure
-New-Item -ItemType Directory -Path "src/Domain/Domain/Entities"
-New-Item -ItemType Directory -Path "src/Domain/Domain/ValueObjects"
-New-Item -ItemType Directory -Path "src/Domain/Domain/Enums"
-New-Item -ItemType Directory -Path "src/Domain/Domain/Interfaces"
-New-Item -ItemType Directory -Path "src/Domain/Domain/Options"
+New-Item -ItemType Directory -Path "src/Domain/Entities"
+New-Item -ItemType Directory -Path "src/Domain/ValueObjects"
+New-Item -ItemType Directory -Path "src/Domain/Enums"
+New-Item -ItemType Directory -Path "src/Domain/Interfaces"
+New-Item -ItemType Directory -Path "src/Domain/Options"
 New-Item -ItemType Directory -Path "src/Infrastructure/DataSource/Options" -Force
 
 # Keep domain folders visible in Visual Studio Solution Explorer
-"" | Set-Content "src/Domain/Domain/Entities/.gitkeep"
-"" | Set-Content "src/Domain/Domain/ValueObjects/.gitkeep"
-"" | Set-Content "src/Domain/Domain/Enums/.gitkeep"
-"" | Set-Content "src/Domain/Domain/Interfaces/.gitkeep"
-"" | Set-Content "src/Domain/Domain/Options/.gitkeep"
+"" | Set-Content "src/Domain/Entities/.gitkeep"
+"" | Set-Content "src/Domain/ValueObjects/.gitkeep"
+"" | Set-Content "src/Domain/Enums/.gitkeep"
+"" | Set-Content "src/Domain/Interfaces/.gitkeep"
+"" | Set-Content "src/Domain/Options/.gitkeep"
 
 # API structure
 
-New-Item -ItemType Directory -Path "src/Api/Middleware" -Force
-New-Item -ItemType Directory -Path "src/Api/Configurations" -Force
-New-Item -ItemType Directory -Path "src/Api/Properties" -Force
+New-Item -ItemType Directory -Path "src/Presentation/Api/Middleware" -Force
+New-Item -ItemType Directory -Path "src/Presentation/Api/Configurations" -Force
+New-Item -ItemType Directory -Path "src/Presentation/Api/Properties" -Force
 
 # launchSettings.json (puertos determinísticos por proyecto para evitar choques)
 @"
@@ -277,7 +284,7 @@ New-Item -ItemType Directory -Path "src/Api/Properties" -Force
     }
   }
 }
-"@ | Set-Content "src/Api/Properties/launchSettings.json"
+"@ | Set-Content "src/Presentation/Api/Properties/launchSettings.json"
 
 # appsettings.json
 @"
@@ -286,7 +293,7 @@ New-Item -ItemType Directory -Path "src/Api/Properties" -Force
         "EnvironmentName": "Production" /*Development, Staging, Production*/
     }
 }
-"@ | Set-Content "src/Api/appsettings.json"
+"@ | Set-Content "src/Presentation/Api/appsettings.json"
 
 # appsettings.Development.json
 @"
@@ -307,7 +314,7 @@ New-Item -ItemType Directory -Path "src/Api/Properties" -Force
     },
     "AllowedHosts": "*"
 }
-"@ | Set-Content "src/Api/appsettings.Development.json"
+"@ | Set-Content "src/Presentation/Api/appsettings.Development.json"
 
 # appsettings.Production.json
 @"
@@ -328,7 +335,7 @@ New-Item -ItemType Directory -Path "src/Api/Properties" -Force
     },
     "AllowedHosts": "*"
 }
-"@ | Set-Content "src/Api/appsettings.Production.json"
+"@ | Set-Content "src/Presentation/Api/appsettings.Production.json"
 
 # CREATE BASIC FILES
 # =========================
@@ -473,7 +480,7 @@ namespace $ProjectName.IoC
         }
     }
 }
-"@ | Set-Content "src/IoC/DependencyContainer.cs"
+"@ | Set-Content "src/Presentation/IoC/DependencyContainer.cs"
 
 # GlobalUsings
 
@@ -511,7 +518,7 @@ global using DevKit.JWT.Options;
 global using DevKit.ExecutionEngine.Redis;
 global using DevKit.ExecutionEngine.Redis.Options;
 
-"@ | Set-Content "src/IoC/GlobalUsings.cs"
+"@ | Set-Content "src/Presentation/IoC/GlobalUsings.cs"
 
 # GlobalUsings Controllers
 @"
@@ -522,7 +529,7 @@ global using Microsoft.AspNetCore.Http;
 # GlobalUsings Domain
 @"
 
-"@ | Set-Content "src/Domain/Domain/GlobalUsings.cs"
+"@ | Set-Content "src/Domain/GlobalUsings.cs"
 
 # DataBaseOptions class in Infrastructure
 @"
@@ -548,7 +555,7 @@ namespace $ProjectName.Domain.Options
         public string EnvironmentName { get; set; } 
     }
 }
-"@ | Set-Content "src/Domain/Domain/Options/EnvironmentOptions.cs"
+"@ | Set-Content "src/Domain/Options/EnvironmentOptions.cs"
 
 # GlobalUsings Api
 @"
@@ -563,7 +570,7 @@ global using $ProjectName.Api.Configurations;
 global using $ProjectName.Api.Middleware;
 global using $ProjectName.Domain.Options;
 
-"@ | Set-Content "src/Api/GlobalUsings.cs"
+"@ | Set-Content "src/Presentation/Api/GlobalUsings.cs"
 
 # GlobalUsings Tests
 @"
@@ -593,7 +600,7 @@ namespace $ProjectName.Api.Configurations
         }
     }
 }
-"@ | Set-Content "src/Api/Configurations/MiddlewaresConfiguration.cs"
+"@ | Set-Content "src/Presentation/Api/Configurations/MiddlewaresConfiguration.cs"
 @"
 
 namespace $ProjectName.Api.Configurations
@@ -630,7 +637,7 @@ namespace $ProjectName.Api.Configurations
         }
     }
 }
-"@ | Set-Content "src/Api/Configurations/ServicesConfiguration.cs"
+"@ | Set-Content "src/Presentation/Api/Configurations/ServicesConfiguration.cs"
 
 @"
 
@@ -691,7 +698,7 @@ namespace $ProjectName.Api.Middleware
         }
     }
 }
-"@ | Set-Content "src/Api/Middleware/ErrorHandlerMiddleware.cs"
+"@ | Set-Content "src/Presentation/Api/Middleware/ErrorHandlerMiddleware.cs"
 
 # Minimal API starter
 @"
@@ -700,7 +707,7 @@ WebApplication.CreateBuilder(args)
     .ConfigureWebApiServices()
     .ConfigureWebApiMiddlewares()
     .Run();
-"@ | Set-Content "src/Api/Program.cs"
+"@ | Set-Content "src/Presentation/Api/Program.cs"
 
 # Dockerfile
 @"
@@ -711,19 +718,19 @@ EXPOSE 8080
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG Configuration=Release
 WORKDIR /src
-COPY src/Api/$ProjectName.Api.csproj src/Api/
+COPY src/Presentation/Api/$ProjectName.Api.csproj src/Presentation/Api/
 COPY src/Application/UseCases/$ProjectName.UseCases.csproj src/Application/UseCases/
 COPY src/Application/Commands/$ProjectName.Commands.csproj src/Application/Commands/
 COPY src/Infrastructure/Controllers/$ProjectName.Controllers.csproj src/Infrastructure/Controllers/
-COPY src/Domain/Domain/$ProjectName.Domain.csproj src/Domain/Domain/
+COPY src/Domain/$ProjectName.Domain.csproj src/Domain/
 COPY src/Infrastructure/DataSource/$ProjectName.DataSource.csproj src/Infrastructure/DataSource/
-COPY src/IoC/$ProjectName.IoC.csproj src/IoC/
+COPY src/Presentation/IoC/$ProjectName.IoC.csproj src/Presentation/IoC/
 COPY src/Application/Models/$ProjectName.Models.csproj src/Application/Models/
 COPY src/Application/Queries/$ProjectName.Queries.csproj src/Application/Queries/
 COPY src/Application/Validators/$ProjectName.Validators.csproj src/Application/Validators/
-RUN dotnet restore src/Api/$ProjectName.Api.csproj
+RUN dotnet restore src/Presentation/Api/$ProjectName.Api.csproj
 COPY . .
-WORKDIR /src/src/Api
+WORKDIR /src/src/Presentation/Api
 RUN dotnet build $ProjectName.Api.csproj -c `${Configuration} -o /app/build
 
 FROM build AS publish
@@ -735,11 +742,11 @@ WORKDIR /app
 COPY --from=publish /app/publish .
 ENTRYPOINT ["dotnet", "$ProjectName.Api.dll"]
 
-#docker build -f src/Api/Dockerfile -t "$($ProjectName.ToLower())-api:latest" .
+#docker build -f src/Presentation/Api/Dockerfile -t "$($ProjectName.ToLower())-api:latest" .
 #docker container rm -f "$($ProjectName.ToLower())-api"
 #docker run -d --name "$($ProjectName.ToLower())-api" -p $($DockerPort1):8080 "$($ProjectName.ToLower())-api:latest"
 
-"@ | Set-Content "src/Api/Dockerfile"
+"@ | Set-Content "src/Presentation/Api/Dockerfile"
 
 # azure-pipelines.yml
 @'
@@ -761,16 +768,16 @@ steps:
         runOptions: inline
         inline: |
             cd /var/www/__PROJECT_DIR__/__PROJECT_NAME__
-            chmod +x src/Api/deploy.sh
-            ./src/Api/deploy.sh
+            chmod +x src/Presentation/Api/deploy.sh
+            ./src/Presentation/Api/deploy.sh
         failOnStdErr: false
-'@ | Set-Content "src/Api/azure-pipelines.yml"
+'@ | Set-Content "src/Presentation/Api/azure-pipelines.yml"
 
 $projectDirName = "api-$($ProjectName.ToLower())"
 $projectSlug = $ProjectName.ToLower().Replace('.', '-').Replace('_', '-')
-$azurePipelinesContent = Get-Content -Raw "src/Api/azure-pipelines.yml"
+$azurePipelinesContent = Get-Content -Raw "src/Presentation/Api/azure-pipelines.yml"
 $azurePipelinesContent = $azurePipelinesContent.Replace("__PROJECT_DIR__", $projectDirName).Replace("__PROJECT_NAME__", $ProjectName)
-$azurePipelinesContent | Set-Content "src/Api/azure-pipelines.yml"
+$azurePipelinesContent | Set-Content "src/Presentation/Api/azure-pipelines.yml"
 
 # deploy.sh
 @'
@@ -821,11 +828,287 @@ docker run -d -e TZ=$TZ -p __DOCKER_PORT_4__:8080 --name webapi-__PROJECT_SLUG__
 echo "====================================="
 echo "Deploy finalizado correctamente"
 echo "====================================="
-'@ | Set-Content "src/Api/deploy.sh"
+'@ | Set-Content "src/Presentation/Api/deploy.sh"
 
-$deployScriptContent = Get-Content -Raw "src/Api/deploy.sh"
+$deployScriptContent = Get-Content -Raw "src/Presentation/Api/deploy.sh"
 $deployScriptContent = $deployScriptContent.Replace("__PROJECT_DIR__", $projectDirName).Replace("__PROJECT_NAME__", $ProjectName).Replace("__PROJECT_SLUG__", $projectSlug).Replace("__DOCKER_PORT_1__", "$DockerPort1").Replace("__DOCKER_PORT_2__", "$DockerPort2").Replace("__DOCKER_PORT_3__", "$DockerPort3").Replace("__DOCKER_PORT_4__", "$DockerPort4")
-$deployScriptContent | Set-Content "src/Api/deploy.sh"
+$deployScriptContent | Set-Content "src/Presentation/Api/deploy.sh"
+
+# =========================
+# CLEAN ARCHITECTURE DOC (Tío Bob)
+# =========================
+Write-Host "Writing documentation/Architecture.md..."
+New-Item -ItemType Directory -Path "documentation" -Force | Out-Null
+@'
+# Clean Architecture (Arquitectura Limpia) — Tío Bob
+
+Este documento resume las reglas de la **Arquitectura Limpia** propuestas por
+Robert C. Martin ("Uncle Bob") en su libro *Clean Architecture: A Craftsman's
+Guide to Software Structure and Design*. La estructura de esta solución sigue
+estas reglas.
+
+---
+
+## 1. Objetivos
+
+Una arquitectura limpia busca producir sistemas que sean:
+
+- **Independientes de frameworks**: el framework es una herramienta, no una
+  restricción arquitectónica.
+- **Testeables**: las reglas de negocio se pueden probar sin UI, base de
+  datos, servidor web ni ningún elemento externo.
+- **Independientes de la UI**: la UI puede cambiar (web, consola, móvil) sin
+  afectar al resto del sistema.
+- **Independientes de la base de datos**: se puede cambiar SQL Server por
+  Mongo, Postgres, un archivo, etc.
+- **Independientes de agentes externos**: las reglas de negocio no saben
+  nada del mundo exterior.
+
+---
+
+## 2. Las capas
+
+La arquitectura se organiza en **círculos concéntricos**. Cuanto más al
+centro, más general y estable; cuanto más afuera, más concreto y volátil.
+
+```
+        ┌───────────────────────────────────────────┐
+        │            Presentation / UI              │  ← Frameworks & Drivers
+        │  ┌─────────────────────────────────────┐  │
+        │  │          Infrastructure             │  │  ← Interface Adapters
+        │  │  ┌───────────────────────────────┐  │  │
+        │  │  │        Application            │  │  │  ← Use Cases
+        │  │  │  ┌─────────────────────────┐  │  │  │
+        │  │  │  │        Domain           │  │  │  │  ← Entities
+        │  │  │  └─────────────────────────┘  │  │  │
+        │  │  └───────────────────────────────┘  │  │
+        │  └─────────────────────────────────────┘  │
+        └───────────────────────────────────────────┘
+```
+
+### 2.1 Domain (Entidades)
+
+Contiene las **reglas de negocio empresariales**. Son las más estables y no
+dependen de nada externo.
+
+- `Entities/`: objetos con identidad y comportamiento (p. ej. `Order`, `User`).
+- `ValueObjects/`: objetos inmutables definidos por sus valores
+  (p. ej. `Money`, `Email`).
+- `Services/`: lógica de dominio que no encaja naturalmente en una entidad.
+- `Interfaces/`: **puertos** que expresan lo que el dominio necesita
+  (p. ej. `IOrderRepository`). La implementación vive en capas externas.
+
+### 2.2 Application (Casos de uso)
+
+Orquesta el dominio para cumplir **reglas de negocio de aplicación**.
+
+- `UseCases/`: casos de uso concretos (p. ej. `CreateOrderUseCase`).
+- `DTOs/`: objetos de transporte de datos entre capas.
+- `Interfaces/`: puertos que la aplicación necesita (p. ej. `IEmailSender`).
+
+Esta capa **no conoce** detalles de infraestructura ni de UI.
+
+### 2.3 Infrastructure (Adaptadores)
+
+Implementa los puertos definidos por Domain y Application. Aquí viven los
+**detalles técnicos**.
+
+- `Persistence/`: contexto de base de datos, migraciones, configuración ORM.
+- `Repositories/`: implementaciones de `IOrderRepository`, etc.
+- `Adapters/`: integraciones con servicios externos (Mailchimp, Stripe,
+  APIs, colas de mensajes...).
+
+### 2.4 Presentation (UI / Entrega)
+
+Punto de entrada al sistema.
+
+- `Controllers/`: endpoints Web API, controladores MVC, handlers.
+- `Views/`: vistas Razor, Blazor, plantillas.
+- `Models/`: view-models específicos de la UI.
+
+---
+
+## 3. La Regla de la Dependencia (⚠️ regla clave)
+
+> **Las dependencias del código fuente sólo pueden apuntar hacia adentro.**
+
+Esto significa:
+
+- Nada en un círculo interno puede saber algo sobre un círculo externo.
+- En particular, **el nombre de algo declarado en un círculo externo no
+  debe ser mencionado por el código de un círculo interno**: ni clases, ni
+  funciones, ni variables, ni ninguna otra entidad nombrada.
+
+Aplicado a las carpetas:
+
+```
+Presentation  ──►  Application  ──►  Domain
+Infrastructure ─►  Application  ──►  Domain
+Infrastructure ─►  Domain
+```
+
+Nunca al revés:
+
+- ❌ `Domain` **no** referencia `Application`, `Infrastructure` ni `Presentation`.
+- ❌ `Application` **no** referencia `Infrastructure` ni `Presentation`.
+- ✔ `Infrastructure` y `Presentation` sí pueden referenciar capas internas.
+
+### 3.1 ¿Cómo se invierte la dependencia?
+
+Cuando una capa interna necesita algo de una capa externa (por ejemplo, el
+caso de uso necesita persistir un pedido), aplicamos el **Principio de
+Inversión de Dependencias (DIP)**:
+
+1. La capa interna **define una interfaz** (puerto):
+   `Application/Interfaces/IOrderRepository`.
+2. La capa externa **implementa** esa interfaz:
+   `Infrastructure/Repositories/OrderRepository`.
+3. En el arranque (composición) se inyecta la implementación concreta.
+
+Así, en tiempo de compilación las dependencias apuntan hacia adentro,
+aunque en tiempo de ejecución el flujo de control cruce hacia afuera.
+
+---
+
+## 4. Estructura de carpetas de esta solución
+
+```
+/src
+  /Presentation                     <-- Capa de presentación
+    /Api                                ASP.NET Core Minimal API
+      /Configurations                     Configuración de servicios y middleware
+      /Middleware                         Middlewares (ErrorHandler, etc.)
+      /Properties                         launchSettings.json
+    /IoC                                Composición raíz (Dependency Injection)
+  /Application
+    /UseCases                       <-- Casos de uso (orquestación)
+    /Commands                       <-- Comandos (write side)
+    /Queries                        <-- Consultas (read side)
+    /Models                         <-- DTOs / modelos de aplicación
+    /Validators                     <-- Reglas de validación (FluentValidation)
+    /Interfaces                     <-- Interfaces de aplicación (puertos)
+  /Domain
+    /Entities                     <-- Entidades de dominio
+    /ValueObjects                 <-- Objetos de valor
+    /Enums
+    /Options                          Options tipados de dominio
+    /Interfaces                   <-- Interfaces de dominio (puertos)
+  /Infrastructure
+    /Controllers                    <-- Adaptadores HTTP (ASP.NET Controllers)
+    /DataSource                     <-- Persistencia (EF Core, repositorios)
+      /Options                          Cadenas de conexión, opciones de BD
+/tests
+  /UnitTests                        <-- Pruebas unitarias (xUnit v3)
+```
+
+Referencias entre proyectos (en .NET, `dotnet add reference`):
+
+| Proyecto        | Referencia a                       |
+|-----------------|------------------------------------|
+| Domain          | *(ninguna)*                        |
+| Application     | Domain                             |
+| Infrastructure  | Application, Domain                |
+| Presentation    | Application (y Infra sólo para DI) |
+
+### 4.1 Flujo de una petición
+
+En esta API una petición HTTP viaja de afuera hacia adentro y regresa:
+
+```
+Cliente HTTP
+   │
+   ▼
+Presentation/Api                (routing, middlewares, ProblemDetails)
+   │
+   ▼
+Infrastructure/Controllers      (endpoint que expone el caso de uso)
+   │
+   ▼
+Application/UseCases            (orquestador del caso de uso)
+   │
+   ▼
+Application/Commands  ─┐        (mutan estado — write side)
+Application/Queries   ─┤        (leen estado — read side)
+                       │
+                       ▼
+Infrastructure/DataSource       (EF Core, repos, servicios externos)
+   │
+   ▼
+Domain                          (entidades, VOs, reglas invariantes)
+```
+
+Reglas prácticas de esta ruta:
+
+- **Controllers** no llaman directamente a `DataSource`; sólo invocan un
+  `UseCase` (o directamente un `Command`/`Query` si no hay orquestación).
+- **UseCases** orquestan uno o más `Command`/`Query` y aplican políticas
+  transversales (autorización, transacción, telemetría, logging).
+- **Commands** cambian estado (`Create`, `Update`, `Delete`) y devuelven
+  el resultado mínimo necesario.
+- **Queries** sólo leen; nunca mutan estado.
+- **DataSource / Adapters externos** son los únicos que hablan con la BD,
+  APIs externas, colas o caché.
+- El flujo de retorno recorre la ruta en sentido inverso, mapeando a DTOs
+  (`Application/Models`) antes de salir por el `Controller`.
+
+---
+
+## 5. Beneficios prácticos
+
+- **Cambios localizados**: tocar la UI o la base de datos no obliga a
+  reescribir reglas de negocio.
+- **Tests rápidos**: Domain y Application se prueban sin infraestructura.
+- **Reemplazo de tecnología**: cambiar EF Core por Dapper, o REST por gRPC,
+  es un cambio en Infrastructure/Presentation.
+- **Claridad de intención**: el código de negocio se lee como negocio, no
+  como *plumbing* técnico.
+
+---
+
+## 6. Antipatrones a evitar
+
+- Referenciar `Microsoft.EntityFrameworkCore` desde `Domain` o `Application`.
+- Poner atributos `[HttpGet]`, `[Route]` en entidades de dominio.
+- Exponer entidades de dominio directamente como respuesta HTTP (usar DTOs).
+- Casos de uso que instancian `new SqlConnection(...)` en vez de recibir
+  un puerto.
+- Interfaces "de repositorio" definidas en Infrastructure en lugar de en
+  Domain/Application (rompe la inversión).
+
+---
+
+## 7. Lecturas recomendadas
+
+- Robert C. Martin — *Clean Architecture* (2017).
+- Alistair Cockburn — *Hexagonal Architecture* (Ports & Adapters).
+- Jeffrey Palermo — *Onion Architecture*.
+- Vaughn Vernon — *Implementing Domain-Driven Design*.
+'@ | Set-Variable -Name ArchitectureMd
+[System.IO.File]::WriteAllText(
+    (Join-Path (Get-Location) 'documentation/Architecture.md'),
+    $ArchitectureMd,
+    (New-Object System.Text.UTF8Encoding($true))
+)
+
+# Register documentation folder as a Solution Folder in the .slnx file
+$slnxFile = "$ProjectName.slnx"
+if (Test-Path $slnxFile) {
+    [xml]$slnx = Get-Content $slnxFile -Raw
+    $root = $slnx.DocumentElement
+    $folder = @($root.Folder) | Where-Object { $_ -and $_.Name -eq '/documentation/' } | Select-Object -First 1
+    if (-not $folder) {
+        $folder = $slnx.CreateElement('Folder')
+        $folder.SetAttribute('Name', '/documentation/')
+        [void]$root.AppendChild($folder)
+    }
+    $hasFile = @($folder.File) | Where-Object { $_ -and $_.Path -eq 'documentation/Architecture.md' } | Select-Object -First 1
+    if (-not $hasFile) {
+        $file = $slnx.CreateElement('File')
+        $file.SetAttribute('Path', 'documentation/Architecture.md')
+        [void]$folder.AppendChild($file)
+    }
+    $slnx.Save((Resolve-Path $slnxFile))
+}
 
 # Git ignore
 dotnet new gitignore
