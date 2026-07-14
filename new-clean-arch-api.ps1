@@ -1089,6 +1089,76 @@ Reglas prácticas de esta ruta:
 - Alistair Cockburn — *Hexagonal Architecture* (Ports & Adapters).
 - Jeffrey Palermo — *Onion Architecture*.
 - Vaughn Vernon — *Implementing Domain-Driven Design*.
+
+---
+
+## 8. Features (organización del día a día)
+
+Aunque la solución está partida por **capas**, el trabajo diario se
+organiza por **features**: cada caso de uso atraviesa varias capas y
+todas sus piezas viven en carpetas **con el mismo nombre**.
+
+```
+FEATURE: CreateOrder
+─────────────────────────────────────────────────────────────
+
+/src
+├── Domain
+│   ├── Entities/Orders/
+│   │   └── Order.cs
+│   └── Interfaces/Orders/
+│       └── IOrderRepository.cs         ← puerto
+│
+├── Application
+│   ├── Commands/Orders/CreateOrder/
+│   │   ├── CreateOrderCommand.cs       ← input
+│   │   ├── CreateOrderHandler.cs       ← lógica
+│   │   └── CreateOrderResult.cs        ← output
+│   ├── Validators/Orders/
+│   │   └── CreateOrderValidator.cs
+│   └── Models/Orders/
+│       └── OrderDto.cs
+│
+├── Infrastructure
+│   ├── Controllers/Orders/
+│   │   └── OrdersController.cs         ← endpoint
+│   └── DataSource/Orders/
+│       └── OrderRepository.cs          ← implementa el puerto
+│
+└── tests/UnitTests/Orders/CreateOrder/
+    ├── CreateOrderHandlerTests.cs
+    └── CreateOrderValidatorTests.cs
+
+
+FLUJO DE LA FEATURE (una petición HTTP)
+─────────────────────────────────────────────────────────────
+
+   HTTP POST /api/orders
+          │
+          ▼
+   OrdersController        (Infrastructure/Controllers/Orders)
+          │
+          ▼
+   CreateOrderHandler      (Application/Commands/Orders/CreateOrder)
+          │      ▲
+          │      │ valida
+          │  CreateOrderValidator
+          ▼
+   IOrderRepository        (Domain/Interfaces/Orders)  ── puerto
+          │
+          ▼
+   OrderRepository         (Infrastructure/DataSource/Orders)
+          │
+          ▼
+   Order                   (Domain/Entities/Orders)
+
+
+REGLA DE ORO
+─────────────────────────────────────────────────────────────
+  Toda pieza de una feature vive en carpetas con el MISMO nombre
+  (aquí: "Orders" + "CreateOrder"). Si tienes que buscar por
+  toda la solución para encontrarla, la feature está mal ubicada.
+```
 '@ | Set-Variable -Name ArchitectureMd
 [System.IO.File]::WriteAllText(
     (Join-Path (Get-Location) 'documentation/Architecture.md'),
