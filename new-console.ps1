@@ -1,3 +1,8 @@
+# =========================================================================
+#  new-console.ps1
+#  Powered by David Vázquez Palestino
+# =========================================================================
+
 param(
     [Parameter(Mandatory = $true)]
     [string]$ProjectName
@@ -134,3 +139,4 @@ await host.RunAsync();
 dotnet new gitignore
 
 Write-Host "Console project created successfully!"
+Write-Host "Powered by David Vázquez Palestino" -ForegroundColor DarkGray

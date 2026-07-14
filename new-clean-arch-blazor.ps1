@@ -1,4 +1,9 @@
-﻿param(
+﻿# =========================================================================
+#  new-clean-arch-blazor.ps1
+#  Powered by David Vázquez Palestino
+# =========================================================================
+
+param(
     [Parameter(Mandatory=$true)]
     [string]$ProjectName,
     
@@ -1293,6 +1298,283 @@ Recomendaciones para esta solución (Blazor WebAssembly + Bootstrap):
     (New-Object System.Text.UTF8Encoding($true))
 )
 
+# =========================
+# BEST PRACTICES DOC (C#)
+# =========================
+Write-Host "Writing documentation/BuenasPracticasCSharp.md..." -ForegroundColor Yellow
+@'
+# Buenas Prácticas de Codificación en C# / .NET
+
+> Recopilación de las mejores recomendaciones extraídas del documento
+> *"Estándares de Codificación en C# y Buenas Prácticas de Programación"* (canaldenegocio.com — Alberto Fernández).
+> Reorganizado, resumido y priorizado para uso práctico.
+
+---
+
+## 1. Convenciones de Nombres
+
+- **PascalCase** para clases, métodos, propiedades y namespaces.
+- **camelCase** para variables locales y parámetros.
+- Prefijo **`I`** para interfaces (`IEntity`, `IRepository`).
+- Prefijo **`_`** solo para campos privados (variables globales/miembro de clase).
+- **No usar** notación húngara (`m_sNombre`, `nEdad`).
+- **No usar** abreviaturas: preferir `direccion` a `dir`, `salario` a `sal`.
+- **No usar** nombres de un solo carácter, salvo contadores de bucle (`i`, `j`).
+- Prefijo **`Is`** para booleanos (`IsValid`, `IsActive`) — coherente con el BCL.
+- Métodos con formato **`<Verbo><Descripción>`** en inglés (`GetClientes()`, `AddCliente()`) para agrupación óptima en IntelliSense.
+- Namespaces con patrón: `<Compañía>.<Producto>.<Módulo>.<Submódulo>`.
+- El **nombre del archivo debe coincidir con la clase** (`HolaMundo.cs`).
+- Una clase por archivo.
+
+---
+
+## 2. Formato y Estilo
+
+- Usar **tabuladores** (o 4 espacios) consistentes.
+- Llaves `{}` en **línea separada** (estilo Allman), no en la misma línea del `if`/`for`.
+- Un espacio antes/después de paréntesis y operadores.
+- Una línea en blanco entre métodos.
+- Separar bloques lógicos con una línea en blanco.
+- Usar `#region` para agrupar: *Private Fields*, *Properties*, *Constructors*, *Public Methods*, etc.
+- Privados arriba, públicos abajo.
+
+---
+
+## 3. Métodos y Diseño
+
+- Métodos **cortos**: idealmente entre 1 y 25 líneas. Si crece, refactorizar.
+- **Una responsabilidad por método** (SRP).
+- Nombres autoexplicativos: si el nombre es obvio, sobra la documentación.
+- Máximo **4–5 parámetros**. Si son más, crear una clase/DTO.
+- Evitar archivos con más de **1000 líneas** — candidatos a refactor.
+- Evitar métodos y propiedades públicas innecesarias. Usar `internal` cuando aplique.
+- No definir campos públicos: exponer **propiedades** en su lugar.
+
+---
+
+## 4. Tipos y Valores
+
+- Usar los alias de C# (`int`, `string`, `object`) en lugar de `Int32`, `String`, `Object`.
+- **Preferir tipos explícitos frente a `var`**. Solo aceptable cuando el tipo es literalmente obvio en la misma línea (por ejemplo `new StringBuilder()`), en LINQ con tipos anónimos o en tuplas. El código debe leerse sin necesidad de pasar el mouse por encima.
+  ```csharp
+  // ❌ Poco claro
+  var result = repository.GetActive();
+
+  // ✅ Explícito
+  IReadOnlyList<Customer> result = repository.GetActive();
+  ```
+- Usar `string.Empty` en lugar de `""`.
+- Usar **`enum`** para valores discretos — no strings ni magic numbers.
+- **No hardcodear** números o cadenas: usar constantes, `appsettings` o recursos (`.resx`).
+- Comparar strings normalizando caso (`ToLower()`, `ToUpper()`, o mejor `string.Equals(a, b, StringComparison.OrdinalIgnoreCase)`).
+- Usar **`StringBuilder`** dentro de bucles con concatenación.
+- Declarar variables **cerca de su primer uso**, una por línea.
+
+---
+
+## 5. Control de Flujo y Robustez
+
+- **Siempre validar valores inesperados**: incluir `else` final con excepción, no asumir binariedad.
+- Si un método retorna colección, devolver **colección vacía** — nunca `null`.
+- Evitar variables globales. Pasar dependencias por parámetros.
+- Los **event handlers no contienen lógica**: delegan en un método, lo que permite reutilización.
+- **No invocar `Button.Click()`** programáticamente para reutilizar lógica — llamar al método directamente.
+- Nunca hardcodear rutas o letras de unidad (`C:\`, `Z:\`). Usar rutas relativas al ejecutable.
+
+---
+
+## 6. Manejo de Excepciones
+
+### Filosofía
+- Las excepciones son para **situaciones excepcionales**, no para flujo de control esperable.
+- Errores de negocio *esperados* (validación, `NotFound`, conflictos) → preferir **Result pattern** (`Result<T>`, `OneOf`, `ErrorOr`, etc.) o `TryXxx` en lugar de lanzar.
+- Errores *inesperados* (fallos de infraestructura, bugs) → excepciones + captura global.
+
+### Reglas de captura
+- **Nunca** `catch { }` vacío. Como mínimo, loguear con `ILogger`.
+- Capturar **tipos específicos** (`SqlException`, `HttpRequestException`, `OperationCanceledException`, `DbUpdateConcurrencyException`…), no `Exception` genérica.
+- **Re-lanzar con `throw;`**, nunca `throw ex;` (destruye el stack trace).
+- No envolver todos los métodos en `try/catch`: dejar propagar y centralizar la captura.
+- Bloques `try/catch` **pequeños y focalizados** — no envolver 100 líneas.
+- Cerrar recursos con `using` / `await using` en lugar de `try/finally` manual.
+- Usar `when` para filtros condicionales: `catch (SqlException ex) when (ex.Number == 2601)`.
+
+### Manejo global (.NET 8+)
+
+La recomendación actual es usar **`IExceptionHandler`** + **`AddProblemDetails()`** — sustituye a los middlewares manuales de excepciones.
+
+```csharp
+// Handler tipado, testeable e inyectable
+public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IExceptionHandler
+{
+    public async ValueTask<bool> TryHandleAsync(
+        HttpContext context,
+        Exception exception,
+        CancellationToken cancellationToken)
+    {
+        logger.LogError(exception, "Unhandled exception {TraceId}", context.TraceIdentifier);
+
+        (int status, string title) = exception switch
+        {
+            ValidationException     => (StatusCodes.Status400BadRequest,   "Validation failed"),
+            KeyNotFoundException    => (StatusCodes.Status404NotFound,     "Resource not found"),
+            UnauthorizedAccessException => (StatusCodes.Status401Unauthorized, "Unauthorized"),
+            _                       => (StatusCodes.Status500InternalServerError, "Unexpected error")
+        };
+
+        context.Response.StatusCode = status;
+        await context.Response.WriteAsJsonAsync(new ProblemDetails
+        {
+            Status = status,
+            Title  = title,
+            Type   = $"https://httpstatuses.io/{status}",
+            Instance = context.Request.Path
+        }, cancellationToken);
+
+        return true;
+    }
+}
+
+// Registro
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
+
+app.UseExceptionHandler();
+app.UseStatusCodePages();
+```
+
+Ventajas frente al middleware manual:
+- Compone con el pipeline nativo (`UseExceptionHandler` + `AddProblemDetails`).
+- Permite **encadenar** varios handlers (`AddExceptionHandler<A>()` + `AddExceptionHandler<B>()`).
+- Integración automática con `ProblemDetails` para 4xx/5xx sin escribir JSON a mano.
+
+### ProblemDetails (RFC 9457)
+
+Es el formato **estándar** para errores HTTP en .NET moderno (`Microsoft.AspNetCore.Mvc.ProblemDetails`).
+
+- Devolver siempre `application/problem+json` en errores.
+- Campos obligatorios: `type`, `title`, `status`. Opcionales: `detail`, `instance`, extensiones.
+- **No exponer detalles sensibles** (stack traces, connection strings, mensajes internos) en producción.
+- Incluir `traceId` (correlación) como extensión para debugging:
+  ```csharp
+  builder.Services.AddProblemDetails(options =>
+  {
+      options.CustomizeProblemDetails = ctx =>
+          ctx.ProblemDetails.Extensions["traceId"] = ctx.HttpContext.TraceIdentifier;
+  });
+  ```
+- En 400 (validación) usar `ValidationProblemDetails` con la colección `errors`.
+
+### Logging estructurado
+- Usar `ILogger<T>` con **plantillas de mensaje**, no interpolación:
+  ```csharp
+  logger.LogError(ex, "Fallo al procesar pedido {OrderId} para {UserId}", orderId, userId);
+  ```
+- Nunca loguear datos sensibles (contraseñas, tokens, PII sin enmascarar).
+- Correlacionar con `Activity.Current?.TraceId` u `OpenTelemetry` para trazabilidad distribuida.
+
+### Errores transitorios
+- Usar **Polly** (o `AddStandardResilienceHandler()` de `Microsoft.Extensions.Http.Resilience`) para *retry*, *circuit breaker* y *timeout* en llamadas HTTP/DB.
+- Distinguir excepciones **transitorias** (reintentables) de **permanentes** (no reintentar).
+
+### Mensajes al usuario vs logs
+- **Al usuario**: mensajes cortos, claros y accionables ("No pudimos completar tu pedido. Intenta de nuevo.").
+- **En logs**: excepción completa, contexto (`{@Request}`, `{UserId}`, `{TraceId}`), sin exponer secretos.
+- En `Development` puede devolverse `detail` con el mensaje; en `Production` **jamás** stack traces.
+
+---
+
+## 7. Blazor
+
+### Componentes
+- **Un componente = una responsabilidad**. Si un `.razor` supera ~200 líneas o mezcla varias vistas, dividir en subcomponentes.
+- Separar markup y lógica en **code-behind** (`MiComponente.razor` + `MiComponente.razor.cs` con `partial class`) cuando la lógica supera unas pocas líneas.
+- Parámetros públicos con `[Parameter]`; parámetros de cascada con `[CascadingParameter]`; nunca mutar parámetros de entrada desde el propio componente.
+- Preferir **componentes tontos** (presentacionales) + **componentes contenedor** (con lógica y llamadas a servicios).
+- Usar `EventCallback<T>` para notificar al padre — nunca `Action`/`Func` directos (rompen re-render automático).
+
+### Estado y renderizado
+- Preferir **estado local** al componente. Compartir estado solo mediante **servicios inyectados** (`Scoped`/`Singleton` según hosting model) o `CascadingValue`.
+- Llamar a `StateHasChanged()` **solo cuando sea necesario** — los `EventCallback` y el binding lo disparan automáticamente.
+- Marcar `ShouldRender()` en componentes muy frecuentes para evitar re-renders costosos.
+- Elegir el **modo de render correcto**: `InteractiveServer`, `InteractiveWebAssembly`, `InteractiveAuto` o `Static SSR`. No mezclar sin criterio — impacta latencia, tamaño de payload y consumo de memoria.
+
+### Ciclo de vida
+- Preferir versiones `Async` (`OnInitializedAsync`, `OnParametersSetAsync`) para no bloquear el hilo de render.
+- **No** hacer llamadas HTTP ni acceso a datos en el constructor — usar `OnInitializedAsync`.
+- Implementar `IDisposable` / `IAsyncDisposable` cuando el componente se suscribe a eventos, `Timer`s o servicios reactivos.
+
+### Formularios y validación
+- Usar `EditForm` + `DataAnnotationsValidator` para casos simples.
+- Para reglas complejas, integrar **FluentValidation** mediante un `ValidatorComponent` propio.
+- Mostrar errores con `ValidationSummary` o `ValidationMessage For=...`.
+
+### JS Interop
+- Minimizar el uso de `IJSRuntime`. Si un componente lo requiere, encapsular la lógica en un servicio JS módulo (`import()`).
+- **Liberar recursos** JS en `DisposeAsync`: importar el módulo una vez, mantener la referencia y llamar `dispose()` al desmontar.
+- Nunca ejecutar JS dinámicamente con datos del usuario (riesgo XSS).
+
+### Estilos y assets
+- **CSS aislado por componente** (`MiComponente.razor.css`) — evita fugas de estilos globales.
+- Estilos globales solo en `wwwroot/css/app.css` y hojas de diseño (Tailwind, Bootstrap, MudBlazor, etc.).
+- Cargar librerías grandes de terceros vía **CDN** o mediante **lazy loading de assemblies** (`BlazorWebAssemblyLoadAllGlobalizationData=false`, `LazyAssemblyLoader`).
+- Habilitar **compresión Brotli/GZip** para reducir el payload inicial (crítico en WebAssembly).
+
+### Manejo de errores
+- Envolver árboles de componentes con **`<ErrorBoundary>`** para aislar fallos y mostrar UI de fallback.
+- Registrar errores no capturados con `ILogger` inyectado — nunca solo `Console.WriteLine`.
+
+### Accesibilidad
+- Toda UI debe cumplir **WCAG 2.2** — ver `WCAG.md` para el detalle.
+
+---
+
+## 8. Comentarios
+
+- Comentarios **útiles**, no redundantes. El buen código se autoexplica.
+- Usar `//` o `///` (nunca `/* */`).
+- Documentar lógica **compleja o no obvia** — no lo trivial.
+- Usar `// TODO:` para tareas pendientes rastreables por VS.
+- Habilitar **generación de XML docs** (`GenerateDocumentationFile` en el `.csproj`) para APIs públicas.
+- Revisar ortografía y gramática de los comentarios.
+
+---
+
+## 9. Versionado y Ciclo de Vida
+
+| Fase | Nomenclatura | Descripción |
+|------|--------------|-------------|
+| Alpha | `0.0.x` | En desarrollo, no operativo |
+| Beta | `b1.0` | Funcionalidades completas, en testing interno |
+| Release Candidate | `rc1.0` | Pasó todos los tests, en pre-producción |
+| Release | `1.0` | Producto final en producción |
+| Patch | `1.1` | Correcciones o mejoras menores en producción |
+
+Seguir **SemVer** (`MAJOR.MINOR.PATCH`) para librerías públicas.
+
+---
+
+## 10. Revisiones de Código (Sprint / Retrospectiva)
+
+- **Peer Review** — cada archivo revisado por otro miembro del equipo.
+- **Architect Review** — el arquitecto valida los módulos críticos.
+- **Group Review** — revisión grupal periódica de fragmentos aleatorios.
+
+> *"Los programas deben ser escritos para que los lean las personas, y sólo incidentalmente para que los ejecute la máquina."* — Abelson & Sussman
+
+---
+
+## Referencias
+- Documento original: *Estándares de Codificación en C# y Buenas Prácticas de Programación* — Alberto Fernández (canaldenegocio.com).
+- [Framework Design Guidelines (Microsoft Docs)](https://learn.microsoft.com/dotnet/standard/design-guidelines/).
+- [C# Coding Conventions (Microsoft Docs)](https://learn.microsoft.com/dotnet/csharp/fundamentals/coding-style/coding-conventions).
+'@ | Set-Variable -Name BestPracticesCSharpMd
+[System.IO.File]::WriteAllText(
+    (Join-Path (Get-Location) 'documentation/BuenasPracticasCSharp.md'),
+    $BestPracticesCSharpMd,
+    (New-Object System.Text.UTF8Encoding($true))
+)
+
 # Register documentation folder as a Solution Folder in the .slnx file
 $slnxFile = "$ProjectName.slnx"
 if (Test-Path $slnxFile) {
@@ -1304,7 +1586,7 @@ if (Test-Path $slnxFile) {
         $folder.SetAttribute('Name', '/documentation/')
         [void]$root.AppendChild($folder)
     }
-    foreach ($docPath in @('documentation/Architecture.md', 'documentation/WCAG.md')) {
+    foreach ($docPath in @('documentation/Architecture.md', 'documentation/WCAG.md', 'documentation/BuenasPracticasCSharp.md')) {
         $hasFile = @($folder.File) | Where-Object { $_ -and $_.Path -eq $docPath } | Select-Object -First 1
         if (-not $hasFile) {
             $file = $slnx.CreateElement('File')
@@ -1333,3 +1615,5 @@ Write-Host "  src/Application/Validators/   ($ProjectName.Validators - FluentVal
 Write-Host "  src/Infrastructure/WebApi/    ($ProjectName.WebApi - External Services, HTTP)"     -ForegroundColor Gray
 Write-Host "  src/Presentation/Views/                    ($ProjectName.Views - Razor Components, Layouts)"    -ForegroundColor Gray
 Write-Host "  src/Presentation/IoC/                      ($ProjectName.IoC - Dependency Injection)"           -ForegroundColor Gray
+Write-Host ""
+Write-Host "Powered by David Vázquez Palestino" -ForegroundColor DarkGray
