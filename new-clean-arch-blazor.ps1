@@ -1484,7 +1484,93 @@ Es el formato **estándar** para errores HTTP en .NET moderno (`Microsoft.AspNet
 
 ---
 
-## 7. Blazor
+## 7. API REST (endpoints)
+
+> Aplica tanto a APIs que expongas (BFF, minimal APIs en Blazor Server) como a cómo consumir APIs de terceros de forma correcta.
+
+### Recursos y URLs
+- Los endpoints representan **recursos**, no acciones. Usar **sustantivos en plural** y en **minúsculas**: `/customers`, `/orders/{id}`.
+- **Nunca verbos** en la URL: `GET /orders` (✅), no `GET /getOrders` (❌). El verbo lo indica el método HTTP.
+- **kebab-case** para segmentos compuestos: `/order-items`, `/purchase-orders`.
+- Recursos anidados con moderación (máx. 2 niveles): `/customers/{id}/orders` ✅. Para relaciones más profundas, exponer un recurso propio.
+- **camelCase** en los cuerpos JSON (convención por defecto de `System.Text.Json` en .NET).
+
+### Métodos HTTP
+| Método | Uso | Idempotente | Body |
+|--------|-----|-------------|------|
+| `GET` | Leer recurso o colección | Sí | No |
+| `POST` | Crear recurso o acción no idempotente | No | Sí |
+| `PUT` | Reemplazar el recurso completo | Sí | Sí |
+| `PATCH` | Modificación parcial (JSON Patch / Merge Patch) | Depende | Sí |
+| `DELETE` | Eliminar recurso | Sí | Opcional |
+
+### Códigos de estado
+| Código | Cuándo usarlo |
+|--------|---------------|
+| `200 OK` | GET/PUT/PATCH con respuesta |
+| `201 Created` | POST que crea recurso — incluir header `Location: /customers/{id}` |
+| `202 Accepted` | Petición aceptada para procesamiento asíncrono |
+| `204 No Content` | Éxito sin cuerpo (DELETE, PUT sin representación) |
+| `400 Bad Request` | Payload inválido, sintácticamente mal formado |
+| `401 Unauthorized` | Sin credenciales o inválidas |
+| `403 Forbidden` | Autenticado pero sin permiso |
+| `404 Not Found` | Recurso inexistente |
+| `409 Conflict` | Estado inconsistente (versión concurrente, duplicado) |
+| `422 Unprocessable Entity` | Payload válido pero reglas de negocio no cumplen |
+| `429 Too Many Requests` | Rate limiting excedido |
+| `500 Internal Server Error` | Error inesperado |
+
+### Versionado
+- Versionar desde el día uno. Estilos aceptados:
+  - **URL**: `/api/v1/customers` — el más explícito y usado.
+  - **Header**: `Api-Version: 1`.
+  - **Media type**: `Accept: application/vnd.company.v1+json`.
+- Usar el paquete oficial `Asp.Versioning.Http` (antes `Microsoft.AspNetCore.Mvc.Versioning`).
+- Nunca romper contratos de una versión publicada; ante cambios incompatibles, subir mayor.
+
+### Paginación, filtros y ordenamiento
+- Paginación por query string: `?page=1&pageSize=20`. Limitar `pageSize` (ej. máx. 100).
+- Devolver metadata en la respuesta:
+  ```json
+  {
+    "items": [ ... ],
+    "page": 1,
+    "pageSize": 20,
+    "totalItems": 137,
+    "totalPages": 7
+  }
+  ```
+- Filtros: `?status=active&createdAfter=2026-01-01`.
+- Ordenamiento: `?sort=createdAt,-name` (`-` = descendente).
+
+### Errores
+- Devolver siempre **`ProblemDetails`** (RFC 9457) con `Content-Type: application/problem+json`. Ver sección 6.
+- En 400 usar `ValidationProblemDetails` con la colección `errors`.
+
+### DTOs y contratos
+- **No exponer entidades de dominio** directamente en respuestas HTTP. Usar DTOs.
+- Modelos de entrada distintos de los de salida cuando la forma no coincide (`CreateCustomerRequest` vs `CustomerResponse`).
+- Validar la entrada con FluentValidation o `DataAnnotations` en el DTO, no en la entidad.
+
+### Idempotencia y concurrencia
+- Para POST críticos (pagos, cobros), aceptar header **`Idempotency-Key`** y garantizar que reintentos con el mismo key producen el mismo resultado.
+- Usar **`ETag`** + `If-Match` / `If-None-Match` para caching y control de concurrencia optimista.
+
+### Documentación
+- **OpenAPI/Swagger obligatorio**. Anotar cada endpoint con `[ProducesResponseType]`, resumen y ejemplos.
+- Publicar la spec en `/swagger` (desarrollo) y opcionalmente en producción con auth.
+
+### Seguridad
+- **HTTPS** siempre. Redirigir HTTP → HTTPS.
+- Autenticación con **JWT Bearer** o **OAuth 2.0 / OpenID Connect**.
+- Autorización por políticas (`[Authorize(Policy = "...")]`), no por roles hardcodeados dispersos.
+- Habilitar **CORS** solo para los orígenes necesarios — nunca `AllowAnyOrigin` en producción con credenciales.
+- **Rate limiting** (`AddRateLimiter` en .NET 7+).
+- Nunca exponer IDs internos secuenciales que revelen conteo o permitan enumeración; considerar GUIDs o hashids.
+
+---
+
+## 8. Blazor
 
 ### Componentes
 - **Un componente = una responsabilidad**. Si un `.razor` supera ~200 líneas o mezcla varias vistas, dividir en subcomponentes.
@@ -1529,7 +1615,7 @@ Es el formato **estándar** para errores HTTP en .NET moderno (`Microsoft.AspNet
 
 ---
 
-## 8. Comentarios
+## 9. Comentarios
 
 - Comentarios **útiles**, no redundantes. El buen código se autoexplica.
 - Usar `//` o `///` (nunca `/* */`).
@@ -1540,7 +1626,7 @@ Es el formato **estándar** para errores HTTP en .NET moderno (`Microsoft.AspNet
 
 ---
 
-## 9. Versionado y Ciclo de Vida
+## 10. Versionado y Ciclo de Vida
 
 | Fase | Nomenclatura | Descripción |
 |------|--------------|-------------|
@@ -1554,7 +1640,7 @@ Seguir **SemVer** (`MAJOR.MINOR.PATCH`) para librerías públicas.
 
 ---
 
-## 10. Revisiones de Código (Sprint / Retrospectiva)
+## 11. Revisiones de Código (Sprint / Retrospectiva)
 
 - **Peer Review** — cada archivo revisado por otro miembro del equipo.
 - **Architect Review** — el arquitecto valida los módulos críticos.
