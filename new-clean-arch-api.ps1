@@ -71,7 +71,7 @@ dotnet new classlib -n "$ProjectName.Commands" -o "src/Application/Commands"
 dotnet new classlib -n "$ProjectName.Models" -o "src/Application/Models"
 dotnet new classlib -n "$ProjectName.Queries" -o "src/Application/Queries"
 dotnet new classlib -n "$ProjectName.Validators" -o "src/Application/Validators"
-dotnet new classlib -n "$ProjectName.Controllers" -o "src/Infrastructure/Controllers"
+dotnet new classlib -n "$ProjectName.Controllers" -o "src/Presentation/Controllers"
 
 # IoC Project at same level as Application
 dotnet new classlib -n "$ProjectName.IoC" -o "src/Presentation/IoC"
@@ -104,7 +104,7 @@ Remove-Item "src/Application/UseCases/Class1.cs" -Force -ErrorAction SilentlyCon
 Remove-Item "src/Application/Commands/Class1.cs" -Force -ErrorAction SilentlyContinue
 Remove-Item "src/Application/Models/Class1.cs" -Force -ErrorAction SilentlyContinue
 Remove-Item "src/Application/Queries/Class1.cs" -Force -ErrorAction SilentlyContinue
-Remove-Item "src/Infrastructure/Controllers/Class1.cs" -Force -ErrorAction SilentlyContinue
+Remove-Item "src/Presentation/Controllers/Class1.cs" -Force -ErrorAction SilentlyContinue
 Remove-Item "src/Presentation/IoC/Class1.cs" -Force -ErrorAction SilentlyContinue
 Remove-Item "src/Domain/Class1.cs" -Force -ErrorAction SilentlyContinue
 Remove-Item "src/Application/Validators/Class1.cs" -Force -ErrorAction SilentlyContinue
@@ -129,7 +129,7 @@ dotnet sln add src/Application/Commands
 dotnet sln add src/Application/Models
 dotnet sln add src/Application/Queries
 dotnet sln add src/Application/Validators
-dotnet sln add src/Infrastructure/Controllers
+dotnet sln add src/Presentation/Controllers
 dotnet sln add src/Presentation/IoC
 dotnet sln add src/Domain
 dotnet sln add src/Infrastructure/DataSource
@@ -147,17 +147,17 @@ dotnet add src/Application/Queries reference src/Domain
 dotnet add src/Application/Validators reference src/Domain
 
 # Controllers depend on Application layer projects
-dotnet add src/Infrastructure/Controllers reference src/Domain
-dotnet add src/Infrastructure/Controllers reference src/Application/Commands
-dotnet add src/Infrastructure/Controllers reference src/Application/Queries
-dotnet add src/Infrastructure/Controllers reference src/Application/Models
+dotnet add src/Presentation/Controllers reference src/Domain
+dotnet add src/Presentation/Controllers reference src/Application/Commands
+dotnet add src/Presentation/Controllers reference src/Application/Queries
+dotnet add src/Presentation/Controllers reference src/Application/Models
 # IoC depends on all Application projects + Infrastructure + Domain
 dotnet add src/Presentation/IoC reference src/Application/UseCases
 dotnet add src/Presentation/IoC reference src/Application/Commands
 dotnet add src/Presentation/IoC reference src/Application/Models
 dotnet add src/Presentation/IoC reference src/Application/Queries
 dotnet add src/Presentation/IoC reference src/Application/Validators
-dotnet add src/Presentation/IoC reference src/Infrastructure/Controllers
+dotnet add src/Presentation/IoC reference src/Presentation/Controllers
 dotnet add src/Presentation/IoC reference src/Infrastructure/DataSource
 dotnet add src/Presentation/IoC reference src/Domain
 
@@ -192,11 +192,11 @@ dotnet add src/Application/Validators package FluentValidation
 dotnet add src/Application/Validators package Microsoft.Extensions.DependencyInjection.Abstractions
 dotnet add src/Application/Validators package DependencyInjection.ReflectionExtensions
 
-dotnet add src/Infrastructure/Controllers package Microsoft.Extensions.DependencyInjection.Abstractions
-dotnet add src/Infrastructure/Controllers package DependencyInjection.ReflectionExtensions
+dotnet add src/Presentation/Controllers package Microsoft.Extensions.DependencyInjection.Abstractions
+dotnet add src/Presentation/Controllers package DependencyInjection.ReflectionExtensions
 
 # Controllers needs ASP.NET Core framework reference (ControllerBase, [ApiController], etc.)
-$controllersCsproj = "src/Infrastructure/Controllers/$ProjectName.Controllers.csproj"
+$controllersCsproj = "src/Presentation/Controllers/$ProjectName.Controllers.csproj"
 [xml]$controllersXml = Get-Content $controllersCsproj
 if (-not ($controllersXml.Project.ItemGroup | Where-Object { $_.FrameworkReference.Include -eq "Microsoft.AspNetCore.App" })) {
     $itemGroup = $controllersXml.CreateElement("ItemGroup")
@@ -529,7 +529,7 @@ global using DevKit.ExecutionEngine.Redis.Options;
 @"
 global using Microsoft.AspNetCore.Mvc;
 global using Microsoft.AspNetCore.Http;
-"@ | Set-Content "src/Infrastructure/Controllers/GlobalUsings.cs"
+"@ | Set-Content "src/Presentation/Controllers/GlobalUsings.cs"
 
 # GlobalUsings Domain
 @"
@@ -726,7 +726,7 @@ WORKDIR /src
 COPY src/Presentation/Api/$ProjectName.WebApi.csproj src/Presentation/Api/
 COPY src/Application/UseCases/$ProjectName.UseCases.csproj src/Application/UseCases/
 COPY src/Application/Commands/$ProjectName.Commands.csproj src/Application/Commands/
-COPY src/Infrastructure/Controllers/$ProjectName.Controllers.csproj src/Infrastructure/Controllers/
+COPY src/Presentation/Controllers/$ProjectName.Controllers.csproj src/Presentation/Controllers/
 COPY src/Domain/$ProjectName.Domain.csproj src/Domain/
 COPY src/Infrastructure/DataSource/$ProjectName.DataSource.csproj src/Infrastructure/DataSource/
 COPY src/Presentation/IoC/$ProjectName.IoC.csproj src/Presentation/IoC/
@@ -842,7 +842,7 @@ $deployScriptContent | Set-Content "src/Presentation/Api/deploy.sh"
 # =========================
 # CLEAN ARCHITECTURE DOC (Tío Bob)
 # =========================
-Write-Host "Writing documentation/Architecture.md..."
+Write-Host "Writing documentation/ArchitectureGuide.md..."
 New-Item -ItemType Directory -Path "documentation" -Force | Out-Null
 @'
 > Solución generada con el script `new-clean-arch-api.ps1` desde PowerShell:
@@ -991,6 +991,7 @@ aunque en tiempo de ejecución el flujo de control cruce hacia afuera.
       /Middleware                         Middlewares (ErrorHandler, etc.)
       /Properties                         launchSettings.json
     /IoC                                Composición raíz (Dependency Injection)
+    /Controllers                    <-- Adaptadores HTTP (ASP.NET Controllers)
   /Application
     /UseCases                       <-- Casos de uso (orquestación)
     /Commands                       <-- Comandos (write side)
@@ -1005,7 +1006,6 @@ aunque en tiempo de ejecución el flujo de control cruce hacia afuera.
     /Options                          Options tipados de dominio
     /Interfaces                   <-- Interfaces de dominio (puertos)
   /Infrastructure
-    /Controllers                    <-- Adaptadores HTTP (ASP.NET Controllers)
     /DataSource                     <-- Persistencia (EF Core, repositorios)
       /Options                          Cadenas de conexión, opciones de BD
 /tests
@@ -1032,7 +1032,7 @@ Cliente HTTP
 Presentation/Api                (routing, middlewares, ProblemDetails)
    │
    ▼
-Infrastructure/Controllers      (endpoint que expone el caso de uso)
+Presentation/Controllers        (endpoint que expone el caso de uso)
    │
    ▼
 Application/UseCases            (orquestador del caso de uso)
@@ -1124,9 +1124,10 @@ FEATURE: CreateOrder
 │   └── Models/Orders/
 │       └── OrderDto.cs
 │
+├── Presentation
+│   └── Controllers/Orders/
+│       └── OrdersController.cs         ← endpoint
 ├── Infrastructure
-│   ├── Controllers/Orders/
-│   │   └── OrdersController.cs         ← endpoint
 │   └── DataSource/Orders/
 │       └── OrderRepository.cs          ← implementa el puerto
 │
@@ -1141,7 +1142,7 @@ FLUJO DE LA FEATURE (una petición HTTP)
    HTTP POST /api/orders
           │
           ▼
-   OrdersController        (Infrastructure/Controllers/Orders)
+   OrdersController        (Presentation/Controllers/Orders)
           │
           ▼
    CreateOrderHandler      (Application/Commands/Orders/CreateOrder)
@@ -1166,7 +1167,7 @@ REGLA DE ORO
 ```
 '@ | Set-Variable -Name ArchitectureMd
 [System.IO.File]::WriteAllText(
-    (Join-Path (Get-Location) 'documentation/Architecture.md'),
+    (Join-Path (Get-Location) 'documentation/ArchitectureGuide.md'),
     $ArchitectureMd,
     (New-Object System.Text.UTF8Encoding($true))
 )
@@ -1182,7 +1183,7 @@ if (Test-Path $slnxFile) {
         $folder.SetAttribute('Name', '/documentation/')
         [void]$root.AppendChild($folder)
     }
-    foreach ($docPath in @('documentation/Architecture.md')) {
+    foreach ($docPath in @('documentation/ArchitectureGuide.md')) {
         $hasFile = @($folder.File) | Where-Object { $_ -and $_.Path -eq $docPath } | Select-Object -First 1
         if (-not $hasFile) {
             $file = $slnx.CreateElement('File')

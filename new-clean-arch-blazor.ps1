@@ -735,7 +735,7 @@ New-Item -ItemType Directory -Path ".vscode" -Force | Out-Null
 # =========================
 # CLEAN ARCHITECTURE DOC (Tío Bob)
 # =========================
-Write-Host "Writing documentation/Architecture.md..." -ForegroundColor Yellow
+Write-Host "Writing documentation/ArchitectureGuide.md..." -ForegroundColor Yellow
 New-Item -ItemType Directory -Path "documentation" -Force | Out-Null
 @'
 > Solución generada con el script `new-clean-arch-blazor.ps1` desde PowerShell:
@@ -744,29 +744,31 @@ New-Item -ItemType Directory -Path "documentation" -Force | Out-Null
 > .\new-clean-arch-blazor.ps1 -ProjectName <NombreProyecto> [-OutputPath <ruta>]
 > ```
 
-# Clean Architecture (Arquitectura Limpia) — Tío Bob
+# Clean Architecture para Blazor WebAssembly — Tío Bob
 
 Este documento resume las reglas de la **Arquitectura Limpia** propuestas por
-Robert C. Martin ("Uncle Bob") en su libro *Clean Architecture: A Craftsman's
-Guide to Software Structure and Design*. La estructura de esta solución sigue
-estas reglas.
+Robert C. Martin ("Uncle Bob") adaptadas a una aplicación **Blazor WebAssembly**.
+A diferencia de un backend, aquí no hay base de datos local ni endpoints HTTP
+propios; el frontend consume una API remota y su arquitectura se organiza para
+mantener el dominio y la lógica de aplicación libres de detalles de UI,
+HTTP o framework.
 
 ---
 
 ## 1. Objetivos
 
-Una arquitectura limpia busca producir sistemas que sean:
+Una arquitectura limpia en el frontend busca producir aplicaciones que sean:
 
-- **Independientes de frameworks**: el framework es una herramienta, no una
-  restricción arquitectónica.
-- **Testeables**: las reglas de negocio se pueden probar sin UI, base de
-  datos, servidor web ni ningún elemento externo.
-- **Independientes de la UI**: la UI puede cambiar (web, consola, móvil) sin
-  afectar al resto del sistema.
-- **Independientes de la base de datos**: se puede cambiar SQL Server por
-  Mongo, Postgres, un archivo, etc.
-- **Independientes de agentes externos**: las reglas de negocio no saben
-  nada del mundo exterior.
+- **Independientes de frameworks**: Blazor es una herramienta de entrega, no
+  una restricción arquitectónica.
+- **Testeables**: las reglas de negocio y los view-models se prueban sin
+  renderizar componentes ni lanzar el navegador.
+- **Independientes de la UI**: los componentes pueden cambiar (Razor, MAUI,
+  consola) sin afectar al resto del sistema.
+- **Independientes del origen de datos**: cambiar la API remota, agregar
+  almacenamiento local o usar GraphQL es un cambio en Infrastructure.
+- **Independientes de agentes externos**: el dominio no sabe que existe
+  `HttpClient`, Blazor o la API remota.
 
 ---
 
@@ -792,43 +794,47 @@ centro, más general y estable; cuanto más afuera, más concreto y volátil.
 
 ### 2.1 Domain (Entidades)
 
-Contiene las **reglas de negocio empresariales**. Son las más estables y no
-dependen de nada externo.
+Contiene las **reglas de negocio empresariales** del problema que la app
+resuelve. Son las más estables y no dependen de nada externo.
 
 - `Entities/`: objetos con identidad y comportamiento (p. ej. `Order`, `User`).
 - `ValueObjects/`: objetos inmutables definidos por sus valores
   (p. ej. `Money`, `Email`).
-- `Services/`: lógica de dominio que no encaja naturalmente en una entidad.
+- `Enums/`: enumeraciones de negocio.
 - `Interfaces/`: **puertos** que expresan lo que el dominio necesita
-  (p. ej. `IOrderRepository`). La implementación vive en capas externas.
+  (p. ej. `IOrderWebApi`). La implementación vive en capas externas.
 
-### 2.2 Application (Casos de uso)
+### 2.2 Application (Casos de uso / ViewModels)
 
 Orquesta el dominio para cumplir **reglas de negocio de aplicación**.
 
-- `UseCases/`: casos de uso concretos (p. ej. `CreateOrderUseCase`).
-- `DTOs/`: objetos de transporte de datos entre capas.
-- `Interfaces/`: puertos que la aplicación necesita (p. ej. `IEmailSender`).
+- `ViewModels/`: casos de uso concretos expuestos como ViewModels que la UI
+  puede invocar (p. ej. `CreateOrderViewModel`).
+- `Validators/`: reglas de validación de entrada usando FluentValidation.
+- `Interfaces/`: puertos que la aplicación necesita (p. ej. `IApiClient`).
 
-Esta capa **no conoce** detalles de infraestructura ni de UI.
+Esta capa **no conoce** detalles de infraestructura ni de Blazor.
 
 ### 2.3 Infrastructure (Adaptadores)
 
 Implementa los puertos definidos por Domain y Application. Aquí viven los
-**detalles técnicos**.
+**detalles técnicos** del frontend.
 
-- `Persistence/`: contexto de base de datos, migraciones, configuración ORM.
-- `Repositories/`: implementaciones de `IOrderRepository`, etc.
-- `Adapters/`: integraciones con servicios externos (Mailchimp, Stripe,
-  APIs, colas de mensajes...).
+- `WebApi/`: adaptador HTTP que consume la API remota usando `HttpClient`.
+- `Options/`: configuración como la `BaseUrl` de la API.
+- `LocalStorage/`: adaptador para `localStorage` del navegador, si aplica.
+- `Adapters/`: integraciones con servicios externos (SignalR, gRPC, etc.).
 
 ### 2.4 Presentation (UI / Entrega)
 
-Punto de entrada al sistema.
+Punto de entrada al sistema Blazor.
 
-- `Controllers/`: endpoints Web API, controladores MVC, handlers.
-- `Views/`: vistas Razor, Blazor, plantillas.
-- `Models/`: view-models específicos de la UI.
+- `Client/`: host Blazor WebAssembly (`Program.cs`, `wwwroot`,
+  `launchSettings.json`).
+- `Views/`: Razor Class Library con componentes, layouts y páginas
+  ruteables.
+- `IoC/`: composición raíz donde se registran servicios y se inyectan
+  implementaciones concretas.
 
 ---
 
@@ -860,17 +866,18 @@ Nunca al revés:
 ### 3.1 ¿Cómo se invierte la dependencia?
 
 Cuando una capa interna necesita algo de una capa externa (por ejemplo, el
-caso de uso necesita persistir un pedido), aplicamos el **Principio de
+ViewModel necesita llamar a la API remota), aplicamos el **Principio de
 Inversión de Dependencias (DIP)**:
 
 1. La capa interna **define una interfaz** (puerto):
-   `Application/Interfaces/IOrderRepository`.
+   `Application/Interfaces/IOrderWebApi`.
 2. La capa externa **implementa** esa interfaz:
-   `Infrastructure/Repositories/OrderRepository`.
-3. En el arranque (composición) se inyecta la implementación concreta.
+   `Infrastructure/WebApi/OrderWebApi`.
+3. En el arranque (`Program.cs` / IoC) se inyecta la implementación concreta.
 
 Así, en tiempo de compilación las dependencias apuntan hacia adentro,
-aunque en tiempo de ejecución el flujo de control cruce hacia afuera.
+aunque en tiempo de ejecución el flujo de control cruce hacia afuera
+hasta la API remota.
 
 ---
 
@@ -911,42 +918,77 @@ Referencias entre proyectos (en .NET, `dotnet add reference`):
 | Infrastructure  | Application, Domain                |
 | Presentation    | Application (y Infra sólo para DI) |
 
+### 4.1 Flujo de una interacción de usuario
+
+En esta app Blazor una acción del usuario viaja de afuera hacia adentro y
+regresa:
+
+```
+Usuario / Navegador
+   │
+   ▼
+Presentation/Views              (componentes .razor, layouts, páginas)
+   │
+   ▼
+Presentation/IoC                (registro de servicios, composición)
+   │
+   ▼
+Application/ViewModels          (orquestador del caso de uso)
+   │
+   ▼
+Application/Validators  ─┐      (valida entrada de usuario)
+                         │
+                         ▼
+Infrastructure/WebApi    (HttpClient hacia API remota)
+   │
+   ▼
+Domain                          (entidades, VOs, reglas invariantes)
+```
+
+Reglas prácticas de esta ruta:
+
+- **Componentes** no llaman directamente a `HttpClient`; invocan un
+  `ViewModel` (o un servicio de aplicación definido por interfaz).
+- **ViewModels** orquestan validación, transformación y llamadas al puerto
+  de infraestructura.
+- **Validators** contienen solo reglas de entrada de usuario; no acceden
+  a la red.
+- **Infrastructure/WebApi** es el único lugar que conoce la URL, los
+  verbos HTTP y el formato JSON de la API remota.
+- El flujo de retorno mapea los datos a entidades de dominio o DTOs antes
+  de mostrarlos en el componente.
+
 ---
 
 ## 5. Beneficios prácticos
 
-- **Cambios localizados**: tocar la UI o la base de datos no obliga a
-  reescribir reglas de negocio.
-- **Tests rápidos**: Domain y Application se prueban sin infraestructura.
-- **Reemplazo de tecnología**: cambiar EF Core por Dapper, o REST por gRPC,
-  es un cambio en Infrastructure/Presentation.
+- **Cambios localizados**: cambiar Bootstrap por MudBlazor, o agregar
+  almacenamiento local, no obliga a reescribir reglas de negocio.
+- **Tests rápidos**: Domain, Validators y ViewModels se prueban sin
+  renderizar componentes ni depender de `HttpClient`.
+- **Reemplazo de tecnología**: cambiar REST por gRPC o SignalR es un cambio
+  en Infrastructure.
 - **Claridad de intención**: el código de negocio se lee como negocio, no
-  como *plumbing* técnico.
+  como *plumbing* técnico de Blazor.
 
 ---
 
 ## 6. Antipatrones a evitar
 
-- Referenciar `Microsoft.EntityFrameworkCore` desde `Domain` o `Application`.
-- Poner atributos `[HttpGet]`, `[Route]` en entidades de dominio.
-- Exponer entidades de dominio directamente como respuesta HTTP (usar DTOs).
-- Casos de uso que instancian `new SqlConnection(...)` en vez de recibir
-  un puerto.
-- Interfaces "de repositorio" definidas en Infrastructure en lugar de en
-  Domain/Application (rompe la inversión).
+- Referenciar `System.Net.Http` o `HttpClient` desde `Domain` o
+  `Application`.
+- Poner lógica de negocio directamente en componentes `.razor`
+  (`@code { ... }` que crece indefinidamente).
+- Usar `NavigationManager`, `IJSRuntime` o `HttpClient` dentro de
+  ViewModels en lugar de recibirlos por puertos.
+- Exponer modelos de la API directamente en la UI sin pasar por el dominio
+  o un DTO de aplicación.
+- Interfaces de servicio remoto definidas en Infrastructure en lugar de
+  Application (rompe la inversión).
 
 ---
 
-## 7. Lecturas recomendadas
-
-- Robert C. Martin — *Clean Architecture* (2017).
-- Alistair Cockburn — *Hexagonal Architecture* (Ports & Adapters).
-- Jeffrey Palermo — *Onion Architecture*.
-- Vaughn Vernon — *Implementing Domain-Driven Design*.
-
----
-
-## 8. Features (organización del día a día)
+## 7. Features (organización del día a día)
 
 Aunque la solución está partida por **capas**, el trabajo diario se
 organiza por **features**: cada caso de uso atraviesa varias capas y
@@ -961,50 +1003,51 @@ FEATURE: CreateOrder
 │   ├── Entities/Orders/
 │   │   └── Order.cs
 │   └── Interfaces/Orders/
-│       └── IOrderRepository.cs         ← puerto
+│       └── IOrderWebApi.cs             ← puerto
 │
 ├── Application
-│   ├── Commands/Orders/CreateOrder/
-│   │   ├── CreateOrderCommand.cs       ← input
-│   │   ├── CreateOrderHandler.cs       ← lógica
-│   │   └── CreateOrderResult.cs        ← output
-│   ├── Validators/Orders/
-│   │   └── CreateOrderValidator.cs
-│   └── Models/Orders/
-│       └── OrderDto.cs
+│   ├── ViewModels/Orders/
+│   │   └── CreateOrderViewModel.cs     ← orquesta el caso de uso
+│   └── Validators/Orders/
+│       └── CreateOrderValidator.cs
 │
 ├── Infrastructure
-│   ├── Controllers/Orders/
-│   │   └── OrdersController.cs         ← endpoint
-│   └── DataSource/Orders/
-│       └── OrderRepository.cs          ← implementa el puerto
+│   └── WebApi/Orders/
+│       └── OrderWebApi.cs              ← implementa el puerto (HttpClient)
+│
+├── Presentation
+│   └── Views/Pages/Orders/
+│       └── CreateOrder.razor           ← UI / formulario
 │
 └── tests/UnitTests/Orders/CreateOrder/
-    ├── CreateOrderHandlerTests.cs
+    ├── CreateOrderViewModelTests.cs
     └── CreateOrderValidatorTests.cs
 
 
-FLUJO DE LA FEATURE (una petición HTTP)
+FLUJO DE LA FEATURE (interacción del usuario)
 ─────────────────────────────────────────────────────────────
 
-   HTTP POST /api/orders
+   Usuario envía formulario "Crear pedido"
           │
           ▼
-   OrdersController        (Infrastructure/Controllers/Orders)
+   CreateOrder.razor      (Presentation/Views/Pages/Orders)
           │
           ▼
-   CreateOrderHandler      (Application/Commands/Orders/CreateOrder)
+   CreateOrderViewModel   (Application/ViewModels/Orders)
           │      ▲
           │      │ valida
           │  CreateOrderValidator
           ▼
-   IOrderRepository        (Domain/Interfaces/Orders)  ── puerto
+   IOrderWebApi           (Domain/Interfaces/Orders)  ── puerto
           │
           ▼
-   OrderRepository         (Infrastructure/DataSource/Orders)
+   OrderWebApi            (Infrastructure/WebApi/Orders)
           │
           ▼
-   Order                   (Domain/Entities/Orders)
+   API remota             (fuera de esta solución)
+          │
+          ▼
+   Order                  (Domain/Entities/Orders)
 
 
 REGLA DE ORO
@@ -1012,10 +1055,20 @@ REGLA DE ORO
   Toda pieza de una feature vive en carpetas con el MISMO nombre
   (aquí: "Orders" + "CreateOrder"). Si tienes que buscar por
   toda la solución para encontrarla, la feature está mal ubicada.
+
+---
+
+## 8. Lecturas recomendadas
+
+- Robert C. Martin — *Clean Architecture* (2017).
+- Alistair Cockburn — *Hexagonal Architecture* (Ports & Adapters).
+- Jeffrey Palermo — *Onion Architecture*.
+- Vaughn Vernon — *Implementing Domain-Driven Design*.
+- Microsoft — *Blazor WebAssembly documentation*.
 ```
 '@ | Set-Variable -Name ArchitectureMd
 [System.IO.File]::WriteAllText(
-    (Join-Path (Get-Location) 'documentation/Architecture.md'),
+    (Join-Path (Get-Location) 'documentation/ArchitectureGuide.md'),
     $ArchitectureMd,
     (New-Object System.Text.UTF8Encoding($true))
 )
@@ -1672,7 +1725,7 @@ if (Test-Path $slnxFile) {
         $folder.SetAttribute('Name', '/documentation/')
         [void]$root.AppendChild($folder)
     }
-    foreach ($docPath in @('documentation/Architecture.md', 'documentation/WCAG.md', 'documentation/BuenasPracticasCSharp.md')) {
+    foreach ($docPath in @('documentation/ArchitectureGuide.md', 'documentation/WCAG.md', 'documentation/BuenasPracticasCSharp.md')) {
         $hasFile = @($folder.File) | Where-Object { $_ -and $_.Path -eq $docPath } | Select-Object -First 1
         if (-not $hasFile) {
             $file = $slnx.CreateElement('File')
