@@ -248,7 +248,6 @@ New-Item -ItemType Directory -Path "src/Domain/Entities"
 New-Item -ItemType Directory -Path "src/Domain/ValueObjects"
 New-Item -ItemType Directory -Path "src/Domain/Enums"
 New-Item -ItemType Directory -Path "src/Domain/Interfaces"
-New-Item -ItemType Directory -Path "src/Domain/Options"
 New-Item -ItemType Directory -Path "src/Infrastructure/DataSource/Options" -Force
 
 # Keep domain folders visible in Visual Studio Solution Explorer
@@ -256,7 +255,6 @@ New-Item -ItemType Directory -Path "src/Infrastructure/DataSource/Options" -Forc
 "" | Set-Content "src/Domain/ValueObjects/.gitkeep"
 "" | Set-Content "src/Domain/Enums/.gitkeep"
 "" | Set-Content "src/Domain/Interfaces/.gitkeep"
-"" | Set-Content "src/Domain/Options/.gitkeep"
 
 # API structure
 
@@ -512,7 +510,6 @@ global using $ProjectName.Commands;
 global using $ProjectName.DataSource;
 global using $ProjectName.Queries;
 global using $ProjectName.Validators;
-global using $ProjectName.Domain.Options;
 global using $ProjectName.DataSource.Options;
 global using Serilog;
 global using Microsoft.AspNetCore.Builder;
@@ -549,10 +546,10 @@ namespace $ProjectName.DataSource.Options
 }
 "@ | Set-Content "src/Infrastructure/DataSource/Options/DataBaseOptions.cs"
 
-# EnvironmentOptions class in Domain
+# EnvironmentOptions class in Infrastructure
 @"
 
-namespace $ProjectName.Domain.Options
+namespace $ProjectName.DataSource.Options
 {
     public class EnvironmentOptions
     {
@@ -560,7 +557,7 @@ namespace $ProjectName.Domain.Options
         public string EnvironmentName { get; set; } 
     }
 }
-"@ | Set-Content "src/Domain/Options/EnvironmentOptions.cs"
+"@ | Set-Content "src/Infrastructure/DataSource/Options/EnvironmentOptions.cs"
 
 # GlobalUsings Api
 @"
@@ -573,7 +570,7 @@ global using Microsoft.OpenApi;
 global using Microsoft.AspNetCore.Mvc;
 global using $ProjectName.WebApi.Configurations;
 global using $ProjectName.WebApi.Middleware;
-global using $ProjectName.Domain.Options;
+global using $ProjectName.DataSource.Options;
 
 "@ | Set-Content "src/Presentation/Api/GlobalUsings.cs"
 
@@ -976,6 +973,12 @@ Inversión de Dependencias (DIP)**:
    `Infrastructure/Repositories/OrderRepository`.
 3. En el arranque (composición) se inyecta la implementación concreta.
 
+> **Regla general**: toda clase con comportamiento que pueda variar o que
+> sea inyectada debe declarar su interfaz en la capa interna para cumplir
+> con la Inversión de Dependencias. La única excepción común son los
+> validadores de FluentValidation, que son clases concretas autocontenidas
+> y no requieren interfaz propia.
+
 Así, en tiempo de compilación las dependencias apuntan hacia adentro,
 aunque en tiempo de ejecución el flujo de control cruce hacia afuera.
 
@@ -1003,11 +1006,10 @@ aunque en tiempo de ejecución el flujo de control cruce hacia afuera.
     /Entities                     <-- Entidades de dominio
     /ValueObjects                 <-- Objetos de valor
     /Enums
-    /Options                          Options tipados de dominio
     /Interfaces                   <-- Interfaces de dominio (puertos)
   /Infrastructure
     /DataSource                     <-- Persistencia (EF Core, repositorios)
-      /Options                          Cadenas de conexión, opciones de BD
+      /Options                          Opciones tipadas de infraestructura (BD, entorno, caché, etc.)
 /tests
   /UnitTests                        <-- Pruebas unitarias (xUnit v3)
 ```
@@ -1085,6 +1087,16 @@ Reglas prácticas de esta ruta:
   un puerto.
 - Interfaces "de repositorio" definidas en Infrastructure en lugar de en
   Domain/Application (rompe la inversión).
+- **Repositorios genéricos** (`IRepository<T>`, `GenericRepository<T>`): cada
+  agregado expone su propio puerto (`IOrderRepository`) e implementación
+  (`OrderRepository`). Un repositorio genérico filtra el comportamiento
+  específico del dominio y suele arrastrar dependencias técnicas al interior
+  de las capas.
+- **Clases concretas sin interfaz** (excepto validadores): cada servicio,
+  repositorio o adaptador debe declarar su interfaz en la capa interna
+  correspondiente para cumplir con la Inversión de Dependencias. Los
+  validadores de FluentValidation son la excepción: son clases concretas
+  autocontenidas que no requieren interfaz propia.
 
 ---
 
