@@ -63,9 +63,6 @@ New-Item -ItemType Directory -Path "tests"
 # API
 dotnet new web -n "$ProjectName.WebApi" -o "src/Presentation/Api"
 
-# Application
-dotnet new classlib -n "$ProjectName.UseCases" -o "src/Application/UseCases"
-
 # Application sub-projects (separate projects)
 dotnet new classlib -n "$ProjectName.Commands" -o "src/Application/Commands"
 dotnet new classlib -n "$ProjectName.Models" -o "src/Application/Models"
@@ -100,7 +97,6 @@ if ($LASTEXITCODE -ne 0 -or -not (Test-Path "tests/UnitTests")) {
 }
 
 # Remove default Class1.cs files
-Remove-Item "src/Application/UseCases/Class1.cs" -Force -ErrorAction SilentlyContinue
 Remove-Item "src/Application/Commands/Class1.cs" -Force -ErrorAction SilentlyContinue
 Remove-Item "src/Application/Models/Class1.cs" -Force -ErrorAction SilentlyContinue
 Remove-Item "src/Application/Queries/Class1.cs" -Force -ErrorAction SilentlyContinue
@@ -124,7 +120,6 @@ Get-ChildItem -Path 'src','tests' -Recurse -Filter *.csproj | ForEach-Object {
 # =========================
 
 dotnet sln add src/Presentation/Api
-dotnet sln add src/Application/UseCases
 dotnet sln add src/Application/Commands
 dotnet sln add src/Application/Models
 dotnet sln add src/Application/Queries
@@ -140,7 +135,6 @@ dotnet sln add tests/UnitTests
 # =========================
 
 # Application sub-projects depend on Domain
-dotnet add src/Application/UseCases reference src/Domain
 dotnet add src/Application/Commands reference src/Domain
 dotnet add src/Application/Models reference src/Domain
 dotnet add src/Application/Queries reference src/Domain
@@ -152,7 +146,6 @@ dotnet add src/Presentation/Controllers reference src/Application/Commands
 dotnet add src/Presentation/Controllers reference src/Application/Queries
 dotnet add src/Presentation/Controllers reference src/Application/Models
 # IoC depends on all Application projects + Infrastructure + Domain
-dotnet add src/Presentation/IoC reference src/Application/UseCases
 dotnet add src/Presentation/IoC reference src/Application/Commands
 dotnet add src/Presentation/IoC reference src/Application/Models
 dotnet add src/Presentation/IoC reference src/Application/Queries
@@ -168,7 +161,6 @@ dotnet add src/Infrastructure/DataSource reference src/Domain
 dotnet add src/Presentation/Api reference src/Presentation/IoC
 
 # Tests
-dotnet add tests/UnitTests reference src/Application/UseCases
 dotnet add tests/UnitTests reference src/Domain
 
 # =========================
@@ -206,10 +198,6 @@ if (-not ($controllersXml.Project.ItemGroup | Where-Object { $_.FrameworkReferen
     $controllersXml.Project.AppendChild($itemGroup) | Out-Null
     $controllersXml.Save((Resolve-Path $controllersCsproj))
 }
-
-# Application
-dotnet add src/Application/UseCases package Microsoft.Extensions.DependencyInjection.Abstractions
-dotnet add src/Application/UseCases package DependencyInjection.ReflectionExtensions
 
 # IoC
 dotnet add src/Presentation/IoC package Microsoft.Extensions.DependencyInjection
@@ -343,30 +331,6 @@ New-Item -ItemType Directory -Path "src/Presentation/Api/Properties" -Force
 # CREATE BASIC FILES
 # =========================
 
-# DependencyContainer class in Application Project
-@"
-
-namespace $ProjectName.UseCases
-{
-    public static class DependencyContainer
-    {
-        public static IServiceCollection AddUseCases(this IServiceCollection services)
-        {  
-            services.AddCurrentAssembly();
-            return services;
-        }
-    }
-}
-"@ | Set-Content "src/Application/UseCases/DependencyContainer.cs"
-
-# GlobalUsings Application
-@"
-global using System.Reflection;
-global using DevKit.Injection.Extensions;
-global using Microsoft.Extensions.DependencyInjection;
-
-"@ | Set-Content "src/Application/UseCases/GlobalUsings.cs"
-
 # DependencyContainer class in Commands Project
 @"
 
@@ -464,8 +428,7 @@ namespace $ProjectName.IoC
             services.AddJwtServices(options => configuration.GetSection(JwtOptions.SectionKey).Bind(options));
             services.AddRedisCache();
 
-            services.AddUseCases()
-                        .AddCommands()
+            services.AddCommands()
                         .AddQueries()
                         .AddValidators()
                         .AddInfrastructure()
@@ -505,7 +468,6 @@ global using Microsoft.Extensions.DependencyInjection;
 
 # GlobalUsings class in IoC Project
 @"
-global using $ProjectName.UseCases;
 global using $ProjectName.Commands;
 global using $ProjectName.DataSource;
 global using $ProjectName.Queries;
@@ -721,7 +683,6 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG Configuration=Release
 WORKDIR /src
 COPY src/Presentation/Api/$ProjectName.WebApi.csproj src/Presentation/Api/
-COPY src/Application/UseCases/$ProjectName.UseCases.csproj src/Application/UseCases/
 COPY src/Application/Commands/$ProjectName.Commands.csproj src/Application/Commands/
 COPY src/Presentation/Controllers/$ProjectName.Controllers.csproj src/Presentation/Controllers/
 COPY src/Domain/$ProjectName.Domain.csproj src/Domain/
@@ -910,8 +871,10 @@ dependen de nada externo.
 
 Orquesta el dominio para cumplir **reglas de negocio de aplicación**.
 
-- `UseCases/`: casos de uso concretos (p. ej. `CreateOrderUseCase`).
-- `DTOs/`: objetos de transporte de datos entre capas.
+- `Commands/`: comandos que mutan estado (p. ej. `CreateOrderCommand`).
+- `Queries/`: consultas que leen estado (p. ej. `GetOrderByIdQuery`).
+- `Models/`: objetos de transporte de datos entre capas.
+- `Validators/`: reglas de validación (FluentValidation).
 - `Interfaces/`: puertos que la aplicación necesita (p. ej. `IEmailSender`).
 
 Esta capa **no conoce** detalles de infraestructura ni de UI.
@@ -996,7 +959,6 @@ aunque en tiempo de ejecución el flujo de control cruce hacia afuera.
     /IoC                                Composición raíz (Dependency Injection)
     /Controllers                    <-- Adaptadores HTTP (ASP.NET Controllers)
   /Application
-    /UseCases                       <-- Casos de uso (orquestación)
     /Commands                       <-- Comandos (write side)
     /Queries                        <-- Consultas (read side)
     /Models                         <-- DTOs / modelos de aplicación
@@ -1020,7 +982,7 @@ Referencias entre proyectos (en .NET, `dotnet add reference`):
 |-----------------|------------------------------------|
 | Domain          | *(ninguna)*                        |
 | Application     | Domain                             |
-| Infrastructure  | Application, Domain                |
+| Infrastructure  | Domain                             |
 | Presentation    | Application (y Infra sólo para DI) |
 
 ### 4.1 Flujo de una petición
@@ -1037,9 +999,6 @@ Presentation/Api                (routing, middlewares, ProblemDetails)
 Presentation/Controllers        (endpoint que expone el caso de uso)
    │
    ▼
-Application/UseCases            (orquestador del caso de uso)
-   │
-   ▼
 Application/Commands  ─┐        (mutan estado — write side)
 Application/Queries   ─┤        (leen estado — read side)
                        │
@@ -1053,9 +1012,10 @@ Domain                          (entidades, VOs, reglas invariantes)
 Reglas prácticas de esta ruta:
 
 - **Controllers** no llaman directamente a `DataSource`; sólo invocan un
-  `UseCase` (o directamente un `Command`/`Query` si no hay orquestación).
-- **UseCases** orquestan uno o más `Command`/`Query` y aplican políticas
-  transversales (autorización, transacción, telemetría, logging).
+  `Command`/`Query`.
+- **Commands** y **Queries** aplican las reglas de aplicación y, si es
+  necesario, políticas transversales (autorización, transacción, telemetría,
+  logging).
 - **Commands** cambian estado (`Create`, `Update`, `Delete`) y devuelven
   el resultado mínimo necesario.
 - **Queries** sólo leen; nunca mutan estado.
