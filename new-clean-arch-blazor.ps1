@@ -676,63 +676,6 @@ $deployScriptContent = $deployScriptContent.Replace("__PROJECT_DIR__", $projectD
 $deployScriptContent | Set-Content "src/Presentation/Client/deploy.sh"
 
 # =========================
-# VS CODE: Startup config (F5 -> Web)
-# =========================
-Write-Host "Creating .vscode/launch.json and tasks.json (F5 -> $ProjectName.Web)..." -ForegroundColor Yellow
-New-Item -ItemType Directory -Path ".vscode" -Force | Out-Null
-
-@"
-{
-  "version": "0.2.0",
-  "configurations": [
-    {
-      "name": "Launch $ProjectName.Web",
-      "type": "blazorwasm",
-      "request": "launch",
-      "cwd": "`${workspaceFolder}/src/Presentation/Client",
-      "url": "http://localhost:$HttpPort",
-      "preLaunchTask": "build"
-    }
-  ]
-}
-"@ | Set-Content ".vscode/launch.json"
-
-@"
-{
-  "version": "2.0.0",
-  "tasks": [
-    {
-      "label": "build",
-      "command": "dotnet",
-      "type": "process",
-      "args": [
-        "build",
-        "`${workspaceFolder}/src/Presentation/Client/$ProjectName.Web.csproj",
-        "/property:GenerateFullPaths=true",
-        "/consoleloggerparameters:NoSummary"
-      ],
-      "problemMatcher": "`$msCompile",
-      "group": {
-        "kind": "build",
-        "isDefault": true
-      }
-    },
-    {
-      "label": "run",
-      "command": "dotnet",
-      "type": "process",
-      "args": [
-        "run",
-        "--project",
-        "`${workspaceFolder}/src/Presentation/Client/$ProjectName.Web.csproj"
-      ],
-      "problemMatcher": "`$msCompile"
-    }
-  ]
-}
-"@ | Set-Content ".vscode/tasks.json"
-
-# =========================
 # CLEAN ARCHITECTURE DOC (Tío Bob)
 # =========================
 Write-Host "Writing documentation/ArchitectureGuide.md..." -ForegroundColor Yellow
