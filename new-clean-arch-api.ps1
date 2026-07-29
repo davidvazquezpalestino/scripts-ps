@@ -1,6 +1,6 @@
-﻿# =========================================================================
+# =========================================================================
 #  new-clean-arch-api.ps1
-#  Powered by David Vázquez Palestino
+#  Powered by David V�zquez Palestino
 # =========================================================================
 
 param(
@@ -77,16 +77,16 @@ dotnet new classlib -n "$ProjectName.IoC" -o "src/Presentation/IoC"
 dotnet new classlib -n "$ProjectName.Domain" -o "src/Domain"
 
 # Infrastructure
-dotnet new classlib -n "$ProjectName.DataSource" -o "src/Infrastructure/DataSource"
+dotnet new classlib -n "$ProjectName.DataBase" -o "src/Infrastructure/DataBase"
 
 # Tests (xUnit.net v3)
-# Asegurar que la plantilla xunit3 esté disponible (paquete xunit.v3.templates)
+# Asegurar que la plantilla xunit3 est� disponible (paquete xunit.v3.templates)
 $templateList = dotnet new list xunit3 2>&1 | Out-String
 if ($templateList -notmatch "(?m)^\s*xunit3\b") {
     Write-Host "Instalando plantillas de xUnit.net v3 (xunit.v3.templates)..."
     dotnet new install xunit.v3.templates
     if ($LASTEXITCODE -ne 0) {
-        Write-Error "Falló la instalación de xunit.v3.templates. No se puede crear el proyecto de pruebas."
+        Write-Error "Fall� la instalaci�n de xunit.v3.templates. No se puede crear el proyecto de pruebas."
         exit 1
     }
 }
@@ -104,7 +104,7 @@ Remove-Item "src/Presentation/Controllers/Class1.cs" -Force -ErrorAction Silentl
 Remove-Item "src/Presentation/IoC/Class1.cs" -Force -ErrorAction SilentlyContinue
 Remove-Item "src/Domain/Class1.cs" -Force -ErrorAction SilentlyContinue
 Remove-Item "src/Application/Validators/Class1.cs" -Force -ErrorAction SilentlyContinue
-Remove-Item "src/Infrastructure/DataSource/Class1.cs" -Force -ErrorAction SilentlyContinue
+Remove-Item "src/Infrastructure/DataBase/Class1.cs" -Force -ErrorAction SilentlyContinue
 Remove-Item "tests/UnitTests/Class1.cs" -Force -ErrorAction SilentlyContinue
 Remove-Item "tests/UnitTests/UnitTest1.cs" -Force -ErrorAction SilentlyContinue
 
@@ -127,7 +127,7 @@ dotnet sln add src/Application/Validators
 dotnet sln add src/Presentation/Controllers
 dotnet sln add src/Presentation/IoC
 dotnet sln add src/Domain
-dotnet sln add src/Infrastructure/DataSource
+dotnet sln add src/Infrastructure/DataBase
 dotnet sln add tests/UnitTests
 
 # =========================
@@ -151,11 +151,11 @@ dotnet add src/Presentation/IoC reference src/Application/Models
 dotnet add src/Presentation/IoC reference src/Application/Queries
 dotnet add src/Presentation/IoC reference src/Application/Validators
 dotnet add src/Presentation/IoC reference src/Presentation/Controllers
-dotnet add src/Presentation/IoC reference src/Infrastructure/DataSource
+dotnet add src/Presentation/IoC reference src/Infrastructure/DataBase
 dotnet add src/Presentation/IoC reference src/Domain
 
 # Infrastructure depends only on Domain (implements interfaces defined there)
-dotnet add src/Infrastructure/DataSource reference src/Domain
+dotnet add src/Infrastructure/DataBase reference src/Domain
 
 # API depends on IoC
 dotnet add src/Presentation/Api reference src/Presentation/IoC
@@ -211,10 +211,10 @@ dotnet add src/Presentation/IoC package CoreJsonWebToken
 dotnet add src/Presentation/IoC package DevKit.ExecutionEngine.Redis
 
 # Infrastructure
-dotnet add src/Infrastructure/DataSource package Microsoft.EntityFrameworkCore
-dotnet add src/Infrastructure/DataSource package Microsoft.EntityFrameworkCore.SqlServer
-dotnet add src/Infrastructure/DataSource package Microsoft.Extensions.DependencyInjection.Abstractions
-dotnet add src/Infrastructure/DataSource package DependencyInjection.ReflectionExtensions
+dotnet add src/Infrastructure/DataBase package Microsoft.EntityFrameworkCore
+dotnet add src/Infrastructure/DataBase package Microsoft.EntityFrameworkCore.SqlServer
+dotnet add src/Infrastructure/DataBase package Microsoft.Extensions.DependencyInjection.Abstractions
+dotnet add src/Infrastructure/DataBase package DependencyInjection.ReflectionExtensions
 
 # API
 dotnet add src/Presentation/Api package Microsoft.EntityFrameworkCore.Design
@@ -236,7 +236,7 @@ New-Item -ItemType Directory -Path "src/Domain/Entities"
 New-Item -ItemType Directory -Path "src/Domain/ValueObjects"
 New-Item -ItemType Directory -Path "src/Domain/Enums"
 New-Item -ItemType Directory -Path "src/Domain/Interfaces"
-New-Item -ItemType Directory -Path "src/Infrastructure/DataSource/Options" -Force
+New-Item -ItemType Directory -Path "src/Infrastructure/DataBase/Options" -Force
 
 # Keep domain folders visible in Visual Studio Solution Explorer
 "" | Set-Content "src/Domain/Entities/.gitkeep"
@@ -250,7 +250,7 @@ New-Item -ItemType Directory -Path "src/Presentation/Api/Middleware" -Force
 New-Item -ItemType Directory -Path "src/Presentation/Api/Configurations" -Force
 New-Item -ItemType Directory -Path "src/Presentation/Api/Properties" -Force
 
-# launchSettings.json (puertos determinísticos por proyecto para evitar choques)
+# launchSettings.json (puertos determin�sticos por proyecto para evitar choques)
 @"
 {
   "`$schema": "https://json.schemastore.org/launchsettings.json",
@@ -293,7 +293,7 @@ New-Item -ItemType Directory -Path "src/Presentation/Api/Properties" -Force
         "DefaultConnection": "Server=[Server];Database=[Database];User Id=sa;Password=[Password];MultipleActiveResultSets=true;encrypt=false;"
     },
     "JwtOptions": {
-        "SecurityKey": "1234567890ABCDEFGHIJKLMNÑOPQRSTU",
+        "SecurityKey": "1234567890ABCDEFGHIJKLMN�OPQRSTU",
         "ValidIssuer": "empresa",
         "ValidAudience": "empresa",
         "ExpireInMinutes": 1440
@@ -314,7 +314,7 @@ New-Item -ItemType Directory -Path "src/Presentation/Api/Properties" -Force
         "DefaultConnection": "Server=[Server];Database=[Database];User Id=sa;Password=[Password];MultipleActiveResultSets=true;encrypt=false;"
     },
     "JwtOptions": {
-        "SecurityKey": "1234567890ABCDEFGHIJKLMNÑOPQRSTU",
+        "SecurityKey": "1234567890ABCDEFGHIJKLMN�OPQRSTU",
         "ValidIssuer": "empresa",
         "ValidAudience": "empresa",
         "ExpireInMinutes": 1440
@@ -400,7 +400,7 @@ namespace $ProjectName.Validators
 # DependencyContainer class in Infrastructure Project
 @"
 
-namespace $ProjectName.DataSource
+namespace $ProjectName.DataBase
 {
     public static class DependencyContainer
     {
@@ -411,7 +411,7 @@ namespace $ProjectName.DataSource
         }
     }
 }
-"@ | Set-Content "src/Infrastructure/DataSource/DependencyContainer.cs"
+"@ | Set-Content "src/Infrastructure/DataBase/DependencyContainer.cs"
 
 # DependencyContainer class in IoC Project
 @"
@@ -464,15 +464,15 @@ global using System.Reflection;
 global using DevKit.Injection.Extensions;
 global using Microsoft.Extensions.DependencyInjection;
 
-"@ | Set-Content "src/Infrastructure/DataSource/GlobalUsings.cs"
+"@ | Set-Content "src/Infrastructure/DataBase/GlobalUsings.cs"
 
 # GlobalUsings class in IoC Project
 @"
 global using $ProjectName.Commands;
-global using $ProjectName.DataSource;
+global using $ProjectName.DataBase;
 global using $ProjectName.Queries;
 global using $ProjectName.Validators;
-global using $ProjectName.DataSource.Options;
+global using $ProjectName.DataBase.Options;
 global using Serilog;
 global using Microsoft.AspNetCore.Builder;
 global using Microsoft.Extensions.Configuration;
@@ -498,7 +498,7 @@ global using Microsoft.AspNetCore.Http;
 # DataBaseOptions class in Infrastructure
 @"
 
-namespace $ProjectName.DataSource.Options
+namespace $ProjectName.DataBase.Options
 {
     public class DataBaseOptions
     {
@@ -506,12 +506,12 @@ namespace $ProjectName.DataSource.Options
         public string DefaultConnection { get; set; } 
     }
 }
-"@ | Set-Content "src/Infrastructure/DataSource/Options/DataBaseOptions.cs"
+"@ | Set-Content "src/Infrastructure/DataBase/Options/DataBaseOptions.cs"
 
 # EnvironmentOptions class in Infrastructure
 @"
 
-namespace $ProjectName.DataSource.Options
+namespace $ProjectName.DataBase.Options
 {
     public class EnvironmentOptions
     {
@@ -519,7 +519,7 @@ namespace $ProjectName.DataSource.Options
         public string EnvironmentName { get; set; } 
     }
 }
-"@ | Set-Content "src/Infrastructure/DataSource/Options/EnvironmentOptions.cs"
+"@ | Set-Content "src/Infrastructure/DataBase/Options/EnvironmentOptions.cs"
 
 # GlobalUsings Api
 @"
@@ -532,7 +532,7 @@ global using Microsoft.OpenApi;
 global using Microsoft.AspNetCore.Mvc;
 global using $ProjectName.WebApi.Configurations;
 global using $ProjectName.WebApi.Middleware;
-global using $ProjectName.DataSource.Options;
+global using $ProjectName.DataBase.Options;
 
 "@ | Set-Content "src/Presentation/Api/GlobalUsings.cs"
 
@@ -617,18 +617,18 @@ namespace $ProjectName.WebApi.Middleware
             }
             catch (Exception exception)
             {
-                // Configurar información base de la respuesta
+                // Configurar informaci�n base de la respuesta
                 HttpResponse response = context.Response;
-                // Si la respuesta ya comenzó, no es seguro modificar headers/body
+                // Si la respuesta ya comenz�, no es seguro modificar headers/body
                 if (response.HasStarted)
                 {
-                    logger.Error(exception, "La respuesta ya comenzó. El error no se devuelve al cliente. {TraceId}", context.TraceIdentifier);
-                    throw; // Permitir que el servidor termine la conexión según corresponda
+                    logger.Error(exception, "La respuesta ya comenz�. El error no se devuelve al cliente. {TraceId}", context.TraceIdentifier);
+                    throw; // Permitir que el servidor termine la conexi�n seg�n corresponda
                 }
 
                 response.ContentType = "application/json";
 
-                // Mapear tipos de excepciones conocidas a códigos de estado apropiados
+                // Mapear tipos de excepciones conocidas a c�digos de estado apropiados
                 int statusCode = exception switch
                 {
                     UnauthorizedAccessException => StatusCodes.Status401Unauthorized,
@@ -638,7 +638,7 @@ namespace $ProjectName.WebApi.Middleware
                 };
 
                 // Evitar exponer detalles sensibles/internos en respuestas al cliente
-                // Mantener la información detallada solo en los logs
+                // Mantener la informaci�n detallada solo en los logs
                 ProblemDetails problemDetails = new ProblemDetails
                 {
                     Status = statusCode,
@@ -653,7 +653,7 @@ namespace $ProjectName.WebApi.Middleware
                     Detail = exception.Message,
                     Instance = $"{context.Request.Path} {context.Request.Method} "
                 };
-                // Registrar la excepción completa con contexto estructurado; NO incluir configuración sensible en la respuesta
+                // Registrar la excepci�n completa con contexto estructurado; NO incluir configuraci�n sensible en la respuesta
                 logger.Error(exception, "Error occurred with details {@ProblemDetails}", problemDetails);
 
                 response.StatusCode = statusCode;
@@ -686,7 +686,7 @@ COPY src/Presentation/Api/$ProjectName.WebApi.csproj src/Presentation/Api/
 COPY src/Application/Commands/$ProjectName.Commands.csproj src/Application/Commands/
 COPY src/Presentation/Controllers/$ProjectName.Controllers.csproj src/Presentation/Controllers/
 COPY src/Domain/$ProjectName.Domain.csproj src/Domain/
-COPY src/Infrastructure/DataSource/$ProjectName.DataSource.csproj src/Infrastructure/DataSource/
+COPY src/Infrastructure/DataBase/$ProjectName.DataBase.csproj src/Infrastructure/DataBase/
 COPY src/Presentation/IoC/$ProjectName.IoC.csproj src/Presentation/IoC/
 COPY src/Application/Models/$ProjectName.Models.csproj src/Application/Models/
 COPY src/Application/Queries/$ProjectName.Queries.csproj src/Application/Queries/
@@ -809,11 +809,11 @@ New-Item -ItemType Directory -Path "documentation" -Force | Out-Null
 > .\new-clean-arch-api.ps1 -ProjectName <NombreProyecto>
 > ```
 
-# Clean Architecture (Arquitectura Limpia) — Tío Bob
+# Clean Architecture (Arquitectura Limpia) – Tío Bob
 
 Este documento resume las reglas de la **Arquitectura Limpia** propuestas por
 Robert C. Martin ("Uncle Bob") en su libro *Clean Architecture: A Craftsman's
-Guide to Software Structure and Design*. La estructura de esta solución sigue
+La estructura de esta solución sigue
 estas reglas.
 
 ---
@@ -826,7 +826,7 @@ Una arquitectura limpia busca producir sistemas que sean:
   restricción arquitectónica.
 - **Testeables**: las reglas de negocio se pueden probar sin UI, base de
   datos, servidor web ni ningún elemento externo.
-- **Independientes de la UI**: la UI puede cambiar (web, consola, móvil) sin
+  afectar al resto del sistema.
   afectar al resto del sistema.
 - **Independientes de la base de datos**: se puede cambiar SQL Server por
   Mongo, Postgres, un archivo, etc.
@@ -841,18 +841,18 @@ La arquitectura se organiza en **círculos concéntricos**. Cuanto más al
 centro, más general y estable; cuanto más afuera, más concreto y volátil.
 
 ```
-        ┌───────────────────────────────────────────┐
-        │            Presentation / UI              │  ← Frameworks & Drivers
-        │  ┌─────────────────────────────────────┐  │
-        │  │          Infrastructure             │  │  ← Interface Adapters
-        │  │  ┌───────────────────────────────┐  │  │
-        │  │  │        Application            │  │  │  ← Use Cases
-        │  │  │  ┌─────────────────────────┐  │  │  │
-        │  │  │  │        Domain           │  │  │  │  ← Entities
-        │  │  │  └─────────────────────────┘  │  │  │
-        │  │  └───────────────────────────────┘  │  │
-        │  └─────────────────────────────────────┘  │
-        └───────────────────────────────────────────┘
+        +-------------------------------------------+
+        �            Presentation / UI              �  ? Frameworks & Drivers
+        �  +-------------------------------------+  �
+        �  �          Infrastructure             �  �  ? Interface Adapters
+        �  �  +-------------------------------+  �  �
+        �  �  �        Application            �  �  �  ? Use Cases
+        �  �  �  +-------------------------+  �  �  �
+        �  �  �  �        Domain           �  �  �  �  ? Entities
+        �  �  �  +-------------------------+  �  �  �
+        �  �  +-------------------------------+  �  �
+        �  +-------------------------------------+  �
+        +-------------------------------------------+
 ```
 
 ### 2.1 Domain (Entidades)
@@ -863,7 +863,7 @@ dependen de nada externo.
 - `Entities/`: objetos con identidad y comportamiento (p. ej. `Order`, `User`).
 - `ValueObjects/`: objetos inmutables definidos por sus valores
   (p. ej. `Money`, `Email`).
-- `Services/`: lógica de dominio que no encaja naturalmente en una entidad.
+  lógica de dominio que no encaja naturalmente en una entidad.
 - `Interfaces/`: **puertos** que expresan lo que el dominio necesita
   (p. ej. `IOrderRepository`). La implementación vive en capas externas.
 
@@ -895,11 +895,11 @@ Punto de entrada al sistema.
 
 - `Controllers/`: endpoints Web API, controladores MVC, handlers.
 - `Views/`: vistas Razor, Blazor, plantillas.
-- `Models/`: view-models específicos de la UI.
+  view-models específicos de la UI.
 
 ---
 
-## 3. La Regla de la Dependencia (⚠️ regla clave)
+## 3. La Regla de la Dependencia (?? regla clave)
 
 > **Las dependencias del código fuente sólo pueden apuntar hacia adentro.**
 
@@ -913,16 +913,16 @@ Esto significa:
 Aplicado a las carpetas:
 
 ```
-Presentation  ──►  Application  ──►  Domain
-Infrastructure ─►  Application  ──►  Domain
-Infrastructure ─►  Domain
+Presentation  --?  Application  --?  Domain
+Infrastructure -?  Application  --?  Domain
+Infrastructure -?  Domain
 ```
 
 Nunca al revés:
 
-- ❌ `Domain` **no** referencia `Application`, `Infrastructure` ni `Presentation`.
-- ❌ `Application` **no** referencia `Infrastructure` ni `Presentation`.
-- ✔ `Infrastructure` y `Presentation` sí pueden referenciar capas internas.
+- ? `Domain` **no** referencia `Application`, `Infrastructure` ni `Presentation`.
+- ? `Application` **no** referencia `Infrastructure` ni `Presentation`.
+- ? `Infrastructure` y `Presentation` sí pueden referenciar capas internas.
 
 ### 3.1 ¿Cómo se invierte la dependencia?
 
@@ -970,7 +970,7 @@ aunque en tiempo de ejecución el flujo de control cruce hacia afuera.
     /Enums
     /Interfaces                   <-- Interfaces de dominio (puertos)
   /Infrastructure
-    /DataSource                     <-- Persistencia (EF Core, repositorios)
+    /DataBase                     <-- Persistencia (EF Core, repositorios)
       /Options                          Opciones tipadas de infraestructura (BD, entorno, caché, etc.)
 /tests
   /UnitTests                        <-- Pruebas unitarias (xUnit v3)
@@ -983,7 +983,7 @@ Referencias entre proyectos (en .NET, `dotnet add reference`):
 | Domain          | *(ninguna)*                        |
 | Application     | Domain                             |
 | Infrastructure  | Domain                             |
-| Presentation    | Application (y Infra sólo para DI) |
+| Presentation    | Application (y Infra solo para DI) |
 
 ### 4.1 Flujo de una petición
 
@@ -991,35 +991,35 @@ En esta API una petición HTTP viaja de afuera hacia adentro y regresa:
 
 ```
 Cliente HTTP
-   │
-   ▼
+   �
+   ?
 Presentation/Api                (routing, middlewares, ProblemDetails)
-   │
-   ▼
+   �
+   ?
 Presentation/Controllers        (endpoint que expone el caso de uso)
-   │
-   ▼
-Application/Commands  ─┐        (mutan estado — write side)
-Application/Queries   ─┤        (leen estado — read side)
-                       │
-                       ▼
-Infrastructure/DataSource       (EF Core, repos, servicios externos)
-   │
-   ▼
+   �
+   ?
+Application/Commands  -+        (mutan estado � write side)
+Application/Queries   -�        (leen estado � read side)
+                       �
+                       ?
+Infrastructure/DataBase       (EF Core, repos, servicios externos)
+   �
+   ?
 Domain                          (entidades, VOs, reglas invariantes)
 ```
 
 Reglas prácticas de esta ruta:
 
-- **Controllers** no llaman directamente a `DataSource`; sólo invocan un
+-- **Controllers** no llaman directamente a `DataBase`; sólo invocan un
   `Command`/`Query`.
-- **Commands** y **Queries** aplican las reglas de aplicación y, si es
+-- **Commands** y **Queries** aplican las reglas de aplicación y, si es
   necesario, políticas transversales (autorización, transacción, telemetría,
   logging).
 - **Commands** cambian estado (`Create`, `Update`, `Delete`) y devuelven
   el resultado mínimo necesario.
-- **Queries** sólo leen; nunca mutan estado.
-- **DataSource / Adapters externos** son los únicos que hablan con la BD,
+-- **Queries** sólo leen; nunca mutan estado.
+-- **DataBase / Adapters externos** son los únicos que hablan con la BD,
   APIs externas, colas o caché.
 - El flujo de retorno recorre la ruta en sentido inverso, mapeando a DTOs
   (`Application/Models`) antes de salir por el `Controller`.
@@ -1062,10 +1062,10 @@ Reglas prácticas de esta ruta:
 
 ## 7. Lecturas recomendadas
 
-- Robert C. Martin — *Clean Architecture* (2017).
-- Alistair Cockburn — *Hexagonal Architecture* (Ports & Adapters).
-- Jeffrey Palermo — *Onion Architecture*.
-- Vaughn Vernon — *Implementing Domain-Driven Design*.
+- Robert C. Martin – *Clean Architecture* (2017).
+- Alistair Cockburn – *Hexagonal Architecture* (Ports & Adapters).
+- Jeffrey Palermo – *Onion Architecture*.
+- Vaughn Vernon – *Implementing Domain-Driven Design*.
 
 ---
 
@@ -1073,66 +1073,66 @@ Reglas prácticas de esta ruta:
 
 Aunque la solución está partida por **capas**, el trabajo diario se
 organiza por **features**: cada caso de uso atraviesa varias capas y
-todas sus piezas viven en carpetas **con el mismo nombre**.
+todas sus piezas viven en carpetas **con el mismo nombre** (con la misma feature).
 
 ```
 FEATURE: CreateOrder
-─────────────────────────────────────────────────────────────
+-------------------------------------------------------------
 
 /src
-├── Domain
-│   ├── Entities/Orders/
-│   │   └── Order.cs
-│   └── Interfaces/Orders/
-│       └── IOrderRepository.cs         ← puerto
-│
-├── Application
-│   ├── Commands/Orders/CreateOrder/
-│   │   ├── CreateOrderCommand.cs       ← input
-│   │   ├── CreateOrderHandler.cs       ← lógica
-│   │   └── CreateOrderResult.cs        ← output
-│   ├── Validators/Orders/
-│   │   └── CreateOrderValidator.cs
-│   └── Models/Orders/
-│       └── OrderDto.cs
-│
-├── Presentation
-│   └── Controllers/Orders/
-│       └── OrdersController.cs         ← endpoint
-├── Infrastructure
-│   └── DataSource/Orders/
-│       └── OrderRepository.cs          ← implementa el puerto
-│
-└── tests/UnitTests/Orders/CreateOrder/
-    ├── CreateOrderHandlerTests.cs
-    └── CreateOrderValidatorTests.cs
++-- Domain
+�   +-- Entities/Orders/
+�   �   +-- Order.cs
+�   +-- Interfaces/Orders/
+�       +-- IOrderRepository.cs         ? puerto
+�
++-- Application
+�   +-- Commands/Orders/CreateOrder/
+�   �   +-- CreateOrderCommand.cs       ? input
+�   �   +-- CreateOrderHandler.cs       ? lógica
+�   �   +-- CreateOrderResult.cs        ? output
+�   +-- Validators/Orders/
+�   �   +-- CreateOrderValidator.cs
+�   +-- Models/Orders/
+�       +-- OrderDto.cs
+�
++-- Presentation
+�   +-- Controllers/Orders/
+�       +-- OrdersController.cs         ? endpoint
++-- Infrastructure
+�   +-- DataBase/Orders/
+�       +-- OrderRepository.cs          ? implementa el puerto
+�
++-- tests/UnitTests/Orders/CreateOrder/
+    +-- CreateOrderHandlerTests.cs
+    +-- CreateOrderValidatorTests.cs
 
 
 FLUJO DE LA FEATURE (una petición HTTP)
-─────────────────────────────────────────────────────────────
+-------------------------------------------------------------
 
    HTTP POST /api/orders
-          │
-          ▼
+          �
+          ?
    OrdersController        (Presentation/Controllers/Orders)
-          │
-          ▼
+          �
+          ?
    CreateOrderHandler      (Application/Commands/Orders/CreateOrder)
-          │      ▲
-          │      │ valida
-          │  CreateOrderValidator
-          ▼
-   IOrderRepository        (Domain/Interfaces/Orders)  ── puerto
-          │
-          ▼
-   OrderRepository         (Infrastructure/DataSource/Orders)
-          │
-          ▼
+          �      ?
+          �      � valida
+          �  CreateOrderValidator
+          ?
+   IOrderRepository        (Domain/Interfaces/Orders)  -- puerto
+          �
+          ?
+   OrderRepository         (Infrastructure/DataBase/Orders)
+          �
+          ?
    Order                   (Domain/Entities/Orders)
 
 
 REGLA DE ORO
-─────────────────────────────────────────────────────────────
+-------------------------------------------------------------
   Toda pieza de una feature vive en carpetas con el MISMO nombre
   (aquí: "Orders" + "CreateOrder"). Si tienes que buscar por
   toda la solución para encontrarla, la feature está mal ubicada.
