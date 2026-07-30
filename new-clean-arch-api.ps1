@@ -1071,6 +1071,11 @@ Reglas prácticas de esta ruta:
 
 ## 8. Features (organización del día a día)
 
+> **Nota:** no se crea un folder físico llamado `Features` a nivel de
+> la solución. La organización por feature es **lógica**: cada caso de uso
+> se representa como subcarpetas con el mismo nombre dentro de cada capa
+> o proyecto.
+
 Aunque la solución está partida por **capas**, el trabajo diario se
 organiza por **features**: cada caso de uso atraviesa varias capas y
 todas sus piezas viven en carpetas **con el mismo nombre** (con la misma feature).
