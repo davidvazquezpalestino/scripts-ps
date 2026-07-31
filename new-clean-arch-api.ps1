@@ -803,11 +803,6 @@ $deployScriptContent | Set-Content "src/Presentation/Api/deploy.sh"
 Write-Host "Writing documentation/ArchitectureGuide.md..."
 New-Item -ItemType Directory -Path "documentation" -Force | Out-Null
 @'
-> Solución generada con el script `new-clean-arch-api.ps1` desde PowerShell:
->
-> ```powershell
-> .\new-clean-arch-api.ps1 -ProjectName <NombreProyecto>
-> ```
 
 # Clean Architecture (Arquitectura Limpia) – Tío Bob
 

@@ -1,4 +1,4 @@
-﻿# =========================================================================
+# =========================================================================
 #  new-clean-arch-blazor.ps1
 #  Powered by David Vázquez Palestino
 # =========================================================================
@@ -678,7 +678,7 @@ $deployScriptContent | Set-Content "src/Presentation/Client/deploy.sh"
 # =========================
 # CLEAN ARCHITECTURE DOC (Tío Bob)
 # =========================
-Write-Host "Writing documentation/ArchitectureGuide.md..." -ForegroundColor Yellow
+Write-Host "Writing documentation/architecture-guide.md..." -ForegroundColor Yellow
 New-Item -ItemType Directory -Path "documentation" -Force | Out-Null
 @'
 > Solución generada con el script `new-clean-arch-blazor.ps1` desde PowerShell:
@@ -1003,6 +1003,7 @@ REGLA DE ORO
   Toda pieza de una feature vive en carpetas con el MISMO nombre
   (aquí: "Orders" + "CreateOrder"). Si tienes que buscar por
   toda la solución para encontrarla, la feature está mal ubicada.
+```
 
 ---
 
@@ -1016,9 +1017,9 @@ REGLA DE ORO
 ```
 '@ | Set-Variable -Name ArchitectureMd
 [System.IO.File]::WriteAllText(
-    (Join-Path (Get-Location) 'documentation/ArchitectureGuide.md'),
+    (Join-Path (Get-Location) 'documentation/architecture-guide.md'),
     $ArchitectureMd,
-    (New-Object System.Text.UTF8Encoding($true))
+    (New-Object System.Text.UTF8Encoding($false))
 )
 
 # =========================
@@ -1296,7 +1297,7 @@ Recomendaciones para esta solución (Blazor WebAssembly + Bootstrap):
 [System.IO.File]::WriteAllText(
     (Join-Path (Get-Location) 'documentation/WCAG.md'),
     $WcagMd,
-    (New-Object System.Text.UTF8Encoding($true))
+    (New-Object System.Text.UTF8Encoding($false))
 )
 
 # Register documentation folder as a Solution Folder in the .slnx file
@@ -1310,7 +1311,7 @@ if (Test-Path $slnxFile) {
         $folder.SetAttribute('Name', '/documentation/')
         [void]$root.AppendChild($folder)
     }
-    foreach ($docPath in @('documentation/ArchitectureGuide.md', 'documentation/WCAG.md')) {
+    foreach ($docPath in @('documentation/architecture-guide.md', 'documentation/WCAG.md')) {
         $hasFile = @($folder.File) | Where-Object { $_ -and $_.Path -eq $docPath } | Select-Object -First 1
         if (-not $hasFile) {
             $file = $slnx.CreateElement('File')
