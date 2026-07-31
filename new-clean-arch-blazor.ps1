@@ -188,6 +188,9 @@ New-Item -ItemType Directory -Path "src/Domain/Enums" -Force | Out-Null
 New-Item -ItemType Directory -Path "src/Presentation/Views/Layout" -Force | Out-Null
 New-Item -ItemType Directory -Path "src/Presentation/Views/Pages" -Force | Out-Null
 New-Item -ItemType Directory -Path "src/Infrastructure/WebApi/Options" -Force | Out-Null
+New-Item -ItemType Directory -Path "src/Domain/Interfaces/Auth" -Force | Out-Null
+New-Item -ItemType Directory -Path "src/Infrastructure/WebApi/Auth" -Force | Out-Null
+New-Item -ItemType Directory -Path "src/Application/ViewModels/Auth" -Force | Out-Null
 
 Write-Host "Adding projects to solution..." -ForegroundColor Yellow
 dotnet sln add src/Presentation/Client
@@ -208,6 +211,7 @@ dotnet add src/Presentation/IoC reference src/Domain
 dotnet add src/Presentation/IoC reference src/Infrastructure/WebApi
 dotnet add src/Presentation/IoC reference src/Application/Validators
 dotnet add src/Presentation/IoC reference src/Presentation/Views
+dotnet add src/Presentation/Views reference src/Application/ViewModels
 dotnet add src/Presentation/Client reference src/Presentation/IoC
 dotnet add src/Presentation/Client reference src/Presentation/Views
 dotnet add src/Presentation/Views reference src/Domain
@@ -237,6 +241,7 @@ Write-Host "Creating GlobalUsings files..." -ForegroundColor Yellow
 global using DevKit.Injection.Extensions;
 global using Microsoft.Extensions.DependencyInjection;
 global using System.Reflection;
+global using $ProjectName.Domain.Interfaces.Auth;
 
 "@ | Set-Content "src/Application/ViewModels/GlobalUsings.cs"
 
@@ -320,10 +325,12 @@ namespace $ProjectName.WebApi.Options
 
 # Infrastructure GlobalUsings
 @"
+global using System.Net.Http.Json;
 global using System.Reflection;
 global using DevKit.Injection.Extensions;
 global using Microsoft.Extensions.DependencyInjection;
 global using $ProjectName.WebApi.Options;
+global using $ProjectName.Domain.Interfaces.Auth;
 "@ | Set-Content "src/Infrastructure/WebApi/GlobalUsings.cs"
 
 # Validators GlobalUsings
@@ -366,6 +373,9 @@ global using Xunit;
 WebAssemblyHostBuilder builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
+
+var apiBaseUrl = builder.Configuration["ApiOptions:BaseUrl"] ?? builder.HostEnvironment.BaseAddress;
+builder.Services.AddScoped(_ => new HttpClient { BaseAddress = new Uri(apiBaseUrl) });
 
 builder.Services.AddIoC(builder.Configuration);
 
@@ -422,6 +432,203 @@ Remove-Item "src/Presentation/Client/App.razor" -Force -ErrorAction SilentlyCont
 
 "@ | Set-Content "src/Presentation/Views/Pages/Index.razor"
 
+# LoginRequest in Application/ViewModels/Auth
+@"
+namespace $ProjectName.ViewModels.Auth
+{
+    public class LoginRequest
+    {
+        public string UserEmail { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+    }
+}
+"@ | Set-Content "src/Application/ViewModels/Auth/LoginRequest.cs"
+
+# IAuthService in Domain
+@"
+namespace $ProjectName.Domain.Interfaces.Auth
+{
+    public interface IAuthService
+    {
+        Task<bool> LoginAsync(string userEmail, string password, CancellationToken cancellationToken = default);
+    }
+}
+"@ | Set-Content "src/Domain/Interfaces/Auth/IAuthService.cs"
+
+# AuthService in Infrastructure/WebApi
+@"
+namespace $ProjectName.WebApi.Auth
+{
+    public class AuthService : IAuthService
+    {
+        private readonly HttpClient _httpClient;
+
+        public AuthService(HttpClient httpClient)
+        {
+            _httpClient = httpClient;
+        }
+
+        public async Task<bool> LoginAsync(string userEmail, string password, CancellationToken cancellationToken = default)
+        {
+            // TODO: Implementar llamada real a la API
+            // var response = await _httpClient.PostAsJsonAsync("api/auth/login", new { userEmail, password }, cancellationToken);
+            // response.EnsureSuccessStatusCode();
+            return true;
+        }
+    }
+}
+"@ | Set-Content "src/Infrastructure/WebApi/Auth/AuthService.cs"
+
+# ILoginViewModel in Application/ViewModels/Auth
+@"
+namespace $ProjectName.ViewModels.Auth
+{
+    public interface ILoginViewModel
+    {
+        LoginRequest Request { get; set; }
+        bool IsLoading { get; set; }
+        string? ErrorMessage { get; set; }
+
+        Task SubmitAsync();
+    }
+}
+"@ | Set-Content "src/Application/ViewModels/Auth/ILoginViewModel.cs"
+
+# LoginViewModel in Application/ViewModels/Auth
+@"
+namespace $ProjectName.ViewModels.Auth
+{
+    public class LoginViewModel : ILoginViewModel
+    {
+        private readonly IAuthService _authService;
+
+        public LoginViewModel(IAuthService authService)
+        {
+            _authService = authService;
+        }
+
+        public LoginRequest Request { get; set; } = new();
+        public bool IsLoading { get; set; }
+        public string? ErrorMessage { get; set; }
+
+        public async Task SubmitAsync()
+        {
+            IsLoading = true;
+            ErrorMessage = null;
+
+            try
+            {
+                await _authService.LoginAsync(Request.UserEmail, Request.Password);
+            }
+            catch (Exception ex)
+            {
+                ErrorMessage = ex.Message;
+            }
+            finally
+            {
+                IsLoading = false;
+            }
+        }
+    }
+}
+"@ | Set-Content "src/Application/ViewModels/Auth/LoginViewModel.cs"
+
+# Login.razor in Views/Pages
+@'
+@page "/login"
+@inject ILoginViewModel ViewModel
+
+<PageTitle>Iniciar sesión</PageTitle>
+
+<div class="login-page d-flex flex-column justify-content-center align-items-center w-100 pt-4">
+    <div class="card shadow-sm border-0" style="max-width: 420px; width: 100%;">
+        <div class="card-body p-4">
+            <div class="text-center mb-4">
+                <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-primary bg-opacity-10 text-primary mb-2"
+                      style="width: 56px; height: 56px;">
+                    <i class="bi bi-person-lock fs-3" aria-hidden="true"></i>
+                </span>
+                <h1 class="h4 mb-0">Iniciar sesión</h1>
+                <p class="text-muted small mb-0">Cost</p>
+            </div>
+
+            <EditForm Model="@ViewModel.Request" OnValidSubmit="@SubmitAsync" FormName="loginForm">
+                <div class="mb-3">
+                    <label for="loginEmail" class="form-label">User Email</label>
+                    <InputText id="loginEmail"
+                               type="email"
+                               class="form-control"
+                               placeholder="nombre@empresa.com"
+                               @bind-Value="ViewModel.Request.UserEmail"
+                               disabled="@ViewModel.IsLoading" />
+                </div>
+
+                <div class="mb-3">
+                    <label for="loginPassword" class="form-label">Password</label>
+                    <div class="input-group">
+                        <InputText id="loginPassword"
+                                   type="@LoginPasswordType"
+                                   class="form-control"
+                                   placeholder="••••••••"
+                                   @bind-Value="ViewModel.Request.Password"
+                                   disabled="@ViewModel.IsLoading" />
+                        <button type="button"
+                                class="btn btn-outline-secondary"
+                                @onclick="ToggleLoginPasswordVisibility"
+                                tabindex="-1"
+                                title="@(IsLoginPasswordVisible ? "Ocultar contraseña" : "Mostrar contraseña")"
+                                aria-label="@(IsLoginPasswordVisible ? "Ocultar contraseña" : "Mostrar contraseña")">
+                            <i class="bi @(IsLoginPasswordVisible ? "bi-eye-slash" : "bi-eye")" aria-hidden="true"></i>
+                        </button>
+                    </div>
+                </div>
+
+                @if (!string.IsNullOrEmpty(ViewModel.ErrorMessage))
+                {
+                    <div class="alert alert-danger d-flex align-items-start gap-2 py-2" role="alert">
+                        <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
+                        <span class="small">@ViewModel.ErrorMessage</span>
+                    </div>
+                }
+
+                <button type="submit"
+                        class="btn btn-primary w-100 d-flex justify-content-center align-items-center gap-2"
+                        disabled="@ViewModel.IsLoading">
+                    @if (ViewModel.IsLoading)
+                    {
+                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                        <span>Iniciando sesión...</span>
+                    }
+                    else
+                    {
+                        <span>Iniciar sesión</span>
+                    }
+                </button>
+            </EditForm>
+
+            <div class="mt-3 text-center">
+                <a href="registro" class="text-decoration-none small">¿No tienes cuenta? Regístrate</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private bool IsLoginPasswordVisible { get; set; }
+    private string LoginPasswordType => IsLoginPasswordVisible ? "text" : "password";
+
+    private async Task SubmitAsync()
+    {
+        await ViewModel.SubmitAsync();
+    }
+
+    private void ToggleLoginPasswordVisibility()
+    {
+        IsLoginPasswordVisible = !IsLoginPasswordVisible;
+    }
+}
+'@ | Set-Content "src/Presentation/Views/Pages/Login.razor"
+
 # Client _Imports.razor update
 @"
 @using Microsoft.AspNetCore.Components.Web
@@ -450,24 +657,34 @@ $content | Set-Content "src/Presentation/Client/wwwroot/index.html"
 # Views _Imports.razor
 @"
 @using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.Extensions.DependencyInjection
 @using System.Net.Http.Json
 @using Microsoft.AspNetCore.Components.Web
 @using $ProjectName.Views.Layout
 @using Microsoft.AspNetCore.Components.Routing
+@using $ProjectName.ViewModels.Auth
 
 "@ | Set-Content "src/Presentation/Views/_Imports.razor"
+
+# Views GlobalUsings.cs
+@"
+global using $ProjectName.Domain.Interfaces.Auth;
+global using $ProjectName.ViewModels.Auth;
+"@ | Set-Content "src/Presentation/Views/GlobalUsings.cs"
 
 # App.razor in Views root
 @"
 <Router AppAssembly="@typeof(App).Assembly">
     <Found Context="routeData">
-        <RouteView RouteData="@routeData" />
+        <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
         <FocusOnNavigate RouteData="@routeData" Selector="h1" />
     </Found>
     <NotFound>
         <PageTitle>Not found</PageTitle>
-        <p role="alert">Sorry, there's nothing at this address.</p>
+        <LayoutView Layout="@typeof(MainLayout)">
+            <p role="alert">Sorry, there's nothing at this address.</p>
+        </LayoutView>
     </NotFound>
 </Router>
 
@@ -481,54 +698,71 @@ $content | Set-Content "src/Presentation/Client/wwwroot/index.html"
 # MainLayout.razor in Views/Layout
 @"
 @inherits LayoutComponentBase
-<div class="page">
-    <div class="sidebar">
-        <NavMenu />
-    </div>
+<div class="page d-flex flex-column min-vh-100">
+    <NavMenu />
 
-    <main>
-        <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
-        </div>
-
+    <main class="flex-fill">
         <article class="content px-4">
             @Body
         </article>
     </main>
+
+    <footer class="app-footer px-4 py-2 d-flex flex-wrap align-items-center gap-2">
+        <span>
+            <i class="bi bi-c-circle me-1" aria-hidden="true"></i>
+            @DateTime.Now.Year $ProjectName
+        </span>
+        <span class="ms-auto d-inline-flex align-items-center gap-3">
+            <span class="badge rounded-pill text-bg-light border">
+                <i class="bi bi-tag me-1" aria-hidden="true"></i>v1.0
+            </span>
+        </span>
+    </footer>
 </div>
 
 "@ | Set-Content "src/Presentation/Views/Layout/MainLayout.razor"
 
 # NavMenu.razor in Views/Layout
 @"
-<div class="top-row ps-3 navbar navbar-dark">
+<nav class="navbar navbar-expand-md navbar-dark bg-primary border-bottom">
     <div class="container-fluid">
         <a class="navbar-brand" href="">$ProjectName.Web</a>
-        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
+        <button class="navbar-toggler"
+                type="button"
+                @onclick="ToggleNavMenu"
+                aria-controls="navbarNav"
+                aria-expanded="false"
+                aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>
+        <div class="@NavMenuCssClass navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto">
+                <li class="nav-item">
+                    <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                        <i class="bi bi-house-door-fill me-1" aria-hidden="true"></i> Home
+                    </NavLink>
+                </li>
+                <li class="nav-item">
+                    <NavLink class="nav-link" href="counter">
+                        <i class="bi bi-plus-square-fill me-1" aria-hidden="true"></i> Counter
+                    </NavLink>
+                </li>
+                <li class="nav-item">
+                    <NavLink class="nav-link" href="weather">
+                        <i class="bi bi-list-nested me-1" aria-hidden="true"></i> Weather
+                    </NavLink>
+                </li>
+            </ul>
+            <ul class="navbar-nav">
+                <li class="nav-item">
+                    <NavLink class="nav-link" href="login">
+                        <i class="bi bi-person-lock me-1" aria-hidden="true"></i> Iniciar sesión
+                    </NavLink>
+                </li>
+            </ul>
+        </div>
     </div>
-</div>
-
-<div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
-    <nav class="nav flex-column">
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="counter">
-                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Counter
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="weather">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Weather
-            </NavLink>
-        </div>
-    </nav>
-</div>
+</nav>
 
 @code {
     private bool collapseNavMenu = true;
@@ -1333,12 +1567,12 @@ Write-Host "Solution created successfully!" -ForegroundColor Green
 Set-Location ..
 
 Write-Host "`nProject Structure:" -ForegroundColor White
-Write-Host "  src/Presentation/Client/                   ($ProjectName.Web - Blazor Web Assembly)"           -ForegroundColor Gray
+Write-Host "  src/Presentation/Client/      ($ProjectName.Web - Blazor Web Assembly)"           -ForegroundColor Gray
 Write-Host "  src/Domain/                   ($ProjectName.Domain - Entities, Interfaces)"        -ForegroundColor Gray
 Write-Host "  src/Application/ViewModels/   ($ProjectName.ViewModels - Use Cases, Services)"     -ForegroundColor Gray
 Write-Host "  src/Application/Validators/   ($ProjectName.Validators - FluentValidation)"        -ForegroundColor Gray
 Write-Host "  src/Infrastructure/WebApi/    ($ProjectName.WebApi - External Services, HTTP)"     -ForegroundColor Gray
-Write-Host "  src/Presentation/Views/                    ($ProjectName.Views - Razor Components, Layouts)"    -ForegroundColor Gray
-Write-Host "  src/Presentation/IoC/                      ($ProjectName.IoC - Dependency Injection)"           -ForegroundColor Gray
+Write-Host "  src/Presentation/Views/       ($ProjectName.Views - Razor Components, Layouts)"    -ForegroundColor Gray
+Write-Host "  src/Presentation/IoC/         ($ProjectName.IoC - Dependency Injection)"           -ForegroundColor Gray
 Write-Host ""
 Write-Host "Powered by David Vázquez Palestino" -ForegroundColor DarkGray
