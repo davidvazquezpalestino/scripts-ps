@@ -407,16 +407,7 @@ Remove-Item "src/Presentation/Client/App.razor" -Force -ErrorAction SilentlyCont
 
 <PageTitle>Index — 100% Clean Architecture (o eso dice el README)</PageTitle>
 
-@code {
-    protected override void OnInitialized()
-    {
-        if (!AuthState.IsAuthenticated)
-        {
-            Navigation.NavigateTo("/login");
-        }
-    }
-}
-
+<div class="container-fluid px-3 px-md-4">
 <div class="card shadow-sm my-4">
     <div class="card-header d-flex align-items-center bg-primary text-white">
         <i class="bi bi-hand-thumbs-up-fill me-2"></i>
@@ -447,8 +438,25 @@ Remove-Item "src/Presentation/Client/App.razor" -Force -ErrorAction SilentlyCont
         <small>Generado con <code>new-clean-arch-blazor.ps1</code> · Clean Architecture · Tío Bob approved</small>
     </div>
 </div>
+</div>
 
 "@ | Set-Content "src/Presentation/Views/Pages/Index.razor"
+
+# Index.razor.cs code-behind
+@"
+namespace $ProjectName.Views.Pages;
+
+public partial class Index : ComponentBase
+{
+    protected override void OnInitialized()
+    {
+        if (!AuthState.IsAuthenticated)
+        {
+            Navigation.NavigateTo("/login");
+        }
+    }
+}
+"@ | Set-Content "src/Presentation/Views/Pages/Index.razor.cs"
 
 # LoginRequest in Application/ViewModels/Auth
 @"
@@ -461,6 +469,19 @@ namespace $ProjectName.ViewModels.Auth
     }
 }
 "@ | Set-Content "src/Application/ViewModels/Auth/LoginRequest.cs"
+
+# RegisterRequest in Application/ViewModels/Auth
+@"
+namespace $ProjectName.ViewModels.Auth
+{
+    public class RegisterRequest
+    {
+        public string UserName { get; set; } = string.Empty;
+        public string UserEmail { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+    }
+}
+"@ | Set-Content "src/Application/ViewModels/Auth/RegisterRequest.cs"
 
 # IAuthService in Domain
 @"
@@ -625,7 +646,7 @@ namespace $ProjectName.ViewModels.Auth
 "@ | Set-Content "src/Application/ViewModels/Auth/LoginViewModel.cs"
 
 # Login.razor in Views/Pages
-@'
+@"
 @page "/login"
 @inject ILoginViewModel ViewModel
 @inject IAuthState AuthState
@@ -633,8 +654,8 @@ namespace $ProjectName.ViewModels.Auth
 
 <PageTitle>Iniciar sesión</PageTitle>
 
-<div class="login-page d-flex flex-column justify-content-center align-items-center w-100 pt-6" style="padding-top: 4rem;">
-    <div class="card shadow-sm" style="max-width: 420px; width: 100%; border-width: 2px;">
+<div class="d-flex flex-column justify-content-center align-items-center w-100 px-3 py-4">
+    <div class="card shadow-sm w-100" style="max-width: 420px; background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%); border: 1px solid #0d6efd;">
         <div class="card-body p-4">
             <div class="text-center mb-4">
                 <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-primary bg-opacity-10 text-primary mb-2"
@@ -642,7 +663,7 @@ namespace $ProjectName.ViewModels.Auth
                     <i class="bi bi-person-lock fs-3" aria-hidden="true"></i>
                 </span>
                 <h1 class="h4 mb-0">Iniciar sesión</h1>
-                <p class="text-muted small mb-0">Cost</p>
+                <p class="text-muted small mb-0">$ProjectName</p>
             </div>
 
             <EditForm Model="@ViewModel.Request" OnValidSubmit="@SubmitAsync" FormName="loginForm">
@@ -705,8 +726,14 @@ namespace $ProjectName.ViewModels.Auth
         </div>
     </div>
 </div>
+"@ | Set-Content "src/Presentation/Views/Pages/Login.razor"
 
-@code {
+# Login.razor.cs code-behind
+@"
+namespace $ProjectName.Views.Pages;
+
+public partial class Login : ComponentBase
+{
     private bool IsLoginPasswordVisible { get; set; }
     private string LoginPasswordType => IsLoginPasswordVisible ? "text" : "password";
 
@@ -724,7 +751,178 @@ namespace $ProjectName.ViewModels.Auth
         IsLoginPasswordVisible = !IsLoginPasswordVisible;
     }
 }
-'@ | Set-Content "src/Presentation/Views/Pages/Login.razor"
+"@ | Set-Content "src/Presentation/Views/Pages/Login.razor.cs"
+
+# Register.razor in Views/Pages
+@"
+@page "/registro"
+@inject NavigationManager Navigation
+
+<PageTitle>Registro de usuario</PageTitle>
+
+<div class="d-flex flex-column justify-content-center align-items-center w-100 px-3 py-4">
+    <div class="card shadow-sm w-100" style="max-width: 420px; background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%); border: 1px solid #0d6efd;">
+        <div class="card-body p-4">
+            <div class="text-center mb-4">
+                <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-success bg-opacity-10 text-success mb-2"
+                      style="width: 56px; height: 56px;">
+                    <i class="bi bi-person-plus fs-3" aria-hidden="true"></i>
+                </span>
+                <h1 class="h4 mb-0">Crear cuenta</h1>
+                <p class="text-muted small mb-0">$ProjectName</p>
+            </div>
+
+            <EditForm Model="@RegisterRequest" OnValidSubmit="@SubmitAsync" FormName="registerForm">
+                <div class="mb-3">
+                    <label for="registerName" class="form-label">Nombre</label>
+                    <InputText id="registerName"
+                               type="text"
+                               class="form-control"
+                               placeholder="Tu nombre"
+                               @bind-Value="RegisterRequest.UserName"
+                               disabled="@IsLoading" />
+                </div>
+
+                <div class="mb-3">
+                    <label for="registerEmail" class="form-label">Correo electrónico</label>
+                    <InputText id="registerEmail"
+                               type="email"
+                               class="form-control"
+                               placeholder="nombre@empresa.com"
+                               @bind-Value="RegisterRequest.UserEmail"
+                               disabled="@IsLoading" />
+                </div>
+
+                <div class="mb-3">
+                    <label for="registerPassword" class="form-label">Contraseña</label>
+                    <div class="input-group">
+                        <InputText id="registerPassword"
+                                   type="@RegisterPasswordType"
+                                   class="form-control"
+                                   placeholder="••••••••"
+                                   @bind-Value="RegisterRequest.Password"
+                                   disabled="@IsLoading" />
+                        <button type="button"
+                                class="btn btn-outline-secondary"
+                                @onclick="ToggleRegisterPasswordVisibility"
+                                tabindex="-1"
+                                title="@(IsRegisterPasswordVisible ? "Ocultar contraseña" : "Mostrar contraseña")"
+                                aria-label="@(IsRegisterPasswordVisible ? "Ocultar contraseña" : "Mostrar contraseña")">
+                            <i class="bi @(IsRegisterPasswordVisible ? "bi-eye-slash" : "bi-eye")" aria-hidden="true"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="registerConfirmPassword" class="form-label">Confirmar contraseña</label>
+                    <div class="input-group">
+                        <InputText id="registerConfirmPassword"
+                                   type="@ConfirmPasswordType"
+                                   class="form-control"
+                                   placeholder="••••••••"
+                                   @bind-Value="ConfirmPassword"
+                                   disabled="@IsLoading" />
+                        <button type="button"
+                                class="btn btn-outline-secondary"
+                                @onclick="ToggleConfirmPasswordVisibility"
+                                tabindex="-1"
+                                title="@(IsConfirmPasswordVisible ? "Ocultar contraseña" : "Mostrar contraseña")"
+                                aria-label="@(IsConfirmPasswordVisible ? "Ocultar contraseña" : "Mostrar contraseña")">
+                            <i class="bi @(IsConfirmPasswordVisible ? "bi-eye-slash" : "bi-eye")" aria-hidden="true"></i>
+                        </button>
+                    </div>
+                </div>
+
+                @if (!string.IsNullOrEmpty(Message))
+                {
+                    <div class="alert @(IsSuccess ? "alert-success" : "alert-danger") d-flex align-items-start gap-2 py-2" role="alert">
+                        <i class="bi @(IsSuccess ? "bi-check-circle-fill" : "bi-exclamation-triangle-fill")" aria-hidden="true"></i>
+                        <span class="small">@Message</span>
+                    </div>
+                }
+
+                <button type="submit"
+                        class="btn btn-success w-100 d-flex justify-content-center align-items-center gap-2"
+                        disabled="@IsLoading">
+                    @if (IsLoading)
+                    {
+                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                        <span>Registrando...</span>
+                    }
+                    else
+                    {
+                        <span>Registrarse</span>
+                    }
+                </button>
+            </EditForm>
+
+            <div class="mt-3 text-center">
+                <a href="login" class="text-decoration-none small">¿Ya tienes cuenta? Inicia sesión</a>
+            </div>
+        </div>
+    </div>
+</div>
+"@ | Set-Content "src/Presentation/Views/Pages/Register.razor"
+
+# Register.razor.cs code-behind
+@"
+namespace $ProjectName.Views.Pages;
+
+public partial class Register : ComponentBase
+{
+    private RegisterRequest RegisterRequest { get; set; } = new();
+    private string ConfirmPassword { get; set; } = string.Empty;
+    private bool IsLoading { get; set; }
+    private bool IsSuccess { get; set; }
+    private string? Message { get; set; }
+
+    private bool IsRegisterPasswordVisible { get; set; }
+    private string RegisterPasswordType => IsRegisterPasswordVisible ? "text" : "password";
+
+    private bool IsConfirmPasswordVisible { get; set; }
+    private string ConfirmPasswordType => IsConfirmPasswordVisible ? "text" : "password";
+
+    private async Task SubmitAsync()
+    {
+        IsLoading = true;
+        Message = null;
+        IsSuccess = false;
+
+        try
+        {
+            if (RegisterRequest.Password != ConfirmPassword)
+            {
+                Message = "Las contraseñas no coinciden.";
+                return;
+            }
+
+            // TODO: Llamar al servicio de registro real
+            await Task.Delay(500);
+            IsSuccess = true;
+            Message = "Registro exitoso. Redirigiendo al inicio de sesión...";
+            Navigation.NavigateTo("/login");
+        }
+        catch (Exception ex)
+        {
+            Message = ex.Message;
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private void ToggleRegisterPasswordVisibility()
+    {
+        IsRegisterPasswordVisible = !IsRegisterPasswordVisible;
+    }
+
+    private void ToggleConfirmPasswordVisibility()
+    {
+        IsConfirmPasswordVisible = !IsConfirmPasswordVisible;
+    }
+}
+"@ | Set-Content "src/Presentation/Views/Pages/Register.razor.cs"
 
 # Client _Imports.razor update
 @"
@@ -798,13 +996,13 @@ global using Microsoft.AspNetCore.Components;
 <div class="page d-flex flex-column min-vh-100">
     <NavMenu />
 
-    <main class="flex-fill">
-        <article class="content px-4">
+    <main class="flex-fill d-flex flex-column justify-content-center">
+        <article class="content w-100">
             @Body
         </article>
     </main>
 
-    <footer class="app-footer px-4 py-2 d-flex flex-wrap align-items-center gap-2">
+    <footer class="app-footer px-3 px-md-4 py-2 d-flex flex-wrap align-items-center gap-2">
         <span>
             <i class="bi bi-c-circle me-1" aria-hidden="true"></i>
             @DateTime.Now.Year $ProjectName
@@ -826,7 +1024,7 @@ global using Microsoft.AspNetCore.Components;
 @inject NavigationManager Navigation
 
 <nav class="navbar navbar-expand-md navbar-dark bg-primary border-bottom">
-    <div class="container-fluid">
+    <div class="container-fluid px-3 px-md-4">
         <a class="navbar-brand" href="">$ProjectName.Web</a>
         <button class="navbar-toggler"
                 type="button"
@@ -842,17 +1040,7 @@ global using Microsoft.AspNetCore.Components;
                     <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
                         <i class="bi bi-house-door-fill me-1" aria-hidden="true"></i> Home
                     </NavLink>
-                </li>
-                <li class="nav-item">
-                    <NavLink class="nav-link" href="counter">
-                        <i class="bi bi-plus-square-fill me-1" aria-hidden="true"></i> Counter
-                    </NavLink>
-                </li>
-                <li class="nav-item">
-                    <NavLink class="nav-link" href="weather">
-                        <i class="bi bi-list-nested me-1" aria-hidden="true"></i> Weather
-                    </NavLink>
-                </li>
+                </li>                
             </ul>
             <ul class="navbar-nav">
                 <li class="nav-item">
@@ -876,7 +1064,14 @@ global using Microsoft.AspNetCore.Components;
     </div>
 </nav>
 
-@code {
+"@ | Set-Content "src/Presentation/Views/Layout/NavMenu.razor"
+
+# NavMenu.razor.cs code-behind
+@"
+namespace $ProjectName.Views.Layout;
+
+public partial class NavMenu : ComponentBase
+{
     private bool collapseNavMenu = true;
 
     private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
@@ -897,8 +1092,7 @@ global using Microsoft.AspNetCore.Components;
         collapseNavMenu = !collapseNavMenu;
     }
 }
-
-"@ | Set-Content "src/Presentation/Views/Layout/NavMenu.razor"
+"@ | Set-Content "src/Presentation/Views/Layout/NavMenu.razor.cs"
 
 Write-Host "Creating CI/CD files..." -ForegroundColor Yellow
 
@@ -1038,335 +1232,362 @@ $deployScriptContent | Set-Content "src/Presentation/Client/deploy.sh"
 Write-Host "Writing documentation/architecture-guide.md..." -ForegroundColor Yellow
 New-Item -ItemType Directory -Path "documentation" -Force | Out-Null
 @'
-> Solución generada con el script `new-clean-arch-blazor.ps1` desde PowerShell:
->
-> ```powershell
-> .\new-clean-arch-blazor.ps1 -ProjectName <NombreProyecto> [-OutputPath <ruta>]
-> ```
 
-# Clean Architecture para Blazor WebAssembly — Tío Bob
 
-Este documento resume las reglas de la **Arquitectura Limpia** propuestas por
-Robert C. Martin ("Uncle Bob") adaptadas a una aplicación **Blazor WebAssembly**.
-A diferencia de un backend, aquí no hay base de datos local ni endpoints HTTP
-propios; el frontend consume una API remota y su arquitectura se organiza para
-mantener el dominio y la lógica de aplicación libres de detalles de UI,
-HTTP o framework.
+# Guía de arquitectura — Blazor WebAssembly
 
----
+Esta plantilla combina dos ideas: **Clean Architecture** (Robert C. Martin,
+"Uncle Bob") y **Vertical Slice Architecture** (Jimmy Bogard).
 
-## 1. Objetivos
+- **Clean Architecture** organiza el código en capas concéntricas para que
+  el dominio y la lógica de aplicación no dependan de frameworks, UI,
+  HTTP o base de datos.
+- **Vertical Slice Architecture** organiza el código por **features**
+  (casos de uso) en lugar de por tipo de archivo. Cada feature agrupa
+  todo lo necesario: modelos, reglas, validaciones, servicios, UI y tests.
 
-Una arquitectura limpia en el frontend busca producir aplicaciones que sean:
-
-- **Independientes de frameworks**: Blazor es una herramienta de entrega, no
-  una restricción arquitectónica.
-- **Testeables**: las reglas de negocio y los view-models se prueban sin
-  renderizar componentes ni lanzar el navegador.
-- **Independientes de la UI**: los componentes pueden cambiar (Razor, MAUI,
-  consola) sin afectar al resto del sistema.
-- **Independientes del origen de datos**: cambiar la API remota, agregar
-  almacenamiento local o usar GraphQL es un cambio en Infrastructure.
-- **Independientes de agentes externos**: el dominio no sabe que existe
-  `HttpClient`, Blazor o la API remota.
+> **Regla mnemotécnica:** primero capas (Clean), después rebanadas
+> verticales (Vertical Slice).
 
 ---
 
-## 2. Las capas
+## 1. ¿Qué problema resuelve?
 
-La arquitectura se organiza en **círculos concéntricos**. Cuanto más al
-centro, más general y estable; cuanto más afuera, más concreto y volátil.
+Sin una guía, los proyectos Blazor suelen terminar con:
+
+- Lógica de negocio dentro de los componentes `.razor`.
+- `HttpClient` esparcido por toda la aplicación.
+- Carpetas enormes de `Services`, `Models`, `Pages`, etc., desconectadas.
+- Cambios pequeños que tocan muchos archivos en muchas carpetas.
+
+La combinación de Clean + Vertical Slice evita eso:
+
+- Cada feature es un **corte vertical** que contiene todo lo suyo.
+- Dentro de cada feature, las dependencias apuntan hacia el dominio
+  (Clean Architecture).
+- Puedes añadir, modificar o borrar una feature sin tocar las demás.
+
+---
+
+## 2. Las capas (Clean Architecture)
+
+Imagina un pastel en capas. El centro es lo más importante y lo que menos
+cambia; las capas de afuera son detalles técnicos que puedes sustituir.
 
 ```
-        ┌───────────────────────────────────────────┐
-        │            Presentation / UI              │  ← Frameworks & Drivers
-        │  ┌─────────────────────────────────────┐  │
-        │  │          Infrastructure             │  │  ← Interface Adapters
-        │  │  ┌───────────────────────────────┐  │  │
-        │  │  │        Application            │  │  │  ← Use Cases
-        │  │  │  ┌─────────────────────────┐  │  │  │
-        │  │  │  │        Domain           │  │  │  │  ← Entities
-        │  │  │  └─────────────────────────┘  │  │  │
-        │  │  └───────────────────────────────┘  │  │
-        │  └─────────────────────────────────────┘  │
-        └───────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│  Presentation (UI)                                      │
+│  Componentes .razor, layouts, Blazor, bootstrap...      │  ← capa externa
+├─────────────────────────────────────────────────────────┤
+│  Infrastructure (adaptadores)                           │
+│  HttpClient, localStorage, tokens, opciones...          │  ← detalles técnicos
+├─────────────────────────────────────────────────────────┤
+│  Application (casos de uso)                             │
+│  ViewModels, validaciones, DTOs...                      │  ← orquestación
+├─────────────────────────────────────────────────────────┤
+│  Domain (reglas de negocio)                             │
+│  Entidades, value objects, interfaces de puertos...     │  ← centro
+└─────────────────────────────────────────────────────────┘
 ```
 
-### 2.1 Domain (Entidades)
+> **Regla:** las flechas de dependencia apuntan hacia abajo. La capa de
+> arriba puede conocer a la de abajo, pero nunca al revés.
 
-Contiene las **reglas de negocio empresariales** del problema que la app
-resuelve. Son las más estables y no dependen de nada externo.
+### 2.1 Domain — el centro
 
-- `Entities/`: objetos con identidad y comportamiento (p. ej. `Order`, `User`).
-- `ValueObjects/`: objetos inmutables definidos por sus valores
-  (p. ej. `Money`, `Email`).
+Contiene las reglas de negocio puras. No conoce Blazor, HTTP, JSON, etc.
+
+- `Entities/`: objetos con identidad (`User`, `Order`).
+- `ValueObjects/`: objetos inmutables (`Email`, `Money`).
 - `Enums/`: enumeraciones de negocio.
-- `Interfaces/`: **puertos** que expresan lo que el dominio necesita
-  (p. ej. `IOrderWebApi`). La implementación vive en capas externas.
+- `Interfaces/`: **puertos** que expresan lo que el dominio necesita,
+  p. ej. `IAuthService`, `IOrderWebApi`.
 
-### 2.2 Application (Casos de uso / ViewModels)
+**Regla:** si tienes que importar `System.Net.Http` aquí, algo está mal.
 
-Orquesta el dominio para cumplir **reglas de negocio de aplicación**.
+### 2.2 Application — los casos de uso
 
-- `ViewModels/`: casos de uso concretos expuestos como ViewModels que la UI
-  puede invocar (p. ej. `CreateOrderViewModel`).
-- `Validators/`: reglas de validación de entrada usando FluentValidation.
-- `Interfaces/`: puertos que la aplicación necesita (p. ej. `IApiClient`).
+Orquesta el dominio para resolver una necesidad concreta del usuario.
 
-Esta capa **no conoce** detalles de infraestructura ni de Blazor.
+- `ViewModels/`: cada caso de uso expuesto como un ViewModel que la UI
+  puede invocar (`LoginViewModel`, `CreateOrderViewModel`).
+- `Validators/`: reglas de validación de entrada con FluentValidation.
+- `Interfaces/`: puertos que la aplicación necesita (`IApiClient`).
 
-### 2.3 Infrastructure (Adaptadores)
+Un ViewModel no sabe que existe `HttpClient`; solo conoce interfaces.
 
-Implementa los puertos definidos por Domain y Application. Aquí viven los
-**detalles técnicos** del frontend.
+### 2.3 Infrastructure — los adaptadores
 
-- `WebApi/`: adaptador HTTP que consume la API remota usando `HttpClient`.
-- `Options/`: configuración como la `BaseUrl` de la API.
-- `LocalStorage/`: adaptador para `localStorage` del navegador, si aplica.
-- `Adapters/`: integraciones con servicios externos (SignalR, gRPC, etc.).
+Implementa los puertos de Domain y Application.
 
-### 2.4 Presentation (UI / Entrega)
+- `WebApi/`: adaptador HTTP que consume la API remota.
+- `Options/`: configuración (`BaseUrl`, keys).
+- `Auth/`, `LocalStorage/`, etc.: otros adaptadores técnicos.
 
-Punto de entrada al sistema Blazor.
+Es la única capa que conoce URLs, verbos HTTP y JSON de la API.
 
-- `Client/`: host Blazor WebAssembly (`Program.cs`, `wwwroot`,
-  `launchSettings.json`).
-- `Views/`: Razor Class Library con componentes, layouts y páginas
-  ruteables.
-- `IoC/`: composición raíz donde se registran servicios y se inyectan
-  implementaciones concretas.
+### 2.4 Presentation — la entrega
+
+Punto de entrada Blazor.
+
+- `Client/`: host WebAssembly (`Program.cs`, `wwwroot`, `index.html`).
+- `Views/`: Razor Class Library con componentes, layouts y páginas.
+- `IoC/`: composición raíz donde se registran implementaciones concretas.
 
 ---
 
-## 3. La Regla de la Dependencia (⚠️ regla clave)
+## 3. Regla de la dependencia
 
-> **Las dependencias del código fuente sólo pueden apuntar hacia adentro.**
-
-Esto significa:
-
-- Nada en un círculo interno puede saber algo sobre un círculo externo.
-- En particular, **el nombre de algo declarado en un círculo externo no
-  debe ser mencionado por el código de un círculo interno**: ni clases, ni
-  funciones, ni variables, ni ninguna otra entidad nombrada.
-
-Aplicado a las carpetas:
+> Las dependencias del código fuente solo pueden apuntar hacia adentro.
 
 ```
-Presentation  ──►  Application  ──►  Domain
-Infrastructure ─►  Application  ──►  Domain
-Infrastructure ─►  Domain
+Presentation   ──►  Application  ──►  Domain
+Infrastructure ──►  Application  ──►  Domain
+Infrastructure ──►  Domain
 ```
 
 Nunca al revés:
 
-- ❌ `Domain` **no** referencia `Application`, `Infrastructure` ni `Presentation`.
-- ❌ `Application` **no** referencia `Infrastructure` ni `Presentation`.
-- ✔ `Infrastructure` y `Presentation` sí pueden referenciar capas internas.
+- ❌ `Domain` no referencia `Application`, `Infrastructure` ni `Presentation`.
+- ❌ `Application` no referencia `Infrastructure` ni `Presentation`.
+- ✅ `Infrastructure` y `Presentation` sí referencian capas internas.
 
 ### 3.1 ¿Cómo se invierte la dependencia?
 
-Cuando una capa interna necesita algo de una capa externa (por ejemplo, el
-ViewModel necesita llamar a la API remota), aplicamos el **Principio de
-Inversión de Dependencias (DIP)**:
+Ejemplo: el login necesita llamar a una API.
 
-1. La capa interna **define una interfaz** (puerto):
-   `Application/Interfaces/IOrderWebApi`.
-2. La capa externa **implementa** esa interfaz:
-   `Infrastructure/WebApi/OrderWebApi`.
-3. En el arranque (`Program.cs` / IoC) se inyecta la implementación concreta.
+1. `Domain/Interfaces/Auth/IAuthService.cs` define el puerto.
+2. `Infrastructure/WebApi/Auth/AuthWebApi.cs` implementa el puerto.
+3. `Application/ViewModels/Auth/LoginViewModel.cs` depende de `IAuthService`.
+4. `Presentation/IoC/DependencyContainer.cs` registra la implementación.
+5. `Presentation/Views/Pages/Login.razor` usa `LoginViewModel`.
 
-Así, en tiempo de compilación las dependencias apuntan hacia adentro,
-aunque en tiempo de ejecución el flujo de control cruce hacia afuera
-hasta la API remota.
+La interfaz pertenece a la capa interna; la implementación, a la externa.
+Así las dependencias apuntan hacia adentro, aunque el flujo de control
+vaya hacia la API.
 
 ---
 
-## 4. Estructura de carpetas de esta solución
+## 4. Organización por features (Vertical Slice)
+
+Además de las capas, el código se organiza por **features**. Cada feature
+es un caso de uso completo que agrupa todos sus archivos.
+
+No hay una carpeta `Features` a nivel raíz. En su lugar, cada feature usa
+subcarpetas con el mismo nombre dentro de cada capa.
+
+### Ejemplo: Login
 
 ```
-/src
-  /Presentation                     <-- Capa de presentación
-    /Client                             Blazor WebAssembly (host de la app)
-      /Properties                         launchSettings.json
-      /wwwroot                            Estáticos, appsettings.json, index.html
-    /Views                              Razor Class Library (componentes reutilizables)
-      /Layout                             MainLayout, NavMenu
-      /Pages                              Páginas ruteables
-    /IoC                                Composición raíz (Dependency Injection)
-  /Domain
-    /Entities                       <-- Entidades de dominio
-    /ValueObjects                   <-- Objetos de valor
-    /Enums
-    /Interfaces                     <-- Interfaces de dominio (puertos)
-  /Application
-    /ViewModels                     <-- ViewModels / casos de uso
-    /Validators                     <-- Reglas de validación (FluentValidation)
-    /Interfaces                     <-- Interfaces de aplicación (puertos)
-  /Infrastructure
-    /WebApi                         <-- Adaptador HTTP hacia la API remota
-      /Options                          BaseUrl y opciones del cliente HTTP
-/tests
-  /UnitTests                        <-- Pruebas unitarias (xUnit v3)
+src
+├── Domain
+│   ├── Entities/Auth/           (opcional: User, Session)
+│   └── Interfaces/Auth/
+│       ├── IAuthService.cs
+│       └── IAuthState.cs
+├── Application
+│   ├── ViewModels/Auth/
+│   │   ├── LoginRequest.cs
+│   │   ├── LoginViewModel.cs
+│   │   └── ILoginViewModel.cs
+│   └── Validators/Auth/
+│       └── LoginValidator.cs
+├── Infrastructure
+│   └── WebApi/Auth/
+│       ├── AuthWebApi.cs
+│       ├── AuthState.cs
+│       └── TokenService.cs
+└── Presentation
+    └── Views/Pages/
+        ├── Login.razor
+        ├── Login.razor.cs
+        ├── Register.razor
+        └── Register.razor.cs
+
+tests/UnitTests/Auth
+├── LoginViewModelTests.cs
+└── LoginValidatorTests.cs
 ```
 
-Referencias entre proyectos (en .NET, `dotnet add reference`):
+### Ejemplo: CreateOrder (feature típica de negocio)
+
+```
+FEATURE: CreateOrder
+────────────────────
+
+src
+├── Domain
+│   ├── Entities/Orders/
+│   │   └── Order.cs
+│   └── Interfaces/Orders/
+│       └── IOrderWebApi.cs
+├── Application
+│   ├── ViewModels/Orders/
+│   │   ├── CreateOrderRequest.cs
+│   │   ├── CreateOrderViewModel.cs
+│   │   └── ICreateOrderViewModel.cs
+│   └── Validators/Orders/
+│       └── CreateOrderValidator.cs
+├── Infrastructure
+│   └── WebApi/Orders/
+│       └── OrderWebApi.cs
+└── Presentation
+    └── Views/Pages/Orders/
+        └── CreateOrder.razor
+
+tests/UnitTests/Orders/CreateOrder
+├── CreateOrderViewModelTests.cs
+└── CreateOrderValidatorTests.cs
+```
+
+**Regla de oro:** si necesitas buscar por toda la solución para encontrar
+los archivos de una feature, la organización está mal.
+
+---
+
+## 5. Estructura de carpetas de esta plantilla
+
+```
+/scripts-ps
+  new-clean-arch-blazor.ps1          ← punto de entrada
+
+/{ProjectName}
+  /src
+    /Presentation
+      /Client                          Blazor WebAssembly host
+        /Properties
+        /wwwroot
+      /Views                           Razor Class Library
+        /Layout
+        /Pages
+      /IoC                             Composición de dependencias
+    /Domain
+      /Entities
+      /ValueObjects
+      /Enums
+      /Interfaces
+    /Application
+      /ViewModels
+      /Validators
+    /Infrastructure
+      /WebApi
+        /Options
+  /tests
+    /UnitTests
+  /documentation
+    architecture-guide.md
+    WCAG.md
+```
+
+Referencias entre proyectos:
 
 | Proyecto        | Referencia a                       |
 |-----------------|------------------------------------|
 | Domain          | *(ninguna)*                        |
 | Application     | Domain                             |
 | Infrastructure  | Application, Domain                |
-| Presentation    | Application (y Infra sólo para DI) |
+| Presentation    | Application, Infrastructure, Views |
+| Views           | Application, Domain                |
+| Client          | IoC, Views                         |
+| UnitTests       | Domain, Application, Validators    |
 
-### 4.1 Flujo de una interacción de usuario
+---
 
-En esta app Blazor una acción del usuario viaja de afuera hacia adentro y
-regresa:
+## 6. Flujo de una interacción de usuario
 
 ```
 Usuario / Navegador
    │
    ▼
-Presentation/Views              (componentes .razor, layouts, páginas)
-   │
-   ▼
-Presentation/IoC                (registro de servicios, composición)
+Presentation/Views              (componentes .razor)
    │
    ▼
 Application/ViewModels          (orquestador del caso de uso)
    │
    ▼
-Application/Validators  ─┐      (valida entrada de usuario)
-                         │
-                         ▼
-Infrastructure/WebApi    (HttpClient hacia API remota)
+Application/Validators          (valida entrada)
    │
    ▼
-Domain                          (entidades, VOs, reglas invariantes)
+Domain/Interfaces               (puerto)
+   │
+   ▼
+Infrastructure/WebApi           (HttpClient hacia API remota)
+   │
+   ▼
+API remota
+   │
+   ▼
+Domain/Entities                 (reglas de negocio)
 ```
 
-Reglas prácticas de esta ruta:
+Reglas prácticas:
 
-- **Componentes** no llaman directamente a `HttpClient`; invocan un
-  `ViewModel` (o un servicio de aplicación definido por interfaz).
-- **ViewModels** orquestan validación, transformación y llamadas al puerto
-  de infraestructura.
-- **Validators** contienen solo reglas de entrada de usuario; no acceden
-  a la red.
-- **Infrastructure/WebApi** es el único lugar que conoce la URL, los
-  verbos HTTP y el formato JSON de la API remota.
-- El flujo de retorno mapea los datos a entidades de dominio o DTOs antes
-  de mostrarlos en el componente.
+- Los componentes `.razor` no llaman directamente a `HttpClient`.
+- Los ViewModels no usan `NavigationManager`, `IJSRuntime` ni `HttpClient`.
+- Los Validators no acceden a la red.
+- Infrastructure es el único lugar que conoce la API remota.
 
 ---
 
-## 5. Beneficios prácticos
+## 7. ¿Cómo añadir una nueva feature?
 
-- **Cambios localizados**: cambiar Bootstrap por MudBlazor, o agregar
-  almacenamiento local, no obliga a reescribir reglas de negocio.
-- **Tests rápidos**: Domain, Validators y ViewModels se prueban sin
-  renderizar componentes ni depender de `HttpClient`.
-- **Reemplazo de tecnología**: cambiar REST por gRPC o SignalR es un cambio
-  en Infrastructure.
-- **Claridad de intención**: el código de negocio se lee como negocio, no
-  como *plumbing* técnico de Blazor.
+Sigue estos pasos para mantener el orden de capas y Vertical Slice:
 
----
+1. **Domain:** define entidades, value objects e interfaces de puertos.
+   - `Domain/Interfaces/{Feature}/I{Feature}Service.cs`
+   - `Domain/Entities/{Feature}/{Entity}.cs`
 
-## 6. Antipatrones a evitar
+2. **Application:** crea el ViewModel y el Validator.
+   - `Application/ViewModels/{Feature}/{Action}ViewModel.cs`
+   - `Application/ViewModels/{Feature}/{Action}Request.cs`
+   - `Application/Validators/{Feature}/{Action}Validator.cs`
 
-- Referenciar `System.Net.Http` o `HttpClient` desde `Domain` o
-  `Application`.
-- Poner lógica de negocio directamente en componentes `.razor`
-  (`@code { ... }` que crece indefinidamente).
-- Usar `NavigationManager`, `IJSRuntime` o `HttpClient` dentro de
-  ViewModels en lugar de recibirlos por puertos.
-- Exponer modelos de la API directamente en la UI sin pasar por el dominio
-  o un DTO de aplicación.
-- Interfaces de servicio remoto definidas en Infrastructure en lugar de
-  Application (rompe la inversión).
+3. **Infrastructure:** implementa el puerto.
+   - `Infrastructure/WebApi/{Feature}/{Feature}WebApi.cs`
 
----
+4. **Presentation:** crea el componente Razor.
+   - `Presentation/Views/Pages/{Feature}/{Action}.razor`
+   - `Presentation/Views/Pages/{Feature}/{Action}.razor.cs`
 
-## 7. Features (organización del día a día)
+5. **IoC:** registra la implementación si la inyección automática no la
+   encuentra.
 
-> **Nota:** no se crea un folder físico llamado `Features` a nivel de
-> la solución. La organización por feature es **lógica**: cada caso de uso
-> se representa como subcarpetas con el mismo nombre dentro de cada capa
-> o proyecto.
+6. **Tests:** prueba el ViewModel y el Validator sin levantar Blazor ni
+   `HttpClient`.
 
-Aunque la solución está partida por **capas**, el trabajo diario se
-organiza por **features**: cada caso de uso atraviesa varias capas y
-todas sus piezas viven en carpetas **con el mismo nombre**.
-
-```
-FEATURE: CreateOrder
-─────────────────────────────────────────────────────────────
-
-/src
-├── Domain
-│   ├── Entities/Orders/
-│   │   └── Order.cs
-│   └── Interfaces/Orders/
-│       └── IOrderWebApi.cs             ← puerto
-│
-├── Application
-│   ├── ViewModels/Orders/
-│   │   └── CreateOrderViewModel.cs     ← orquesta el caso de uso
-│   └── Validators/Orders/
-│       └── CreateOrderValidator.cs
-│
-├── Infrastructure
-│   └── WebApi/Orders/
-│       └── OrderWebApi.cs              ← implementa el puerto (HttpClient)
-│
-├── Presentation
-│   └── Views/Pages/Orders/
-│       └── CreateOrder.razor           ← UI / formulario
-│
-└── tests/UnitTests/Orders/CreateOrder/
-    ├── CreateOrderViewModelTests.cs
-    └── CreateOrderValidatorTests.cs
-
-
-FLUJO DE LA FEATURE (interacción del usuario)
-─────────────────────────────────────────────────────────────
-
-   Usuario envía formulario "Crear pedido"
-          │
-          ▼
-   CreateOrder.razor      (Presentation/Views/Pages/Orders)
-          │
-          ▼
-   CreateOrderViewModel   (Application/ViewModels/Orders)
-          │      ▲
-          │      │ valida
-          │  CreateOrderValidator
-          ▼
-   IOrderWebApi           (Domain/Interfaces/Orders)  ── puerto
-          │
-          ▼
-   OrderWebApi            (Infrastructure/WebApi/Orders)
-          │
-          ▼
-   API remota             (fuera de esta solución)
-          │
-          ▼
-   Order                  (Domain/Entities/Orders)
-
-
-REGLA DE ORO
-─────────────────────────────────────────────────────────────
-  Toda pieza de una feature vive en carpetas con el MISMO nombre
-  (aquí: "Orders" + "CreateOrder"). Si tienes que buscar por
-  toda la solución para encontrarla, la feature está mal ubicada.
-```
+> **Tip:** si una feature es muy pequeña (como Auth), puedes agruparla
+> en una sola carpeta por capa (`Auth/`) en lugar de crear una carpeta
+> por acción.
 
 ---
 
-## 8. Lecturas recomendadas
+## 8. Antipatrones a evitar
+
+- ❌ Lógica de negocio en componentes `.razor`.
+- ❌ Usar `HttpClient`, `NavigationManager` o `IJSRuntime` dentro de
+  ViewModels.
+- ❌ Definir interfaces de servicios externos en Infrastructure.
+- ❌ Crear carpetas genéricas grandes como `Services/`, `Models/`,
+  `Helpers/` fuera de una feature.
+- ❌ Compartir request/response DTOs entre features sin necesidad.
+
+---
+
+## 9. Beneficios de esta combinación
+
+- **Cambios localizados:** una feature vive junta; tocarla no rompe otras.
+- **Testabilidad:** Domain, Validators y ViewModels se prueban sin Blazor.
+- **Sustituibilidad:** cambiar REST por gRPC, Bootstrap por MudBlazor o
+  WebAssembly por MAUI es un cambio en una capa externa.
+- **Escalabilidad cognitiva:** un desarrollador solo necesita entender la
+  feature que está tocando.
+
+---
+
+## 10. Lecturas recomendadas
 
 - Robert C. Martin — *Clean Architecture* (2017).
+- Jimmy Bogard — *Vertical Slice Architecture*.
 - Alistair Cockburn — *Hexagonal Architecture* (Ports & Adapters).
 - Jeffrey Palermo — *Onion Architecture*.
 - Vaughn Vernon — *Implementing Domain-Driven Design*.
@@ -1376,7 +1597,7 @@ REGLA DE ORO
 [System.IO.File]::WriteAllText(
     (Join-Path (Get-Location) 'documentation/architecture-guide.md'),
     $ArchitectureMd,
-    (New-Object System.Text.UTF8Encoding($false))
+    (New-Object System.Text.UTF8Encoding($true))
 )
 
 # =========================
@@ -1654,7 +1875,7 @@ Recomendaciones para esta solución (Blazor WebAssembly + Bootstrap):
 [System.IO.File]::WriteAllText(
     (Join-Path (Get-Location) 'documentation/WCAG.md'),
     $WcagMd,
-    (New-Object System.Text.UTF8Encoding($false))
+    (New-Object System.Text.UTF8Encoding($true))
 )
 
 # Register documentation folder as a Solution Folder in the .slnx file

@@ -1,6 +1,6 @@
 # =========================================================================
 #  new-clean-arch-api.ps1
-#  Powered by David V�zquez Palestino
+#  Powered by David Vazquez Palestino
 # =========================================================================
 
 param(
@@ -798,344 +798,354 @@ $deployScriptContent = $deployScriptContent.Replace("__PROJECT_DIR__", $projectD
 $deployScriptContent | Set-Content "src/Presentation/Api/deploy.sh"
 
 # =========================
-# CLEAN ARCHITECTURE DOC (Tío Bob)
+# CLEAN ARCHITECTURE DOC
 # =========================
-Write-Host "Writing documentation/ArchitectureGuide.md..."
+Write-Host "Writing documentation/ArchitectureGuide.md..." -ForegroundColor Yellow
 New-Item -ItemType Directory -Path "documentation" -Force | Out-Null
 @'
 
-# Clean Architecture (Arquitectura Limpia) – Tío Bob
+# Guía de arquitectura — ASP.NET Core Web API
 
-Este documento resume las reglas de la **Arquitectura Limpia** propuestas por
-Robert C. Martin ("Uncle Bob") en su libro *Clean Architecture: A Craftsman's
-La estructura de esta solución sigue
-estas reglas.
+Esta plantilla combina dos ideas: **Clean Architecture** (Robert C. Martin,
+"Uncle Bob") y **Vertical Slice Architecture** (Jimmy Bogard).
 
----
+- **Clean Architecture** organiza el código en capas concéntricas para que
+  el dominio y la lógica de aplicación no dependan de frameworks, UI,
+  base de datos o agentes externos.
+- **Vertical Slice Architecture** organiza el código por **features**
+  (casos de uso) en lugar de por tipo de archivo. Cada feature agrupa
+  todo lo necesario: modelos, reglas, validaciones, repositorios,
+  controladores y tests.
 
-## 1. Objetivos
-
-Una arquitectura limpia busca producir sistemas que sean:
-
-- **Independientes de frameworks**: el framework es una herramienta, no una
-  restricción arquitectónica.
-- **Testeables**: las reglas de negocio se pueden probar sin UI, base de
-  datos, servidor web ni ningún elemento externo.
-  afectar al resto del sistema.
-  afectar al resto del sistema.
-- **Independientes de la base de datos**: se puede cambiar SQL Server por
-  Mongo, Postgres, un archivo, etc.
-- **Independientes de agentes externos**: las reglas de negocio no saben
-  nada del mundo exterior.
+> **Regla mnemotécnica:** primero capas (Clean), después rebanadas
+> verticales (Vertical Slice).
 
 ---
 
-## 2. Las capas
+## 1. ¿Qué problema resuelve?
 
-La arquitectura se organiza en **círculos concéntricos**. Cuanto más al
-centro, más general y estable; cuanto más afuera, más concreto y volátil.
+Sin una guía, las APIs .NET suelen terminar con:
 
-```
-        +-------------------------------------------+
-        �            Presentation / UI              �  ? Frameworks & Drivers
-        �  +-------------------------------------+  �
-        �  �          Infrastructure             �  �  ? Interface Adapters
-        �  �  +-------------------------------+  �  �
-        �  �  �        Application            �  �  �  ? Use Cases
-        �  �  �  +-------------------------+  �  �  �
-        �  �  �  �        Domain           �  �  �  �  ? Entities
-        �  �  �  +-------------------------+  �  �  �
-        �  �  +-------------------------------+  �  �
-        �  +-------------------------------------+  �
-        +-------------------------------------------+
-```
+- Lógica de negocio dentro de los controladores.
+- `DbContext` o `SqlConnection` esparcido por toda la aplicación.
+- Carpetas enormes de `Services`, `Models`, `Controllers`, etc.,
+  desconectadas.
+- Cambios pequeños que tocan muchos archivos en muchas carpetas.
 
-### 2.1 Domain (Entidades)
+La combinación de Clean + Vertical Slice evita eso:
 
-Contiene las **reglas de negocio empresariales**. Son las más estables y no
-dependen de nada externo.
-
-- `Entities/`: objetos con identidad y comportamiento (p. ej. `Order`, `User`).
-- `ValueObjects/`: objetos inmutables definidos por sus valores
-  (p. ej. `Money`, `Email`).
-  lógica de dominio que no encaja naturalmente en una entidad.
-- `Interfaces/`: **puertos** que expresan lo que el dominio necesita
-  (p. ej. `IOrderRepository`). La implementación vive en capas externas.
-
-### 2.2 Application (Casos de uso)
-
-Orquesta el dominio para cumplir **reglas de negocio de aplicación**.
-
-- `Commands/`: comandos que mutan estado (p. ej. `CreateOrderCommand`).
-- `Queries/`: consultas que leen estado (p. ej. `GetOrderByIdQuery`).
-- `Models/`: objetos de transporte de datos entre capas.
-- `Validators/`: reglas de validación (FluentValidation).
-- `Interfaces/`: puertos que la aplicación necesita (p. ej. `IEmailSender`).
-
-Esta capa **no conoce** detalles de infraestructura ni de UI.
-
-### 2.3 Infrastructure (Adaptadores)
-
-Implementa los puertos definidos por Domain y Application. Aquí viven los
-**detalles técnicos**.
-
-- `Persistence/`: contexto de base de datos, migraciones, configuración ORM.
-- `Repositories/`: implementaciones de `IOrderRepository`, etc.
-- `Adapters/`: integraciones con servicios externos (Mailchimp, Stripe,
-  APIs, colas de mensajes...).
-
-### 2.4 Presentation (UI / Entrega)
-
-Punto de entrada al sistema.
-
-- `Controllers/`: endpoints Web API, controladores MVC, handlers.
-- `Views/`: vistas Razor, Blazor, plantillas.
-  view-models específicos de la UI.
+- Cada feature es un **corte vertical** que contiene todo lo suyo.
+- Dentro de cada feature, las dependencias apuntan hacia el dominio
+  (Clean Architecture).
+- Puedes añadir, modificar o borrar una feature sin tocar las demás.
 
 ---
 
-## 3. La Regla de la Dependencia (?? regla clave)
+## 2. Las capas (Clean Architecture)
 
-> **Las dependencias del código fuente sólo pueden apuntar hacia adentro.**
-
-Esto significa:
-
-- Nada en un círculo interno puede saber algo sobre un círculo externo.
-- En particular, **el nombre de algo declarado en un círculo externo no
-  debe ser mencionado por el código de un círculo interno**: ni clases, ni
-  funciones, ni variables, ni ninguna otra entidad nombrada.
-
-Aplicado a las carpetas:
+Imagina un pastel en capas. El centro es lo más importante y lo que menos
+ cambia; las capas de afuera son detalles técnicos que puedes sustituir.
 
 ```
-Presentation  --?  Application  --?  Domain
-Infrastructure -?  Application  --?  Domain
-Infrastructure -?  Domain
+┌─────────────────────────────────────────────────────────┐
+│  Presentation (UI / API)                                │
+│  Controllers, Minimal APIs, middlewares, swagger...     │  ← capa externa
+├─────────────────────────────────────────────────────────┤
+│  Infrastructure (adaptadores)                           │
+│  EF Core, repositorios, APIs externas, colas...         │  ← detalles técnicos
+├─────────────────────────────────────────────────────────┤
+│  Application (casos de uso)                             │
+│  Commands, queries, handlers, validaciones, DTOs...     │  ← orquestación
+├─────────────────────────────────────────────────────────┤
+│  Domain (reglas de negocio)                             │
+│  Entidades, value objects, interfaces de puertos...     │  ← centro
+└─────────────────────────────────────────────────────────┘
+```
+
+> **Regla:** las flechas de dependencia apuntan hacia abajo. La capa de
+> arriba puede conocer a la de abajo, pero nunca al revés.
+
+### 2.1 Domain — el centro
+
+Contiene las reglas de negocio puras. No conoce ASP.NET Core, EF Core,
+HTTP, JSON, etc.
+
+- `Entities/`: objetos con identidad (`Order`, `User`).
+- `ValueObjects/`: objetos inmutables (`Email`, `Money`).
+- `Enums/`: enumeraciones de negocio.
+- `Interfaces/`: **puertos** que expresan lo que el dominio necesita,
+  p. ej. `IOrderRepository`, `IEmailSender`.
+
+**Regla:** si tienes que importar `Microsoft.EntityFrameworkCore` aquí,
+algo está mal.
+
+### 2.2 Application — los casos de uso
+
+Orquesta el dominio para resolver una necesidad concreta del usuario.
+
+- `Commands/`: comandos que mutan estado (`CreateOrderCommand`).
+- `Queries/`: consultas que leen estado (`GetOrderByIdQuery`).
+- `Models/`: DTOs y modelos de transporte entre capas.
+- `Validators/`: reglas de validación de entrada con FluentValidation.
+- `Interfaces/`: puertos que la aplicación necesita (`IUnitOfWork`).
+
+Un handler no sabe que existe `DbContext`; solo conoce interfaces.
+
+### 2.3 Infrastructure — los adaptadores
+
+Implementa los puertos de Domain y Application.
+
+- `DataBase/`: EF Core, repositorios, migraciones, opciones.
+- `Adapters/`: APIs externas, colas de mensajes, servicios de correo, etc.
+
+Es la única capa que conoce conexiones de base de datos, ORM y APIs
+externas.
+
+### 2.4 Presentation — la entrega
+
+Punto de entrada de la API.
+
+- `Api/`: host ASP.NET Core, middlewares, configuraciones, Program.cs.
+- `Controllers/`: controladores que exponen endpoints HTTP.
+- `IoC/`: composición raíz donde se registran implementaciones concretas.
+
+---
+
+## 3. Regla de la dependencia
+
+> Las dependencias del código fuente solo pueden apuntar hacia adentro.
+
+```
+Presentation   ──►  Application  ──►  Domain
+Infrastructure ──►  Application  ──►  Domain
+Infrastructure ──►  Domain
 ```
 
 Nunca al revés:
 
-- ? `Domain` **no** referencia `Application`, `Infrastructure` ni `Presentation`.
-- ? `Application` **no** referencia `Infrastructure` ni `Presentation`.
-- ? `Infrastructure` y `Presentation` sí pueden referenciar capas internas.
+- ❌ `Domain` no referencia `Application`, `Infrastructure` ni `Presentation`.
+- ❌ `Application` no referencia `Infrastructure` ni `Presentation`.
+- ✅ `Infrastructure` y `Presentation` sí referencian capas internas.
 
 ### 3.1 ¿Cómo se invierte la dependencia?
 
-Cuando una capa interna necesita algo de una capa externa (por ejemplo, el
-caso de uso necesita persistir un pedido), aplicamos el **Principio de
-Inversión de Dependencias (DIP)**:
+Ejemplo: crear un pedido necesita persistirlo en base de datos.
 
-1. La capa interna **define una interfaz** (puerto):
-   `Application/Interfaces/IOrderRepository`.
-2. La capa externa **implementa** esa interfaz:
-   `Infrastructure/Repositories/OrderRepository`.
-3. En el arranque (composición) se inyecta la implementación concreta.
+1. `Domain/Interfaces/Orders/IOrderRepository.cs` define el puerto.
+2. `Infrastructure/DataBase/Orders/OrderRepository.cs` implementa el puerto.
+3. `Application/Commands/Orders/CreateOrder/CreateOrderHandler.cs` depende
+   de `IOrderRepository`.
+4. `Presentation/IoC/DependencyContainer.cs` registra la implementación.
+5. `Presentation/Controllers/Orders/OrdersController.cs` expone el endpoint.
 
-> **Regla general**: toda clase con comportamiento que pueda variar o que
-> sea inyectada debe declarar su interfaz en la capa interna para cumplir
-> con la Inversión de Dependencias. La única excepción común son los
-> validadores de FluentValidation, que son clases concretas autocontenidas
-> y no requieren interfaz propia.
-
-Así, en tiempo de compilación las dependencias apuntan hacia adentro,
-aunque en tiempo de ejecución el flujo de control cruce hacia afuera.
+La interfaz pertenece a la capa interna; la implementación, a la externa.
+Así las dependencias apuntan hacia adentro, aunque el flujo de control
+vaya hacia la base de datos.
 
 ---
 
-## 4. Estructura de carpetas de esta solución
+## 4. Organización por features (Vertical Slice)
+
+Además de las capas, el código se organiza por **features**. Cada feature
+es un caso de uso completo que agrupa todos sus archivos.
+
+No hay una carpeta `Features` a nivel raíz. En su lugar, cada feature usa
+subcarpetas con el mismo nombre dentro de cada capa.
+
+### Ejemplo: CreateOrder
 
 ```
-/src
-  /Presentation                     <-- Capa de presentación
-    /Api                                ASP.NET Core Minimal API
-      /Configurations                     Configuración de servicios y middleware
-      /Middleware                         Middlewares (ErrorHandler, etc.)
-      /Properties                         launchSettings.json
-    /IoC                                Composición raíz (Dependency Injection)
-    /Controllers                    <-- Adaptadores HTTP (ASP.NET Controllers)
-  /Application
-    /Commands                       <-- Comandos (write side)
-    /Queries                        <-- Consultas (read side)
-    /Models                         <-- DTOs / modelos de aplicación
-    /Validators                     <-- Reglas de validación (FluentValidation)
-    /Interfaces                     <-- Interfaces de aplicación (puertos)
-  /Domain
-    /Entities                     <-- Entidades de dominio
-    /ValueObjects                 <-- Objetos de valor
-    /Enums
-    /Interfaces                   <-- Interfaces de dominio (puertos)
-  /Infrastructure
-    /DataBase                     <-- Persistencia (EF Core, repositorios)
-      /Options                          Opciones tipadas de infraestructura (BD, entorno, caché, etc.)
-/tests
-  /UnitTests                        <-- Pruebas unitarias (xUnit v3)
+src
+├── Domain
+│   ├── Entities/Orders/
+│   │   └── Order.cs
+│   └── Interfaces/Orders/
+│       └── IOrderRepository.cs
+├── Application
+│   ├── Commands/Orders/CreateOrder/
+│   │   ├── CreateOrderCommand.cs
+│   │   ├── CreateOrderHandler.cs
+│   │   └── CreateOrderResult.cs
+│   ├── Queries/Orders/GetOrderById/
+│   │   ├── GetOrderByIdQuery.cs
+│   │   └── GetOrderByIdHandler.cs
+│   ├── Models/Orders/
+│   │   └── OrderDto.cs
+│   └── Validators/Orders/
+│       └── CreateOrderValidator.cs
+├── Infrastructure
+│   └── DataBase/Orders/
+│       └── OrderRepository.cs
+└── Presentation
+    └── Controllers/Orders/
+        └── OrdersController.cs
+
+tests/UnitTests/Orders/CreateOrder
+├── CreateOrderHandlerTests.cs
+└── CreateOrderValidatorTests.cs
 ```
 
-Referencias entre proyectos (en .NET, `dotnet add reference`):
+**Regla de oro:** si necesitas buscar por toda la solución para encontrar
+los archivos de una feature, la organización está mal.
+
+---
+
+## 5. Estructura de carpetas de esta plantilla
+
+```
+/scripts-ps
+  new-clean-arch-api.ps1             ← punto de entrada
+
+/{ProjectName}
+  /src
+    /Presentation
+      /Api                             ASP.NET Core Web API host
+        /Configurations
+        /Middleware
+        /Properties
+      /Controllers                     Adaptadores HTTP
+      /IoC                             Composición de dependencias
+    /Application
+      /Commands                        Comandos (write side)
+      /Queries                         Consultas (read side)
+      /Models                          DTOs
+      /Validators                      Reglas de validación
+    /Domain
+      /Entities
+      /ValueObjects
+      /Enums
+      /Interfaces
+    /Infrastructure
+      /DataBase                        Persistencia (EF Core, repositorios)
+        /Options
+  /tests
+    /UnitTests
+  /documentation
+    ArchitectureGuide.md
+```
+
+Referencias entre proyectos:
 
 | Proyecto        | Referencia a                       |
 |-----------------|------------------------------------|
 | Domain          | *(ninguna)*                        |
 | Application     | Domain                             |
 | Infrastructure  | Domain                             |
-| Presentation    | Application (y Infra solo para DI) |
+| Controllers     | Application                        |
+| IoC             | Application, Infrastructure        |
+| Api             | Controllers, IoC                   |
+| UnitTests       | Domain, Application, Validators    |
 
-### 4.1 Flujo de una petición
+---
 
-En esta API una petición HTTP viaja de afuera hacia adentro y regresa:
+## 6. Flujo de una petición HTTP
 
 ```
 Cliente HTTP
-   �
-   ?
-Presentation/Api                (routing, middlewares, ProblemDetails)
-   �
-   ?
+   │
+   ▼
+Presentation/Api                (routing, middlewares, swagger)
+   │
+   ▼
 Presentation/Controllers        (endpoint que expone el caso de uso)
-   �
-   ?
-Application/Commands  -+        (mutan estado � write side)
-Application/Queries   -�        (leen estado � read side)
-                       �
-                       ?
-Infrastructure/DataBase       (EF Core, repos, servicios externos)
-   �
-   ?
-Domain                          (entidades, VOs, reglas invariantes)
+   │
+   ▼
+Application/Commands o Queries  (handler del caso de uso)
+   │
+   ▼
+Application/Validators          (valida entrada)
+   │
+   ▼
+Domain/Interfaces               (puerto)
+   │
+   ▼
+Infrastructure/DataBase         (EF Core, repositorios)
+   │
+   ▼
+Domain/Entities                 (reglas de negocio)
 ```
 
-Reglas prácticas de esta ruta:
+Reglas prácticas:
 
--- **Controllers** no llaman directamente a `DataBase`; sólo invocan un
-  `Command`/`Query`.
--- **Commands** y **Queries** aplican las reglas de aplicación y, si es
-  necesario, políticas transversales (autorización, transacción, telemetría,
-  logging).
-- **Commands** cambian estado (`Create`, `Update`, `Delete`) y devuelven
-  el resultado mínimo necesario.
--- **Queries** sólo leen; nunca mutan estado.
--- **DataBase / Adapters externos** son los únicos que hablan con la BD,
-  APIs externas, colas o caché.
-- El flujo de retorno recorre la ruta en sentido inverso, mapeando a DTOs
-  (`Application/Models`) antes de salir por el `Controller`.
+- Los **Controllers** no llaman directamente a `DataBase`; solo invocan
+  un `Command` o `Query`.
+- Los **Commands** mutan estado (`Create`, `Update`, `Delete`) y
+  devuelven el resultado mínimo necesario.
+- Los **Queries** solo leen; nunca mutan estado.
+- Los **Validators** no acceden a la base de datos.
+- **Infrastructure** es el único lugar que habla con la BD, APIs externas,
+  colas o caché.
+- El flujo de retorno mapea entidades a DTOs (`Application/Models`) antes
+  de salir por el Controller.
 
 ---
 
-## 5. Beneficios prácticos
+## 7. ¿Cómo añadir una nueva feature?
 
-- **Cambios localizados**: tocar la UI o la base de datos no obliga a
-  reescribir reglas de negocio.
-- **Tests rápidos**: Domain y Application se prueban sin infraestructura.
-- **Reemplazo de tecnología**: cambiar EF Core por Dapper, o REST por gRPC,
-  es un cambio en Infrastructure/Presentation.
-- **Claridad de intención**: el código de negocio se lee como negocio, no
-  como *plumbing* técnico.
+Sigue estos pasos para mantener el orden de capas y Vertical Slice:
 
----
+1. **Domain:** define entidades, value objects e interfaces de puertos.
+   - `Domain/Interfaces/{Feature}/I{Feature}Repository.cs`
+   - `Domain/Entities/{Feature}/{Entity}.cs`
 
-## 6. Antipatrones a evitar
+2. **Application:** crea el comando/consulta, handler, validator y DTOs.
+   - `Application/Commands/{Feature}/{Action}/{Action}Command.cs`
+   - `Application/Commands/{Feature}/{Action}/{Action}Handler.cs`
+   - `Application/Commands/{Feature}/{Action}/{Action}Result.cs`
+   - `Application/Validators/{Feature}/{Action}Validator.cs`
+   - `Application/Models/{Feature}/{Entity}Dto.cs`
 
-- Referenciar `Microsoft.EntityFrameworkCore` desde `Domain` o `Application`.
-- Poner atributos `[HttpGet]`, `[Route]` en entidades de dominio.
-- Exponer entidades de dominio directamente como respuesta HTTP (usar DTOs).
-- Casos de uso que instancian `new SqlConnection(...)` en vez de recibir
-  un puerto.
-- Interfaces "de repositorio" definidas en Infrastructure en lugar de en
-  Domain/Application (rompe la inversión).
-- **Repositorios genéricos** (`IRepository<T>`, `GenericRepository<T>`): cada
-  agregado expone su propio puerto (`IOrderRepository`) e implementación
-  (`OrderRepository`). Un repositorio genérico filtra el comportamiento
-  específico del dominio y suele arrastrar dependencias técnicas al interior
-  de las capas.
-- **Clases concretas sin interfaz** (excepto validadores): cada servicio,
-  repositorio o adaptador debe declarar su interfaz en la capa interna
-  correspondiente para cumplir con la Inversión de Dependencias. Los
-  validadores de FluentValidation son la excepción: son clases concretas
-  autocontenidas que no requieren interfaz propia.
+3. **Infrastructure:** implementa el puerto.
+   - `Infrastructure/DataBase/{Feature}/{Entity}Repository.cs`
+
+4. **Presentation:** crea el endpoint.
+   - `Presentation/Controllers/{Feature}/{Feature}sController.cs`
+
+5. **IoC:** registra la implementación si la inyección automática no la
+   encuentra.
+
+6. **Tests:** prueba el handler y el validator sin levantar la API ni la
+   base de datos real.
+
+> **Tip:** si una feature es muy pequeña, puedes agruparla en una sola
+> carpeta por capa (`Auth/`) en lugar de crear una carpeta por acción.
 
 ---
 
-## 7. Lecturas recomendadas
+## 8. Antipatrones a evitar
 
-- Robert C. Martin – *Clean Architecture* (2017).
-- Alistair Cockburn – *Hexagonal Architecture* (Ports & Adapters).
-- Jeffrey Palermo – *Onion Architecture*.
-- Vaughn Vernon – *Implementing Domain-Driven Design*.
+- ❌ Lógica de negocio en controladores o endpoints.
+- ❌ Usar `DbContext`, `SqlConnection` o `HttpClient` dentro de handlers.
+- ❌ Definir interfaces de repositorios en Infrastructure.
+- ❌ Exponer entidades de dominio directamente como respuesta HTTP.
+- ❌ Crear carpetas genéricas grandes como `Services/`, `Models/`,
+  `Helpers/` fuera de una feature.
+- ❌ Repositorios genéricos (`IRepository<T>`): cada agregado expone su
+  propio puerto (`IOrderRepository`) e implementación (`OrderRepository`).
+- ❌ Clases concretas sin interfaz (excepto validadores): cada servicio,
+  repositorio o adaptador debe declarar su interfaz en la capa interna.
 
 ---
 
-## 8. Features (organización del día a día)
+## 9. Beneficios de esta combinación
 
-> **Nota:** no se crea un folder físico llamado `Features` a nivel de
-> la solución. La organización por feature es **lógica**: cada caso de uso
-> se representa como subcarpetas con el mismo nombre dentro de cada capa
-> o proyecto.
+- **Cambios localizados:** una feature vive junta; tocarla no rompe otras.
+- **Testabilidad:** Domain y Application se prueban sin infraestructura.
+- **Sustituibilidad:** cambiar EF Core por Dapper, SQL Server por Postgres,
+  o REST por gRPC es un cambio en una capa externa.
+- **Escalabilidad cognitiva:** un desarrollador solo necesita entender la
+  feature que está tocando.
 
-Aunque la solución está partida por **capas**, el trabajo diario se
-organiza por **features**: cada caso de uso atraviesa varias capas y
-todas sus piezas viven en carpetas **con el mismo nombre** (con la misma feature).
+---
 
-```
-FEATURE: CreateOrder
--------------------------------------------------------------
+## 10. Lecturas recomendadas
 
-/src
-+-- Domain
-�   +-- Entities/Orders/
-�   �   +-- Order.cs
-�   +-- Interfaces/Orders/
-�       +-- IOrderRepository.cs         ? puerto
-�
-+-- Application
-�   +-- Commands/Orders/CreateOrder/
-�   �   +-- CreateOrderCommand.cs       ? input
-�   �   +-- CreateOrderHandler.cs       ? lógica
-�   �   +-- CreateOrderResult.cs        ? output
-�   +-- Validators/Orders/
-�   �   +-- CreateOrderValidator.cs
-�   +-- Models/Orders/
-�       +-- OrderDto.cs
-�
-+-- Presentation
-�   +-- Controllers/Orders/
-�       +-- OrdersController.cs         ? endpoint
-+-- Infrastructure
-�   +-- DataBase/Orders/
-�       +-- OrderRepository.cs          ? implementa el puerto
-�
-+-- tests/UnitTests/Orders/CreateOrder/
-    +-- CreateOrderHandlerTests.cs
-    +-- CreateOrderValidatorTests.cs
-
-
-FLUJO DE LA FEATURE (una petición HTTP)
--------------------------------------------------------------
-
-   HTTP POST /api/orders
-          �
-          ?
-   OrdersController        (Presentation/Controllers/Orders)
-          �
-          ?
-   CreateOrderHandler      (Application/Commands/Orders/CreateOrder)
-          �      ?
-          �      � valida
-          �  CreateOrderValidator
-          ?
-   IOrderRepository        (Domain/Interfaces/Orders)  -- puerto
-          �
-          ?
-   OrderRepository         (Infrastructure/DataBase/Orders)
-          �
-          ?
-   Order                   (Domain/Entities/Orders)
-
-
-REGLA DE ORO
--------------------------------------------------------------
-  Toda pieza de una feature vive en carpetas con el MISMO nombre
-  (aquí: "Orders" + "CreateOrder"). Si tienes que buscar por
-  toda la solución para encontrarla, la feature está mal ubicada.
+- Robert C. Martin — *Clean Architecture* (2017).
+- Jimmy Bogard — *Vertical Slice Architecture*.
+- Alistair Cockburn — *Hexagonal Architecture* (Ports & Adapters).
+- Jeffrey Palermo — *Onion Architecture*.
+- Vaughn Vernon — *Implementing Domain-Driven Design*.
+- Microsoft — *ASP.NET Core documentation*.
 ```
 '@ | Set-Variable -Name ArchitectureMd
 [System.IO.File]::WriteAllText(
