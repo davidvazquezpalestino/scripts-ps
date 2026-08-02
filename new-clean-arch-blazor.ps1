@@ -191,6 +191,8 @@ New-Item -ItemType Directory -Path "src/Infrastructure/WebApi/Options" -Force | 
 New-Item -ItemType Directory -Path "src/Domain/Interfaces/Auth" -Force | Out-Null
 New-Item -ItemType Directory -Path "src/Infrastructure/WebApi/Auth" -Force | Out-Null
 New-Item -ItemType Directory -Path "src/Application/ViewModels/Auth" -Force | Out-Null
+New-Item -ItemType Directory -Path "src/Infrastructure/WebApi/Services" -Force | Out-Null
+New-Item -ItemType Directory -Path "src/Application/ViewModels/Options" -Force | Out-Null
 
 Write-Host "Adding projects to solution..." -ForegroundColor Yellow
 dotnet sln add src/Presentation/Client
@@ -269,7 +271,8 @@ namespace $ProjectName.WebApi
     {
         public static IServiceCollection AddInfrastructure(this IServiceCollection services)
         {  
-           services.AddCurrentAssembly();
+            services.AddSingleton<TokenService>();
+            services.AddCurrentAssembly();
             return services;
         }
     }
@@ -327,10 +330,13 @@ namespace $ProjectName.WebApi.Options
 @"
 global using System.Net.Http.Json;
 global using System.Reflection;
+global using System.Text;
+global using System.Text.Json;
 global using DevKit.Injection.Extensions;
 global using Microsoft.Extensions.DependencyInjection;
 global using $ProjectName.WebApi.Options;
 global using $ProjectName.Domain.Interfaces.Auth;
+global using $ProjectName.WebApi.Services;
 "@ | Set-Content "src/Infrastructure/WebApi/GlobalUsings.cs"
 
 # Validators GlobalUsings
@@ -396,8 +402,20 @@ Remove-Item "src/Presentation/Client/App.razor" -Force -ErrorAction SilentlyCont
 # Index.razor lives in the Views assembly so the Router (AppAssembly = typeof(App).Assembly) can discover it.
 @"
 @page "/"
+@inject IAuthState AuthState
+@inject NavigationManager Navigation
 
 <PageTitle>Index — 100% Clean Architecture (o eso dice el README)</PageTitle>
+
+@code {
+    protected override void OnInitialized()
+    {
+        if (!AuthState.IsAuthenticated)
+        {
+            Navigation.NavigateTo("/login");
+        }
+    }
+}
 
 <div class="card shadow-sm my-4">
     <div class="card-header d-flex align-items-center bg-primary text-white">
@@ -450,34 +468,106 @@ namespace $ProjectName.Domain.Interfaces.Auth
 {
     public interface IAuthService
     {
-        Task<bool> LoginAsync(string userEmail, string password, CancellationToken cancellationToken = default);
+        Task<string?> LoginAsync(string userEmail, string password, CancellationToken cancellationToken = default);
+        void Logout();
     }
 }
 "@ | Set-Content "src/Domain/Interfaces/Auth/IAuthService.cs"
 
-# AuthService in Infrastructure/WebApi
+# IAuthState in Domain
 @"
-namespace $ProjectName.WebApi.Auth
+namespace $ProjectName.Domain.Interfaces.Auth
 {
-    public class AuthService : IAuthService
+    public interface IAuthState
     {
-        private readonly HttpClient _httpClient;
+        string? Token { get; }
+        string? UserEmail { get; }
+        bool IsAuthenticated { get; }
+        event EventHandler? AuthenticationStateChanged;
 
-        public AuthService(HttpClient httpClient)
-        {
-            _httpClient = httpClient;
-        }
+        void SetToken(string token, string userEmail);
+        void Clear();
+    }
+}
+"@ | Set-Content "src/Domain/Interfaces/Auth/IAuthState.cs"
 
-        public async Task<bool> LoginAsync(string userEmail, string password, CancellationToken cancellationToken = default)
+# TokenService in Infrastructure/WebApi/Services
+@"
+namespace $ProjectName.WebApi.Services
+{
+    public class TokenService
+    {
+        public string GenerateToken(string userEmail)
         {
-            // TODO: Implementar llamada real a la API
-            // var response = await _httpClient.PostAsJsonAsync("api/auth/login", new { userEmail, password }, cancellationToken);
-            // response.EnsureSuccessStatusCode();
-            return true;
+            // TODO: Reemplazar por JWT real firmado en backend.
+            // Token simulado: base64 de un payload JSON con el correo y expiración.
+            var payload = new
+            {
+                email = userEmail,
+                exp = DateTimeOffset.UtcNow.AddHours(8).ToUnixTimeSeconds()
+            };
+            var json = JsonSerializer.Serialize(payload);
+            return Convert.ToBase64String(Encoding.UTF8.GetBytes(json));
         }
     }
 }
-"@ | Set-Content "src/Infrastructure/WebApi/Auth/AuthService.cs"
+"@ | Set-Content "src/Infrastructure/WebApi/Services/TokenService.cs"
+
+# AuthState in Infrastructure/WebApi/Auth
+@"
+namespace $ProjectName.WebApi.Auth
+{
+    public class AuthState : IAuthState
+    {
+        public string? Token { get; private set; }
+        public string? UserEmail { get; private set; }
+        public bool IsAuthenticated => !string.IsNullOrWhiteSpace(Token);
+
+        public event EventHandler? AuthenticationStateChanged;
+
+        public void SetToken(string token, string userEmail)
+        {
+            Token = token;
+            UserEmail = userEmail;
+            OnAuthenticationStateChanged();
+        }
+
+        public void Clear()
+        {
+            Token = null;
+            UserEmail = null;
+            OnAuthenticationStateChanged();
+        }
+
+        private void OnAuthenticationStateChanged()
+        {
+            AuthenticationStateChanged?.Invoke(this, EventArgs.Empty);
+        }
+    }
+}
+"@ | Set-Content "src/Infrastructure/WebApi/Auth/AuthState.cs"
+
+# AuthWebApi in Infrastructure/WebApi
+@"
+namespace $ProjectName.WebApi.Auth
+{
+    public class AuthWebApi(HttpClient httpClient, IAuthState authState, TokenService tokenService) : IAuthService
+    {
+        public async Task<string?> LoginAsync(string userEmail, string password, CancellationToken cancellationToken = default)
+        {
+            // TODO: Implementar llamada real a la API
+            // var response = await httpClient.PostAsJsonAsync("api/auth/login", new { userEmail, password }, cancellationToken);
+            // response.EnsureSuccessStatusCode();
+
+            var token = tokenService.GenerateToken(userEmail);
+            authState.SetToken(token, userEmail);
+            return token;
+        }
+
+        public void Logout() => authState.Clear();
+    }
+}
+"@ | Set-Content "src/Infrastructure/WebApi/Auth/AuthWebApi.cs"
 
 # ILoginViewModel in Application/ViewModels/Auth
 @"
@@ -489,7 +579,8 @@ namespace $ProjectName.ViewModels.Auth
         bool IsLoading { get; set; }
         string? ErrorMessage { get; set; }
 
-        Task SubmitAsync();
+        Task<string?> SubmitAsync();
+        Task LogoutAsync();
     }
 }
 "@ | Set-Content "src/Application/ViewModels/Auth/ILoginViewModel.cs"
@@ -498,36 +589,36 @@ namespace $ProjectName.ViewModels.Auth
 @"
 namespace $ProjectName.ViewModels.Auth
 {
-    public class LoginViewModel : ILoginViewModel
+    public class LoginViewModel(IAuthService authService, IAuthState authState) : ILoginViewModel
     {
-        private readonly IAuthService _authService;
-
-        public LoginViewModel(IAuthService authService)
-        {
-            _authService = authService;
-        }
-
         public LoginRequest Request { get; set; } = new();
         public bool IsLoading { get; set; }
         public string? ErrorMessage { get; set; }
 
-        public async Task SubmitAsync()
+        public async Task<string?> SubmitAsync()
         {
             IsLoading = true;
             ErrorMessage = null;
 
             try
             {
-                await _authService.LoginAsync(Request.UserEmail, Request.Password);
+                return await authService.LoginAsync(Request.UserEmail, Request.Password);
             }
             catch (Exception ex)
             {
                 ErrorMessage = ex.Message;
+                return null;
             }
             finally
             {
                 IsLoading = false;
             }
+        }
+
+        public Task LogoutAsync()
+        {
+            authService.Logout();
+            return Task.CompletedTask;
         }
     }
 }
@@ -537,11 +628,13 @@ namespace $ProjectName.ViewModels.Auth
 @'
 @page "/login"
 @inject ILoginViewModel ViewModel
+@inject IAuthState AuthState
+@inject NavigationManager Navigation
 
 <PageTitle>Iniciar sesión</PageTitle>
 
-<div class="login-page d-flex flex-column justify-content-center align-items-center w-100 pt-4">
-    <div class="card shadow-sm border-0" style="max-width: 420px; width: 100%;">
+<div class="login-page d-flex flex-column justify-content-center align-items-center w-100 pt-6" style="padding-top: 4rem;">
+    <div class="card shadow-sm" style="max-width: 420px; width: 100%; border-width: 2px;">
         <div class="card-body p-4">
             <div class="text-center mb-4">
                 <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-primary bg-opacity-10 text-primary mb-2"
@@ -619,7 +712,11 @@ namespace $ProjectName.ViewModels.Auth
 
     private async Task SubmitAsync()
     {
-        await ViewModel.SubmitAsync();
+        var token = await ViewModel.SubmitAsync();
+        if (!string.IsNullOrWhiteSpace(token))
+        {
+            Navigation.NavigateTo("/");
+        }
     }
 
     private void ToggleLoginPasswordVisibility()
@@ -640,8 +737,6 @@ $content = $content -replace "<link href=`"$ProjectName.Web.styles.css`" rel=`"s
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
 <link href="$ProjectName.Web.styles.css" rel="stylesheet" />
-<link href="_content/$ProjectName.Views/css/icons-custom.css" rel="stylesheet" />
-<link href="_content/$ProjectName.Views/css/hero-logo.css" rel="stylesheet" />
 "@
 
 # Inject Bootstrap JS bundle before </body> (idempotent)
@@ -664,6 +759,7 @@ $content | Set-Content "src/Presentation/Client/wwwroot/index.html"
 @using $ProjectName.Views.Layout
 @using Microsoft.AspNetCore.Components.Routing
 @using $ProjectName.ViewModels.Auth
+@using $ProjectName.Domain.Interfaces.Auth
 
 "@ | Set-Content "src/Presentation/Views/_Imports.razor"
 
@@ -671,6 +767,7 @@ $content | Set-Content "src/Presentation/Client/wwwroot/index.html"
 @"
 global using $ProjectName.Domain.Interfaces.Auth;
 global using $ProjectName.ViewModels.Auth;
+global using Microsoft.AspNetCore.Components;
 "@ | Set-Content "src/Presentation/Views/GlobalUsings.cs"
 
 # App.razor in Views root
@@ -724,6 +821,10 @@ global using $ProjectName.ViewModels.Auth;
 
 # NavMenu.razor in Views/Layout
 @"
+@inject IAuthState AuthState
+@inject ILoginViewModel ViewModel
+@inject NavigationManager Navigation
+
 <nav class="navbar navbar-expand-md navbar-dark bg-primary border-bottom">
     <div class="container-fluid">
         <a class="navbar-brand" href="">$ProjectName.Web</a>
@@ -755,9 +856,20 @@ global using $ProjectName.ViewModels.Auth;
             </ul>
             <ul class="navbar-nav">
                 <li class="nav-item">
-                    <NavLink class="nav-link" href="login">
-                        <i class="bi bi-person-lock me-1" aria-hidden="true"></i> Iniciar sesión
-                    </NavLink>
+                    @if (AuthState.IsAuthenticated)
+                    {
+                        <button type="button"
+                                class="nav-link btn btn-link text-start"
+                                @onclick="LogoutAsync">
+                            <i class="bi bi-box-arrow-right me-1" aria-hidden="true"></i> Cerrar sesión
+                        </button>
+                    }
+                    else
+                    {
+                        <NavLink class="nav-link" href="login">
+                            <i class="bi bi-person-lock me-1" aria-hidden="true"></i> Iniciar sesión
+                        </NavLink>
+                    }
                 </li>
             </ul>
         </div>
@@ -768,6 +880,17 @@ global using $ProjectName.ViewModels.Auth;
     private bool collapseNavMenu = true;
 
     private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+
+    protected override void OnInitialized()
+    {
+        AuthState.AuthenticationStateChanged += (_, __) => StateHasChanged();
+    }
+
+    private async Task LogoutAsync()
+    {
+        await ViewModel.LogoutAsync();
+        Navigation.NavigateTo("/login");
+    }
 
     private void ToggleNavMenu()
     {
