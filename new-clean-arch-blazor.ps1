@@ -1035,34 +1035,140 @@ global using Microsoft.AspNetCore.Components;
             <span class="navbar-toggler-icon"></span>
         </button>
         <div class="@NavMenuCssClass navbar-collapse" id="navbarNav">
+            <div class="d-md-none navbar-nav border-bottom pb-2 mb-2">
+                @if (IsAuthenticated)
+                {
+                    <div class="nav-item dropdown">
+                        <button class="btn btn-link nav-link dropdown-toggle d-inline-flex align-items-center gap-2"
+                                type="button"
+                                @onclick="ToggleUserMenu"
+                                aria-expanded="@IsUserMenuOpen"
+                                aria-label="Menú de usuario">
+                            <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-white bg-opacity-25 text-white"
+                                  style="width: 30px; height: 30px;">
+                                <i class="bi bi-person fs-6" aria-hidden="true"></i>
+                            </span>
+                            <span class="text-truncate" style="max-width: 140px;">@UserDisplayName</span>
+                        </button>
+
+                        @if (IsUserMenuOpen)
+                        {
+                            <div class="dropdown-menu shadow-sm border rounded-3 p-2 show w-100"
+                                 style="position: static;">
+                                <div class="px-3 py-2">
+                                    <div class="fw-semibold">@UserDisplayName</div>
+                                    <div class="text-muted small text-break">@UserEmail</div>
+                                    @if (!string.IsNullOrEmpty(UserRole))
+                                    {
+                                        <div class="text-muted small"><span class="badge text-bg-light border mt-1">@UserRole</span></div>
+                                    }
+                                    @if (!string.IsNullOrEmpty(SessionExpiry))
+                                    {
+                                        <div class="text-muted mt-1" style="font-size: .72rem;">
+                                            <i class="bi bi-clock-history me-1" aria-hidden="true"></i>
+                                            @SessionExpiry
+                                        </div>
+                                    }
+                                </div>
+                                <div class="dropdown-divider"></div>
+                                <button type="button"
+                                        class="dropdown-item btn btn-light d-inline-flex align-items-center gap-2 rounded-2 w-100 text-start"
+                                        @onclick="SignOutAsync">
+                                    <i class="bi bi-power" aria-hidden="true"></i>
+                                    Cerrar sesión
+                                </button>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="nav-item">
+                        <NavLink class="nav-link" href="login" @onclick="CollapseNavMenu">
+                            <i class="bi bi-box-arrow-in-right" aria-hidden="true"></i>
+                            <span class="ms-1">Iniciar sesión</span>
+                        </NavLink>
+                    </div>
+                }
+            </div>
             <ul class="navbar-nav me-auto">
                 <li class="nav-item">
                     <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
                         <i class="bi bi-house-door-fill me-1" aria-hidden="true"></i> Home
                     </NavLink>
-                </li>                
-            </ul>
-            <ul class="navbar-nav">
-                <li class="nav-item">
-                    @if (AuthState.IsAuthenticated)
-                    {
-                        <button type="button"
-                                class="nav-link btn btn-link text-start"
-                                @onclick="LogoutAsync">
-                            <i class="bi bi-box-arrow-right me-1" aria-hidden="true"></i> Cerrar sesión
-                        </button>
-                    }
-                    else
-                    {
-                        <NavLink class="nav-link" href="login">
-                            <i class="bi bi-person-lock me-1" aria-hidden="true"></i> Iniciar sesión
-                        </NavLink>
-                    }
                 </li>
             </ul>
+            <div class="d-none d-md-flex navbar-nav ms-auto">
+                @if (IsAuthenticated)
+                {
+                    <div class="nav-item dropdown">
+                        <button class="btn btn-link nav-link dropdown-toggle d-inline-flex align-items-center gap-2"
+                                type="button"
+                                @onclick="ToggleUserMenu"
+                                aria-expanded="@IsUserMenuOpen"
+                                aria-label="Menú de usuario">
+                            <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-white bg-opacity-25 text-white"
+                                  style="width: 30px; height: 30px;">
+                                <i class="bi bi-person fs-6" aria-hidden="true"></i>
+                            </span>
+                            <span class="text-truncate" style="max-width: 140px;">@UserDisplayName</span>
+                        </button>
+
+                        @if (IsUserMenuOpen)
+                        {
+                            <div class="dropdown-menu dropdown-menu-end shadow-sm border rounded-3 p-2 show user-menu-dropdown"
+                                 style="min-width: 240px;">
+                                <div class="px-3 py-2">
+                                    <div class="fw-semibold">@UserDisplayName</div>
+                                    <div class="text-muted small text-break">@UserEmail</div>
+                                    @if (!string.IsNullOrEmpty(UserRole))
+                                    {
+                                        <div class="text-muted small"><span class="badge text-bg-light border mt-1">@UserRole</span></div>
+                                    }
+                                    @if (!string.IsNullOrEmpty(SessionExpiry))
+                                    {
+                                        <div class="text-muted mt-1" style="font-size: .72rem;">
+                                            <i class="bi bi-clock-history me-1" aria-hidden="true"></i>
+                                            @SessionExpiry
+                                        </div>
+                                    }
+                                </div>
+                                <div class="dropdown-divider"></div>
+                                <button type="button"
+                                        class="dropdown-item btn btn-light d-inline-flex align-items-center gap-2 rounded-2 w-100 text-start"
+                                        @onclick="SignOutAsync">
+                                    <i class="bi bi-power" aria-hidden="true"></i>
+                                    Cerrar sesión
+                                </button>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="nav-item">
+                        <NavLink class="nav-link" href="login" @onclick="CollapseNavMenu">
+                            <i class="bi bi-box-arrow-in-right" aria-hidden="true"></i>
+                            <span class="ms-1">Iniciar sesión</span>
+                        </NavLink>
+                    </div>
+                }
+            </div>
         </div>
     </div>
 </nav>
+
+<style>
+    .user-menu-dropdown {
+        position: absolute;
+        right: 0;
+        z-index: 1050;
+    }
+
+    .nav-item.dropdown .dropdown-toggle::after {
+        margin-left: auto;
+    }
+</style>
 
 "@ | Set-Content "src/Presentation/Views/Layout/NavMenu.razor"
 
@@ -1070,19 +1176,36 @@ global using Microsoft.AspNetCore.Components;
 @"
 namespace $ProjectName.Views.Layout;
 
+using System.Text;
+using System.Text.Json;
+
 public partial class NavMenu : ComponentBase
 {
     private bool collapseNavMenu = true;
+    private bool isUserMenuOpen;
 
     private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+
+    private bool IsAuthenticated => AuthState.IsAuthenticated;
+
+    private bool IsUserMenuOpen => isUserMenuOpen;
+
+    private string UserDisplayName => GetDisplayNameFromToken();
+
+    private string UserEmail => AuthState.UserEmail ?? string.Empty;
+
+    private string UserRole => string.Empty;
+
+    private string SessionExpiry => GetSessionExpiryFromToken();
 
     protected override void OnInitialized()
     {
         AuthState.AuthenticationStateChanged += (_, __) => StateHasChanged();
     }
 
-    private async Task LogoutAsync()
+    private async Task SignOutAsync()
     {
+        isUserMenuOpen = false;
         await ViewModel.LogoutAsync();
         Navigation.NavigateTo("/login");
     }
@@ -1090,6 +1213,50 @@ public partial class NavMenu : ComponentBase
     private void ToggleNavMenu()
     {
         collapseNavMenu = !collapseNavMenu;
+    }
+
+    private void CollapseNavMenu()
+    {
+        collapseNavMenu = true;
+    }
+
+    private void ToggleUserMenu()
+    {
+        isUserMenuOpen = !isUserMenuOpen;
+    }
+
+    private string GetDisplayNameFromToken()
+    {
+        var email = AuthState.UserEmail;
+        if (string.IsNullOrWhiteSpace(email))
+            return "Usuario";
+
+        var atIndex = email.IndexOf('@');
+        return atIndex > 0 ? email[..atIndex] : email;
+    }
+
+    private string GetSessionExpiryFromToken()
+    {
+        var token = AuthState.Token;
+        if (string.IsNullOrWhiteSpace(token))
+            return string.Empty;
+
+        try
+        {
+            var json = Encoding.UTF8.GetString(Convert.FromBase64String(token));
+            using var doc = JsonDocument.Parse(json);
+            if (doc.RootElement.TryGetProperty("exp", out var expProperty) && expProperty.TryGetInt64(out var exp))
+            {
+                var expiry = DateTimeOffset.FromUnixTimeSeconds(exp).ToLocalTime();
+                return $"Expira: {expiry:HH:mm}";
+            }
+        }
+        catch
+        {
+            // Ignorar errores de decodificación.
+        }
+
+        return string.Empty;
     }
 }
 "@ | Set-Content "src/Presentation/Views/Layout/NavMenu.razor.cs"
