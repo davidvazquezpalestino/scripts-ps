@@ -934,7 +934,6 @@ $content = Get-Content "src/Presentation/Client/wwwroot/index.html" -Raw
 $content = $content -replace "<link href=`"$ProjectName.Web.styles.css`" rel=`"stylesheet`" />", @"
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
-<link href="$ProjectName.Web.styles.css" rel="stylesheet" />
 "@
 
 # Inject Bootstrap JS bundle before </body> (idempotent)
@@ -966,6 +965,9 @@ $content | Set-Content "src/Presentation/Client/wwwroot/index.html"
 global using $ProjectName.Domain.Interfaces.Auth;
 global using $ProjectName.ViewModels.Auth;
 global using Microsoft.AspNetCore.Components;
+global using Microsoft.AspNetCore.Components.Routing;
+global using System.Text;
+global using System.Text.Json;
 "@ | Set-Content "src/Presentation/Views/GlobalUsings.cs"
 
 # App.razor in Views root
@@ -993,8 +995,8 @@ global using Microsoft.AspNetCore.Components;
 # MainLayout.razor in Views/Layout
 @"
 @inherits LayoutComponentBase
-<div class="page d-flex flex-column min-vh-100">
-    <NavMenu />
+<div class="page d-flex flex-column min-vh-100" @onclick="OnPageClick">
+    <NavMenu @ref="navMenu" />
 
     <main class="flex-fill d-flex flex-column justify-content-center">
         <article class="content w-100">
@@ -1017,94 +1019,59 @@ global using Microsoft.AspNetCore.Components;
 
 "@ | Set-Content "src/Presentation/Views/Layout/MainLayout.razor"
 
+# MainLayout.razor.cs code-behind
+@"
+namespace $ProjectName.Views.Layout;
+
+public partial class MainLayout : LayoutComponentBase
+{
+    private NavMenu? navMenu;
+
+    private void OnPageClick()
+    {
+        navMenu?.CloseUserMenu();
+    }
+}
+"@ | Set-Content "src/Presentation/Views/Layout/MainLayout.razor.cs"
+
 # NavMenu.razor in Views/Layout
 @"
 @inject IAuthState AuthState
 @inject ILoginViewModel ViewModel
 @inject NavigationManager Navigation
 
-<nav class="navbar navbar-expand-md navbar-dark bg-primary border-bottom">
-    <div class="container-fluid px-3 px-md-4">
-        <a class="navbar-brand" href="">$ProjectName.Web</a>
-        <button class="navbar-toggler"
-                type="button"
-                @onclick="ToggleNavMenu"
-                aria-controls="navbarNav"
-                aria-expanded="false"
+<nav class="navbar navbar-expand-md navbar-dark bg-primary" @onclick:stopPropagation="true">
+    <div class="container-fluid">
+        <a class="navbar-brand d-inline-flex align-items-center gap-2" href="">
+            <i class="bi bi-house-door" aria-hidden="true"></i>
+            <span>$ProjectName</span>
+        </a>
+        <button class="navbar-toggler" type="button" @onclick="ToggleNavMenu"
+                aria-controls="navbarMain"
+                aria-expanded="@(!collapseNavMenu)"
                 aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>
-        <div class="@NavMenuCssClass navbar-collapse" id="navbarNav">
-            <div class="d-md-none navbar-nav border-bottom pb-2 mb-2">
-                @if (IsAuthenticated)
-                {
-                    <div class="nav-item dropdown">
-                        <button class="btn btn-link nav-link dropdown-toggle d-inline-flex align-items-center gap-2"
-                                type="button"
-                                @onclick="ToggleUserMenu"
-                                aria-expanded="@IsUserMenuOpen"
-                                aria-label="Menú de usuario">
-                            <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-white bg-opacity-25 text-white"
-                                  style="width: 30px; height: 30px;">
-                                <i class="bi bi-person fs-6" aria-hidden="true"></i>
-                            </span>
-                            <span class="text-truncate" style="max-width: 140px;">@UserDisplayName</span>
-                        </button>
-
-                        @if (IsUserMenuOpen)
-                        {
-                            <div class="dropdown-menu shadow-sm border rounded-3 p-2 show w-100"
-                                 style="position: static;">
-                                <div class="px-3 py-2">
-                                    <div class="fw-semibold">@UserDisplayName</div>
-                                    <div class="text-muted small text-break">@UserEmail</div>
-                                    @if (!string.IsNullOrEmpty(UserRole))
-                                    {
-                                        <div class="text-muted small"><span class="badge text-bg-light border mt-1">@UserRole</span></div>
-                                    }
-                                    @if (!string.IsNullOrEmpty(SessionExpiry))
-                                    {
-                                        <div class="text-muted mt-1" style="font-size: .72rem;">
-                                            <i class="bi bi-clock-history me-1" aria-hidden="true"></i>
-                                            @SessionExpiry
-                                        </div>
-                                    }
-                                </div>
-                                <div class="dropdown-divider"></div>
-                                <button type="button"
-                                        class="dropdown-item btn btn-light d-inline-flex align-items-center gap-2 rounded-2 w-100 text-start"
-                                        @onclick="SignOutAsync">
-                                    <i class="bi bi-power" aria-hidden="true"></i>
-                                    Cerrar sesión
-                                </button>
-                            </div>
-                        }
-                    </div>
-                }
-                else
-                {
-                    <div class="nav-item">
-                        <NavLink class="nav-link" href="login" @onclick="CollapseNavMenu">
-                            <i class="bi bi-box-arrow-in-right" aria-hidden="true"></i>
-                            <span class="ms-1">Iniciar sesión</span>
+        <div class="@NavMenuCssClass navbar-collapse" id="navbarMain">
+            @if (IsAuthenticated)
+            {
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <NavLink class="nav-link" href="" Match="NavLinkMatch.All" @onclick="CollapseNavMenu">
+                            <i class="bi bi-house-door" aria-hidden="true"></i>
+                            <span class="ms-1">Inicio</span>
                         </NavLink>
-                    </div>
-                }
-            </div>
-            <ul class="navbar-nav me-auto">
-                <li class="nav-item">
-                    <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                        <i class="bi bi-house-door-fill me-1" aria-hidden="true"></i> Home
-                    </NavLink>
-                </li>
-            </ul>
-            <div class="d-none d-md-flex navbar-nav ms-auto">
+                    </li>
+                </ul>
+            }
+            <div class="navbar-nav ms-auto">
                 @if (IsAuthenticated)
                 {
                     <div class="nav-item dropdown">
                         <button class="btn btn-link nav-link dropdown-toggle d-inline-flex align-items-center gap-2"
                                 type="button"
                                 @onclick="ToggleUserMenu"
+                                @onfocusout="OnUserMenuFocusOut"
                                 aria-expanded="@IsUserMenuOpen"
                                 aria-label="Menú de usuario">
                             <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-white bg-opacity-25 text-white"
@@ -1116,18 +1083,16 @@ global using Microsoft.AspNetCore.Components;
 
                         @if (IsUserMenuOpen)
                         {
-                            <div class="dropdown-menu dropdown-menu-end shadow-sm border rounded-3 p-2 show user-menu-dropdown"
-                                 style="min-width: 240px;">
+                            <div class="dropdown-menu dropdown-menu-end shadow-sm border rounded-3 p-2 show"
+                                 style="min-width: 240px; position: absolute; z-index: 1050; right: 0;"
+                                 tabindex="-1"
+                                 @onfocusout="OnUserMenuFocusOut">
                                 <div class="px-3 py-2">
                                     <div class="fw-semibold">@UserDisplayName</div>
                                     <div class="text-muted small text-break">@UserEmail</div>
-                                    @if (!string.IsNullOrEmpty(UserRole))
-                                    {
-                                        <div class="text-muted small"><span class="badge text-bg-light border mt-1">@UserRole</span></div>
-                                    }
                                     @if (!string.IsNullOrEmpty(SessionExpiry))
                                     {
-                                        <div class="text-muted mt-1" style="font-size: .72rem;">
+                                        <div class="text-muted mt-1 small">
                                             <i class="bi bi-clock-history me-1" aria-hidden="true"></i>
                                             @SessionExpiry
                                         </div>
@@ -1158,39 +1123,24 @@ global using Microsoft.AspNetCore.Components;
     </div>
 </nav>
 
-<style>
-    .user-menu-dropdown {
-        position: absolute;
-        right: 0;
-        z-index: 1050;
-    }
-
-    .nav-item.dropdown .dropdown-toggle::after {
-        margin-left: auto;
-    }
-</style>
-
 "@ | Set-Content "src/Presentation/Views/Layout/NavMenu.razor"
 
 # NavMenu.razor.cs code-behind
 @"
 namespace $ProjectName.Views.Layout;
 
-using System.Text;
-using System.Text.Json;
-
-public partial class NavMenu : ComponentBase
+public partial class NavMenu : ComponentBase, IDisposable
 {
     private bool collapseNavMenu = true;
-    private bool isUserMenuOpen;
-
-    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+    private bool IsUserMenuOpen { get; set; }
 
     private bool IsAuthenticated => AuthState.IsAuthenticated;
 
-    private bool IsUserMenuOpen => isUserMenuOpen;
+    private string NavMenuCssClass => collapseNavMenu ? "collapse" : "collapse show";
 
-    private string UserDisplayName => GetDisplayNameFromToken();
+    private string UserDisplayName => AuthState.UserEmail is { Length: > 0 } email
+        ? (email.IndexOf('@') is > 0 and var at ? email[..at] : email)
+        : "Usuario";
 
     private string UserEmail => AuthState.UserEmail ?? string.Empty;
 
@@ -1203,16 +1153,55 @@ public partial class NavMenu : ComponentBase
         AuthState.AuthenticationStateChanged += (_, __) => StateHasChanged();
     }
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender == false)
+        {
+            return;
+        }
+
+        Navigation.LocationChanged += OnLocationChanged;
+        await Task.CompletedTask;
+        StateHasChanged();
+    }
+
+    private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        IsUserMenuOpen = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= OnLocationChanged;
+    }
+
+    public void CloseUserMenu()
+    {
+        if (IsUserMenuOpen)
+        {
+            IsUserMenuOpen = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task OnUserMenuFocusOut()
+    {
+        await Task.Delay(150);
+        IsUserMenuOpen = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
     private async Task SignOutAsync()
     {
-        isUserMenuOpen = false;
+        IsUserMenuOpen = false;
         await ViewModel.LogoutAsync();
-        Navigation.NavigateTo("/login");
+        Navigation.NavigateTo("/login", forceLoad: true);
     }
 
     private void ToggleNavMenu()
     {
-        collapseNavMenu = !collapseNavMenu;
+        collapseNavMenu = collapseNavMenu == false;
     }
 
     private void CollapseNavMenu()
@@ -1222,17 +1211,7 @@ public partial class NavMenu : ComponentBase
 
     private void ToggleUserMenu()
     {
-        isUserMenuOpen = !isUserMenuOpen;
-    }
-
-    private string GetDisplayNameFromToken()
-    {
-        var email = AuthState.UserEmail;
-        if (string.IsNullOrWhiteSpace(email))
-            return "Usuario";
-
-        var atIndex = email.IndexOf('@');
-        return atIndex > 0 ? email[..atIndex] : email;
+        IsUserMenuOpen = IsUserMenuOpen == false;
     }
 
     private string GetSessionExpiryFromToken()
