@@ -1175,4 +1175,4 @@ if (Test-Path $slnxFile) {
 dotnet new gitignore
 
 Write-Host "Clean Architecture solution created successfully!"
-Write-Host "Powered by David Vázquez Palestino" -ForegroundColor DarkGray
+Write-Host "Powered by David Vazquez Palestino" -ForegroundColor DarkGray

@@ -2055,4 +2055,4 @@ Write-Host "  src/Infrastructure/WebApi/    ($ProjectName.WebApi - External Serv
 Write-Host "  src/Presentation/Views/       ($ProjectName.Views - Razor Components, Layouts)"    -ForegroundColor Gray
 Write-Host "  src/Presentation/IoC/         ($ProjectName.IoC - Dependency Injection)"           -ForegroundColor Gray
 Write-Host ""
-Write-Host "Powered by David Vázquez Palestino" -ForegroundColor DarkGray
+Write-Host "Powered by David Vazquez Palestino" -ForegroundColor DarkGray
