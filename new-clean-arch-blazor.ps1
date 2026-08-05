@@ -1739,12 +1739,7 @@ Sigue estos pasos para mantener el orden de capas y Vertical Slice:
 - Vaughn Vernon — *Implementing Domain-Driven Design*.
 - Microsoft — *Blazor WebAssembly documentation*.
 ```
-'@ | Set-Variable -Name ArchitectureMd
-[System.IO.File]::WriteAllText(
-    (Join-Path (Get-Location) 'documentation/architecture-guide.md'),
-    $ArchitectureMd,
-    (New-Object System.Text.UTF8Encoding($true))
-)
+'@ | Set-Content "documentation/architecture-guide.md"
 
 # =========================
 # WCAG 2.2 DOC (Accesibilidad)
@@ -2017,12 +2012,7 @@ Recomendaciones para esta solución (Blazor WebAssembly + Bootstrap):
 - [Understanding WCAG 2.2](https://www.w3.org/WAI/WCAG22/Understanding/)
 - [ARIA Authoring Practices Guide (APG)](https://www.w3.org/WAI/ARIA/apg/)
 - [WAI — Web Accessibility Initiative](https://www.w3.org/WAI/)
-'@ | Set-Variable -Name WcagMd
-[System.IO.File]::WriteAllText(
-    (Join-Path (Get-Location) 'documentation/WCAG.md'),
-    $WcagMd,
-    (New-Object System.Text.UTF8Encoding($true))
-)
+'@ | Set-Content "documentation/WCAG.md"
 
 # Register documentation folder as a Solution Folder in the .slnx file
 $slnxFile = "$ProjectName.slnx"

@@ -1147,12 +1147,7 @@ Sigue estos pasos para mantener el orden de capas y Vertical Slice:
 - Vaughn Vernon — *Implementing Domain-Driven Design*.
 - Microsoft — *ASP.NET Core documentation*.
 ```
-'@ | Set-Variable -Name ArchitectureMd
-[System.IO.File]::WriteAllText(
-    (Join-Path (Get-Location) 'documentation/ArchitectureGuide.md'),
-    $ArchitectureMd,
-    (New-Object System.Text.UTF8Encoding($true))
-)
+'@ | Set-Content "documentation/ArchitectureGuide.md"
 
 # Register documentation folder as a Solution Folder in the .slnx file
 $slnxFile = "$ProjectName.slnx"
