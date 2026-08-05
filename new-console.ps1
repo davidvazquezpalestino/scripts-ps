@@ -211,7 +211,7 @@ namespace $ProjectName.UseCases.UseCases.Greeting
     {
         public string Execute(string name)
         {
-            var env = options.Value.EnvironmentName;
+            string env = options.Value.EnvironmentName;
             return greetingPort.GetGreeting($"{name} ({env})");
         }
     }
@@ -339,8 +339,8 @@ IHostBuilder builder = Host.CreateDefaultBuilder(args)
 
 using IHost host = builder.Build();
 
-var useCase = host.Services.GetRequiredService<IGreetingUseCase>();
-var name = args.Length > 0 ? args[0] : "World";
+IGreetingUseCase useCase = host.Services.GetRequiredService<IGreetingUseCase>();
+string name = args.Length > 0 ? args[0] : "World";
 System.Console.WriteLine(useCase.Execute(name));
 "@ | Set-Content "src/Presentation/Console/Program.cs"
 
