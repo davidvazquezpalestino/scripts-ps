@@ -27,10 +27,10 @@ dotnet new sln -n "$ProjectName"
 dotnet new classlib -n "$ProjectName.Domain" -o "src/Domain"
 
 # Application
-dotnet new classlib -n "$ProjectName.Services" -o "src/Application/Services"
+dotnet new classlib -n "$ProjectName.UseCases" -o "src/Application/UseCases"
 
 # Infrastructure
-dotnet new classlib -n "$ProjectName.Adapters" -o "src/Infrastructure/Adapters"
+dotnet new classlib -n "$ProjectName.Infrastructure" -o "src/Infrastructure"
 
 # IoC
 dotnet new classlib -n "$ProjectName.IoC" -o "src/Presentation/IoC"
@@ -42,8 +42,8 @@ dotnet new console -n "$ProjectName.Console" -o "src/Presentation/Console"
 # ADD TO SOLUTION
 # =========================
 dotnet sln add src/Domain
-dotnet sln add src/Application/Services
-dotnet sln add src/Infrastructure/Adapters
+dotnet sln add src/Application/UseCases
+dotnet sln add src/Infrastructure
 dotnet sln add src/Presentation/IoC
 dotnet sln add src/Presentation/Console
 
@@ -51,15 +51,15 @@ dotnet sln add src/Presentation/Console
 # PROJECT REFERENCES
 # =========================
 # Application depends on Domain
-dotnet add src/Application/Services reference src/Domain
+dotnet add src/Application/UseCases reference src/Domain
 
 # Infrastructure depends on Application and Domain (implements ports)
-dotnet add src/Infrastructure/Adapters reference src/Application/Services
-dotnet add src/Infrastructure/Adapters reference src/Domain
+dotnet add src/Infrastructure reference src/Application/UseCases
+dotnet add src/Infrastructure reference src/Domain
 
 # IoC composes all layers
-dotnet add src/Presentation/IoC reference src/Application/Services
-dotnet add src/Presentation/IoC reference src/Infrastructure/Adapters
+dotnet add src/Presentation/IoC reference src/Application/UseCases
+dotnet add src/Presentation/IoC reference src/Infrastructure
 dotnet add src/Presentation/IoC reference src/Domain
 
 # Console depends only on IoC
@@ -69,13 +69,13 @@ dotnet add src/Presentation/Console reference src/Presentation/IoC
 # ADD PACKAGES
 # =========================
 # Application
-dotnet add src/Application/Services package Microsoft.Extensions.DependencyInjection.Abstractions
-dotnet add src/Application/Services package Microsoft.Extensions.Options
-dotnet add src/Application/Services package DependencyInjection.ReflectionExtensions
+dotnet add src/Application/UseCases package Microsoft.Extensions.DependencyInjection.Abstractions
+dotnet add src/Application/UseCases package Microsoft.Extensions.Options
+dotnet add src/Application/UseCases package DependencyInjection.ReflectionExtensions
 
 # Infrastructure
-dotnet add src/Infrastructure/Adapters package Microsoft.Extensions.DependencyInjection.Abstractions
-dotnet add src/Infrastructure/Adapters package DependencyInjection.ReflectionExtensions
+dotnet add src/Infrastructure package Microsoft.Extensions.DependencyInjection.Abstractions
+dotnet add src/Infrastructure package DependencyInjection.ReflectionExtensions
 
 # IoC
 dotnet add src/Presentation/IoC package Microsoft.Extensions.Hosting
@@ -94,9 +94,10 @@ dotnet add src/Presentation/Console package Microsoft.Extensions.Hosting
 # REMOVE DEFAULT CLASS1.cs
 # =========================
 Remove-Item "src/Domain/Class1.cs" -Force -ErrorAction SilentlyContinue
-Remove-Item "src/Application/Services/Class1.cs" -Force -ErrorAction SilentlyContinue
-Remove-Item "src/Infrastructure/Adapters/Class1.cs" -Force -ErrorAction SilentlyContinue
+Remove-Item "src/Application/UseCases/Class1.cs" -Force -ErrorAction SilentlyContinue
+Remove-Item "src/Infrastructure/Class1.cs" -Force -ErrorAction SilentlyContinue
 Remove-Item "src/Presentation/IoC/Class1.cs" -Force -ErrorAction SilentlyContinue
+
 
 # Remove <Nullable>enable</Nullable> from every generated .csproj
 Get-ChildItem -Path 'src' -Recurse -Filter *.csproj | ForEach-Object {
@@ -106,23 +107,33 @@ Get-ChildItem -Path 'src' -Recurse -Filter *.csproj | ForEach-Object {
 }
 
 # =========================
-# CREATE BASE FOLDERS
+# CREATE BASE FOLDERS (Vertical Slice)
 # =========================
-New-Item -ItemType Directory -Path "src/Domain/Entities" -Force | Out-Null
-New-Item -ItemType Directory -Path "src/Domain/Ports" -Force | Out-Null
-New-Item -ItemType Directory -Path "src/Application/Services/UseCases" -Force | Out-Null
-New-Item -ItemType Directory -Path "src/Application/Services/Options" -Force | Out-Null
+$sampleFeature = "Greeting"
 
-# Keep folders visible in Visual Studio Solution Explorer
-"" | Set-Content "src/Domain/Entities/.gitkeep"
-"" | Set-Content "src/Domain/Ports/.gitkeep"
+# Domain structure (por feature)
+New-Item -ItemType Directory -Path "src/Domain/Entities/$sampleFeature" -Force | Out-Null
+New-Item -ItemType Directory -Path "src/Domain/Ports/$sampleFeature" -Force | Out-Null
+
+# Application structure (por feature / acción)
+New-Item -ItemType Directory -Path "src/Application/UseCases/UseCases/$sampleFeature" -Force | Out-Null
+New-Item -ItemType Directory -Path "src/Application/UseCases/Options" -Force | Out-Null
+
+# Infrastructure structure (por feature)
+New-Item -ItemType Directory -Path "src/Infrastructure/$sampleFeature" -Force | Out-Null
+
+# Keep feature folders visible in Visual Studio Solution Explorer
+"" | Set-Content "src/Domain/Entities/$sampleFeature/.gitkeep"
+"" | Set-Content "src/Domain/Ports/$sampleFeature/.gitkeep"
+"" | Set-Content "src/Application/UseCases/UseCases/$sampleFeature/.gitkeep"
+"" | Set-Content "src/Infrastructure/$sampleFeature/.gitkeep"
 
 # =========================
 # CREATE BASIC FILES
 # =========================
 
 # appsettings.json
-@"
+Out-File -FilePath "src/Presentation/Console/appsettings.json" -InputObject @'
 {
     "EnvironmentOptions": {
         "EnvironmentName": "Production"
@@ -134,18 +145,21 @@ New-Item -ItemType Directory -Path "src/Application/Services/Options" -Force | O
         }
     }
 }
-"@ | Set-Content "src/Presentation/Console/appsettings.json"
+'@
 
 # appsettings.Development.json
-@"
+Out-File -FilePath "src/Presentation/Console/appsettings.Development.json" -InputObject @'
 {
+    "EnvironmentOptions": {
+        "EnvironmentName": "Development"
+    },
     "Logging": {
         "LogLevel": {
             "Default": "Debug"
         }
     }
 }
-"@ | Set-Content "src/Presentation/Console/appsettings.Development.json"
+'@
 
 # Configure csproj to copy appsettings on build
 $csprojPath = "src/Presentation/Console/$ProjectName.Console.csproj"
@@ -164,62 +178,62 @@ $csprojXml.Save((Resolve-Path $csprojPath))
 
 # Domain port (hexagonal architecture)
 @"
-namespace $ProjectName.Domain.Ports
+namespace $ProjectName.Domain.Ports.Greeting
 {
-    public interface IGreetingService
+    public interface IGreetingPort
     {
         string GetGreeting(string name);
     }
 }
-"@ | Set-Content "src/Domain/Ports/IGreetingService.cs"
+"@ | Set-Content "src/Domain/Ports/Greeting/IGreetingPort.cs"
 
 # Domain GlobalUsings
 @"
-global using $ProjectName.Domain.Ports;
+global using $ProjectName.Domain.Ports.Greeting;
 "@ | Set-Content "src/Domain/GlobalUsings.cs"
 
 # Application use case interface
 @"
-namespace $ProjectName.Services.UseCases
+namespace $ProjectName.UseCases.UseCases.Greeting
 {
     public interface IGreetingUseCase
     {
         string Execute(string name);
     }
 }
-"@ | Set-Content "src/Application/Services/UseCases/IGreetingUseCase.cs"
+"@ | Set-Content "src/Application/UseCases/UseCases/Greeting/IGreetingUseCase.cs"
 
 # Application service / use case (hexagonal architecture)
 @"
-namespace $ProjectName.Services.UseCases
+namespace $ProjectName.UseCases.UseCases.Greeting
 {
-    public class GreetingUseCase(IGreetingService greetingService, IOptions<EnvironmentOptions> options) : IGreetingUseCase
+    public class GreetingUseCase(IGreetingPort greetingPort, IOptions<EnvironmentOptions> options) : IGreetingUseCase
     {
         public string Execute(string name)
         {
             var env = options.Value.EnvironmentName;
-            return greetingService.GetGreeting($"{name} ({env})");
+            return greetingPort.GetGreeting($"{name} ({env})");
         }
     }
 }
-"@ | Set-Content "src/Application/Services/UseCases/GreetingUseCase.cs"
+"@ | Set-Content "src/Application/UseCases/UseCases/Greeting/GreetingUseCase.cs"
 
 
 
 # Infrastructure adapter (hexagonal architecture)
 @"
-namespace $ProjectName.Adapters
+namespace $ProjectName.Infrastructure.Greeting
 {
-    public class ConsoleGreetingAdapter : IGreetingService
+    public class ConsoleGreetingAdapter : IGreetingPort
     {
         public string GetGreeting(string name) => $"Hello, {name}! Welcome to the hexagonal console app.";
     }
 }
-"@ | Set-Content "src/Infrastructure/Adapters/ConsoleGreetingAdapter.cs"
+"@ | Set-Content "src/Infrastructure/Greeting/ConsoleGreetingAdapter.cs"
 
 # Application Options
 @"
-namespace $ProjectName.Services.Options
+namespace $ProjectName.UseCases.Options
 {
     public class EnvironmentOptions
     {
@@ -227,45 +241,45 @@ namespace $ProjectName.Services.Options
         public string EnvironmentName { get; set; } = "Production";
     }
 }
-"@ | Set-Content "src/Application/Services/Options/EnvironmentOptions.cs"
+"@ | Set-Content "src/Application/UseCases/Options/EnvironmentOptions.cs"
 
 # Application GlobalUsings
 @"
 global using DevKit.Injection.Extensions;
 global using Microsoft.Extensions.DependencyInjection;
 global using Microsoft.Extensions.Options;
-global using $ProjectName.Domain.Ports;
-global using $ProjectName.Services.Options;
-"@ | Set-Content "src/Application/Services/GlobalUsings.cs"
+global using $ProjectName.Domain.Ports.Greeting;
+global using $ProjectName.UseCases.Options;
+"@ | Set-Content "src/Application/UseCases/GlobalUsings.cs"
 
 # Infrastructure DependencyContainer
 @"
-namespace $ProjectName.Adapters
+namespace $ProjectName.Infrastructure
 {
     public static class DependencyContainer
     {
-        public static IServiceCollection AddAdapters(this IServiceCollection services)
+        public static IServiceCollection AddInfrastructure(this IServiceCollection services)
         {  
             services.AddCurrentAssembly();
             return services;
         }
     }
 }
-"@ | Set-Content "src/Infrastructure/Adapters/DependencyContainer.cs"
+"@ | Set-Content "src/Infrastructure/DependencyContainer.cs"
 
 # Infrastructure GlobalUsings
 @"
 global using DevKit.Injection.Extensions;
 global using Microsoft.Extensions.DependencyInjection;
 global using Microsoft.Extensions.Options;
-global using $ProjectName.Domain.Ports;
-global using $ProjectName.Services.Options;
-global using $ProjectName.Services.UseCases;
-"@ | Set-Content "src/Infrastructure/Adapters/GlobalUsings.cs"
+global using $ProjectName.Domain.Ports.Greeting;
+global using $ProjectName.UseCases.Options;
+global using $ProjectName.UseCases.UseCases.Greeting;
+"@ | Set-Content "src/Infrastructure/GlobalUsings.cs"
 
 # Application DependencyContainer
 @"
-namespace $ProjectName.Services
+namespace $ProjectName.UseCases
 {
     public static class DependencyContainer
     {
@@ -276,7 +290,7 @@ namespace $ProjectName.Services
         }
     }
 }
-"@ | Set-Content "src/Application/Services/DependencyContainer.cs"
+"@ | Set-Content "src/Application/UseCases/DependencyContainer.cs"
 
 # IoC DependencyContainer
 @"
@@ -287,7 +301,7 @@ namespace $ProjectName.IoC
         public static IServiceCollection AddIoC(this IServiceCollection services, IConfiguration configuration)
         {
             services.Configure<EnvironmentOptions>(configuration.GetSection(EnvironmentOptions.SectionKey));
-            services.AddAdapters()
+            services.AddInfrastructure()
                     .AddUseCases();
             return services;
         }
@@ -300,16 +314,17 @@ namespace $ProjectName.IoC
 global using DevKit.Injection.Extensions;
 global using Microsoft.Extensions.Configuration;
 global using Microsoft.Extensions.DependencyInjection;
-global using $ProjectName.Adapters;
-global using $ProjectName.Domain.Ports;
-global using $ProjectName.Services.Options;
-global using $ProjectName.Services.UseCases;
+global using $ProjectName.Infrastructure;
+global using $ProjectName.Domain.Ports.Greeting;
+global using $ProjectName.UseCases;
+global using $ProjectName.UseCases.Options;
+global using $ProjectName.UseCases.UseCases.Greeting;
 "@ | Set-Content "src/Presentation/IoC/GlobalUsings.cs"
 
 # Console Program.cs (Generic Host + DI + appsettings + Hexagonal Architecture)
 @"
 using $ProjectName.IoC;
-using $ProjectName.Services.UseCases;
+using $ProjectName.UseCases.UseCases.Greeting;
 
 IHostBuilder builder = Host.CreateDefaultBuilder(args)
     .ConfigureAppConfiguration((context, config) =>
@@ -335,7 +350,7 @@ global using Microsoft.Extensions.Configuration;
 global using Microsoft.Extensions.DependencyInjection;
 global using Microsoft.Extensions.Hosting;
 global using $ProjectName.IoC;
-global using $ProjectName.Services.UseCases;
+global using $ProjectName.UseCases.UseCases.Greeting;
 "@ | Set-Content "src/Presentation/Console/GlobalUsings.cs"
 
 # Git ignore
