@@ -7,7 +7,6 @@
 # 1. INFORMACION BASICA DEL PROYECTO
 # ============================================
 $ProjectName = Read-Host "Nombre del proyecto"
-$AUTHOR_NAME = Read-Host "Autor del proyecto"
 
 param(
     [Parameter(Mandatory=$false)]

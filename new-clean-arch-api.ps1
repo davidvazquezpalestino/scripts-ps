@@ -983,7 +983,7 @@ Orquesta el dominio para resolver una necesidad concreta del usuario.
 - `Validators/`: reglas de validación de entrada con FluentValidation.
 - `Interfaces/`: puertos que la aplicación necesita (`IUnitOfWork`).
 
-Un handler no sabe que existe `DbContext`; solo conoce interfaces.
+Un caso de uso no sabe que existe `DbContext`; solo conoce interfaces.
 
 ### 2.3 Infrastructure — los adaptadores
 
@@ -1027,10 +1027,28 @@ Ejemplo: crear un pedido necesita persistirlo en base de datos.
 
 1. `Domain/Interfaces/Orders/IOrderRepository.cs` define el puerto.
 2. `Infrastructure/DataBase/Orders/OrderRepository.cs` implementa el puerto.
-3. `Application/Commands/Orders/CreateOrder/CreateOrderHandler.cs` depende
+3. `Application/Commands/Orders/CreateOrder/CreateOrderUseCase.cs` depende
    de `IOrderRepository`.
 4. `Presentation/IoC/DependencyContainer.cs` registra la implementación.
 5. `Presentation/Controllers/Orders/OrdersController.cs` expone el endpoint.
+
+### Cuándo usar `Query`/`Command` vs tipos primitivos
+
+- Si la consulta o comando requiere **2 o más parámetros**, encapsúlalos
+  en un objeto `Query` o `Command`.
+- Si requiere **1 solo parámetro**, pásalo directamente como tipo
+  primitivo o `Guid`.
+
+Ejemplo:
+
+```csharp
+// Un solo parámetro: tipo primitivo
+public async Task<OrderDto?> ExecuteAsync(Guid orderId, CancellationToken ct = default)
+
+// Dos o más parámetros: objeto Query
+public record GetOrdersQuery(DateTime From, DateTime To, string Status);
+public async Task<IEnumerable<OrderDto>> ExecuteAsync(GetOrdersQuery query, CancellationToken ct = default)
+```
 
 La interfaz pertenece a la capa interna; la implementación, a la externa.
 Así las dependencias apuntan hacia adentro, aunque el flujo de control
@@ -1058,11 +1076,10 @@ src
 ├── Application
 │   ├── Commands/Orders/CreateOrder/
 │   │   ├── CreateOrderCommand.cs
-│   │   ├── CreateOrderHandler.cs
+│   │   ├── CreateOrderUseCase.cs
 │   │   └── CreateOrderResult.cs
 │   ├── Queries/Orders/GetOrderById/
-│   │   ├── GetOrderByIdQuery.cs
-│   │   └── GetOrderByIdHandler.cs
+│   │   └── GetOrderByIdUseCase.cs
 │   ├── Models/Orders/
 │   │   └── OrderDto.cs
 │   └── Validators/Orders/
@@ -1075,12 +1092,29 @@ src
         └── OrdersController.cs
 
 tests/UnitTests/Orders/CreateOrder
-├── CreateOrderHandlerTests.cs
+├── CreateOrderUseCaseTests.cs
 └── CreateOrderValidatorTests.cs
 ```
 
 **Regla de oro:** si necesitas buscar por toda la solución para encontrar
 los archivos de una feature, la organización está mal.
+
+## 🔑 Cómo encaja en Hexagonal
+
+- **Domain** → el núcleo: entidades y contratos (puertos).
+- **Application** → casos de uso (commands, queries, handlers, DTOs, validadores).
+- **Infrastructure** → adaptadores concretos (repositorios, persistencia, mensajería).
+- **Presentation** → capa externa (controllers, endpoints).
+- **Tests** → organizados también por feature, validando handlers y reglas.
+
+## ✅ Buenas prácticas
+
+- **Mantener independencia por feature**: cada carpeta de `Orders`, `Customers`, etc. debe contener todo lo necesario para esa funcionalidad.
+- **Interfaces en Domain**: siempre definen los puertos (`IOrderRepository`).
+- **UseCases en Application**: orquestan lógica de negocio usando puertos.
+- **Adaptadores en Infrastructure**: implementan los puertos (`OrderRepository`).
+- **Controllers en Presentation**: exponen los casos de uso hacia el exterior.
+- **Tests alineados**: cada feature tiene sus pruebas en la misma estructura.
 
 ---
 
@@ -1144,7 +1178,7 @@ Presentation/Api                (routing, middlewares, swagger)
 Presentation/Controllers        (endpoint que expone el caso de uso)
    │
    ▼
-Application/Commands o Queries  (handler del caso de uso)
+Application/Commands o Queries  (caso de uso)
    │
    ▼
 Application/Validators          (valida entrada)
@@ -1182,10 +1216,12 @@ Sigue estos pasos para mantener el orden de capas y Vertical Slice:
    - `Domain/Interfaces/{Feature}/I{Feature}Repository.cs`
    - `Domain/Entities/{Feature}/{Entity}.cs`
 
-2. **Application:** crea el comando/consulta, handler, validator y DTOs.
-   - `Application/Commands/{Feature}/{Action}/{Action}Command.cs`
-   - `Application/Commands/{Feature}/{Action}/{Action}Handler.cs`
+2. **Application:** crea el comando/consulta, caso de uso, validator y DTOs.
+   - `Application/Commands/{Feature}/{Action}/{Action}Command.cs` (solo si tiene 2+ parámetros)
+   - `Application/Commands/{Feature}/{Action}/{Action}UseCase.cs`
    - `Application/Commands/{Feature}/{Action}/{Action}Result.cs`
+   - `Application/Queries/{Feature}/{Action}/{Action}Query.cs` (solo si tiene 2+ parámetros)
+   - `Application/Queries/{Feature}/{Action}/{Action}UseCase.cs`
    - `Application/Validators/{Feature}/{Action}Validator.cs`
    - `Application/Models/{Feature}/{Entity}Dto.cs`
 
