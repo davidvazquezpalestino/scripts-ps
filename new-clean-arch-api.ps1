@@ -894,7 +894,7 @@ $deployScriptContent | Set-Content "src/Presentation/Api/deploy.sh"
 # =========================
 # CLEAN ARCHITECTURE DOC
 # =========================
-Write-Host "Writing documentation/ArchitectureGuide.md..." -ForegroundColor Yellow
+Write-Host "Writing documentation/architecture-guide.md..." -ForegroundColor Yellow
 New-Item -ItemType Directory -Path "documentation" -Force | Out-Null
 @'
 
@@ -1115,7 +1115,7 @@ los archivos de una feature, la organización está mal.
   /tests
     /UnitTests
   /documentation
-    ArchitectureGuide.md
+    architecture-guide.md
 ```
 
 Referencias entre proyectos:
@@ -1241,7 +1241,7 @@ Sigue estos pasos para mantener el orden de capas y Vertical Slice:
 - Vaughn Vernon — *Implementing Domain-Driven Design*.
 - Microsoft — *ASP.NET Core documentation*.
 ```
-'@ | Set-Content "documentation/ArchitectureGuide.md"
+'@ | Set-Content "documentation/architecture-guide.md"
 
 # Register documentation folder as a Solution Folder in the .slnx file
 $slnxFile = "$ProjectName.slnx"
@@ -1254,7 +1254,7 @@ if (Test-Path $slnxFile) {
         $folder.SetAttribute('Name', '/documentation/')
         [void]$root.AppendChild($folder)
     }
-    foreach ($docPath in @('documentation/ArchitectureGuide.md')) {
+    foreach ($docPath in @('documentation/architecture-guide.md')) {
         $hasFile = @($folder.File) | Where-Object { $_ -and $_.Path -eq $docPath } | Select-Object -First 1
         if (-not $hasFile) {
             $file = $slnx.CreateElement('File')
