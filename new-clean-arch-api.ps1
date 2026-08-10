@@ -3,10 +3,53 @@
 #  Powered by David Vazquez Palestino
 # =========================================================================
 
-param(
-    [Parameter(Mandatory = $true)]
-    [string]$ProjectName
-)
+$ProjectName = Read-Host "Nombre del proyecto"
+
+# ============================================
+# SELECCION DE BASE DE DATOS
+# ============================================
+Write-Host ""
+Write-Host "Selecciona la bases de datos a usar "
+Write-Host "1) SQL Server"
+Write-Host "2) MySQL"
+Write-Host "3) PostgreSQL"
+$DB_SELECTION = Read-Host "Ejemplo: 1,3 para SQL Server y PostgreSQL"
+
+# Parsear seleccion de DBs
+$USE_SQLSERVER = $false
+$USE_MYSQL = $false
+$USE_POSTGRES = $false
+
+$DB_ARRAY = $DB_SELECTION -split ','
+foreach ($db in $DB_ARRAY) {
+    switch ($db.Trim()) {
+        '1' { $USE_SQLSERVER = $true }
+        '2' { $USE_MYSQL = $true }
+        '3' { $USE_POSTGRES = $true }
+    }
+}
+
+# Connection string por defecto segun la primera DB seleccionada
+if ($USE_SQLSERVER) {
+    $defaultConnection = "Server=[Server];Database=[Database];User Id=sa;Password=[Password];MultipleActiveResultSets=true;encrypt=false;"
+}
+elseif ($USE_MYSQL) {
+    $defaultConnection = "Server=[Server];Database=[Database];User Id=root;Password=[Password];"
+}
+elseif ($USE_POSTGRES) {
+    $defaultConnection = "Host=[Server];Database=[Database];Username=postgres;Password=[Password];"
+}
+else {
+    $defaultConnection = ""
+}
+
+# Pregunta si se usara RabbitMQ
+Write-Host ""
+$rabbitMQInput = (Read-Host "Se usara RabbitMQ? (S/N) [N]").Trim().ToUpper()
+if ([string]::IsNullOrWhiteSpace($rabbitMQInput)) {
+    $rabbitMQInput = "N"
+}
+$USE_RABBITMQ = $rabbitMQInput -eq 'S'
 
 # =========================
 # COMPUTE PORTS (deterministic per project name)
@@ -79,6 +122,11 @@ dotnet new classlib -n "$ProjectName.Domain" -o "src/Domain"
 # Infrastructure
 dotnet new classlib -n "$ProjectName.DataBase" -o "src/Infrastructure/DataBase"
 
+# RabbitMQ (opcional)
+if ($USE_RABBITMQ) {
+    dotnet new classlib -n "$ProjectName.RabbitMQ" -o "src/Infrastructure/Messaging"
+}
+
 # Tests (xUnit.net v3)
 # Asegurar que la plantilla xunit3 est� disponible (paquete xunit.v3.templates)
 $templateList = dotnet new list xunit3 2>&1 | Out-String
@@ -105,6 +153,7 @@ Remove-Item "src/Presentation/IoC/Class1.cs" -Force -ErrorAction SilentlyContinu
 Remove-Item "src/Domain/Class1.cs" -Force -ErrorAction SilentlyContinue
 Remove-Item "src/Application/Validators/Class1.cs" -Force -ErrorAction SilentlyContinue
 Remove-Item "src/Infrastructure/DataBase/Class1.cs" -Force -ErrorAction SilentlyContinue
+if ($USE_RABBITMQ) { Remove-Item "src/Infrastructure/Messaging/Class1.cs" -Force -ErrorAction SilentlyContinue }
 Remove-Item "tests/UnitTests/Class1.cs" -Force -ErrorAction SilentlyContinue
 Remove-Item "tests/UnitTests/UnitTest1.cs" -Force -ErrorAction SilentlyContinue
 
@@ -128,6 +177,7 @@ dotnet sln add src/Presentation/Controllers
 dotnet sln add src/Presentation/IoC
 dotnet sln add src/Domain
 dotnet sln add src/Infrastructure/DataBase
+if ($USE_RABBITMQ) { dotnet sln add src/Infrastructure/Messaging }
 dotnet sln add tests/UnitTests
 
 # =========================
@@ -156,6 +206,10 @@ dotnet add src/Presentation/IoC reference src/Domain
 
 # Infrastructure depends only on Domain (implements interfaces defined there)
 dotnet add src/Infrastructure/DataBase reference src/Domain
+if ($USE_RABBITMQ) {
+    dotnet add src/Infrastructure/Messaging reference src/Domain
+    dotnet add src/Presentation/IoC reference src/Infrastructure/Messaging
+}
 
 # API depends on IoC
 dotnet add src/Presentation/Api reference src/Presentation/IoC
@@ -202,7 +256,9 @@ if (-not ($controllersXml.Project.ItemGroup | Where-Object { $_.FrameworkReferen
 # IoC
 dotnet add src/Presentation/IoC package Microsoft.Extensions.DependencyInjection
 dotnet add src/Presentation/IoC package Microsoft.EntityFrameworkCore
-dotnet add src/Presentation/IoC package Microsoft.EntityFrameworkCore.SqlServer
+if ($USE_SQLSERVER) { dotnet add src/Presentation/IoC package Microsoft.EntityFrameworkCore.SqlServer }
+if ($USE_MYSQL) { dotnet add src/Presentation/IoC package Pomelo.EntityFrameworkCore.MySql }
+if ($USE_POSTGRES) { dotnet add src/Presentation/IoC package Npgsql.EntityFrameworkCore.PostgreSQL }
 dotnet add src/Presentation/IoC package FluentValidation
 dotnet add src/Presentation/IoC package DependencyInjection.ReflectionExtensions
 dotnet add src/Presentation/IoC package Serilog
@@ -212,9 +268,18 @@ dotnet add src/Presentation/IoC package DevKit.ExecutionEngine.Redis
 
 # Infrastructure
 dotnet add src/Infrastructure/DataBase package Microsoft.EntityFrameworkCore
-dotnet add src/Infrastructure/DataBase package Microsoft.EntityFrameworkCore.SqlServer
+if ($USE_SQLSERVER) { dotnet add src/Infrastructure/DataBase package Microsoft.EntityFrameworkCore.SqlServer }
+if ($USE_MYSQL) { dotnet add src/Infrastructure/DataBase package Pomelo.EntityFrameworkCore.MySql }
+if ($USE_POSTGRES) { dotnet add src/Infrastructure/DataBase package Npgsql.EntityFrameworkCore.PostgreSQL }
 dotnet add src/Infrastructure/DataBase package Microsoft.Extensions.DependencyInjection.Abstractions
 dotnet add src/Infrastructure/DataBase package DependencyInjection.ReflectionExtensions
+
+# RabbitMQ
+if ($USE_RABBITMQ) {
+    dotnet add src/Infrastructure/Messaging package RabbitMQ.Client
+    dotnet add src/Infrastructure/Messaging package Microsoft.Extensions.DependencyInjection.Abstractions
+    dotnet add src/Infrastructure/Messaging package DependencyInjection.ReflectionExtensions
+}
 
 # API
 dotnet add src/Presentation/Api package Microsoft.EntityFrameworkCore.Design
@@ -290,7 +355,7 @@ New-Item -ItemType Directory -Path "src/Presentation/Api/Properties" -Force
 @"
 {
     "DataBaseOptions": {
-        "DefaultConnection": "Server=[Server];Database=[Database];User Id=sa;Password=[Password];MultipleActiveResultSets=true;encrypt=false;"
+        "DefaultConnection": "$defaultConnection"
     },
     "JwtOptions": {
         "SecurityKey": "1234567890ABCDEFGHIJKLMN�OPQRSTU",
@@ -311,7 +376,7 @@ New-Item -ItemType Directory -Path "src/Presentation/Api/Properties" -Force
 @"
 {
     "DataBaseOptions": {
-        "DefaultConnection": "Server=[Server];Database=[Database];User Id=sa;Password=[Password];MultipleActiveResultSets=true;encrypt=false;"
+        "DefaultConnection": "$defaultConnection"
     },
     "JwtOptions": {
         "SecurityKey": "1234567890ABCDEFGHIJKLMN�OPQRSTU",
@@ -413,6 +478,32 @@ namespace $ProjectName.DataBase
 }
 "@ | Set-Content "src/Infrastructure/DataBase/DependencyContainer.cs"
 
+# DependencyContainer class in RabbitMQ Project (opcional)
+if ($USE_RABBITMQ) {
+@"
+
+namespace $ProjectName.RabbitMQ
+{
+    public static class DependencyContainer
+    {
+        public static IServiceCollection AddRabbitMQ(this IServiceCollection services)
+        {  
+            services.AddCurrentAssembly();
+            return services;
+        }
+    }
+}
+"@ | Set-Content "src/Infrastructure/Messaging/DependencyContainer.cs"
+
+# GlobalUsings RabbitMQ
+@"
+global using System.Reflection;
+global using DevKit.Injection.Extensions;
+global using Microsoft.Extensions.DependencyInjection;
+
+"@ | Set-Content "src/Infrastructure/Messaging/GlobalUsings.cs"
+}
+
 # DependencyContainer class in IoC Project
 @"
 
@@ -431,7 +522,7 @@ namespace $ProjectName.IoC
             services.AddCommands()
                         .AddQueries()
                         .AddValidators()
-                        .AddInfrastructure()
+                        .AddInfrastructure()$(if($USE_RABBITMQ){".AddRabbitMQ()"})
                         .AddSerilog(configuration);            
             return services;
         }
@@ -472,6 +563,7 @@ global using $ProjectName.Commands;
 global using $ProjectName.DataBase;
 global using $ProjectName.Queries;
 global using $ProjectName.Validators;
+$(if($USE_RABBITMQ){"global using $ProjectName.RabbitMQ;"})
 global using $ProjectName.DataBase.Options;
 global using Serilog;
 global using Microsoft.AspNetCore.Builder;
@@ -675,6 +767,7 @@ WebApplication.CreateBuilder(args)
 
 # Dockerfile
 @"
+# Base image for $ProjectName (DB: $(if($USE_SQLSERVER){"SQL Server"} elseif($USE_MYSQL){"MySQL"} elseif($USE_POSTGRES){"PostgreSQL"} else{"Not selected"}))
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
 WORKDIR /app
 EXPOSE 8080
@@ -691,6 +784,7 @@ COPY src/Presentation/IoC/$ProjectName.IoC.csproj src/Presentation/IoC/
 COPY src/Application/Models/$ProjectName.Models.csproj src/Application/Models/
 COPY src/Application/Queries/$ProjectName.Queries.csproj src/Application/Queries/
 COPY src/Application/Validators/$ProjectName.Validators.csproj src/Application/Validators/
+$(if($USE_RABBITMQ){"COPY src/Infrastructure/Messaging/$ProjectName.RabbitMQ.csproj src/Infrastructure/Messaging/"})
 RUN dotnet restore src/Presentation/Api/$ProjectName.WebApi.csproj
 COPY . .
 WORKDIR /src/src/Presentation/Api

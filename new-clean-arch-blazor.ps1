@@ -3,10 +3,13 @@
 #  Powered by David Vázquez Palestino
 # =========================================================================
 
+# ============================================
+# 1. INFORMACION BASICA DEL PROYECTO
+# ============================================
+$ProjectName = Read-Host "Nombre del proyecto"
+$AUTHOR_NAME = Read-Host "Autor del proyecto"
+
 param(
-    [Parameter(Mandatory=$true)]
-    [string]$ProjectName,
-    
     [Parameter(Mandatory=$false)]
     [string]$OutputPath = "."
 )

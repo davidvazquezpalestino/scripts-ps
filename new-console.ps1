@@ -3,10 +3,11 @@
 #  Powered by David Vazquez Palestino
 # =========================================================================
 
-param(
-    [Parameter(Mandatory = $true)]
-    [string]$ProjectName
-)
+# ============================================
+# 1. INFORMACION BASICA DEL PROYECTO
+# ============================================
+$ProjectName = Read-Host "Nombre del proyecto"
+$AUTHOR_NAME = Read-Host "Autor del proyecto"
 
 Write-Host "Creating Console project: $ProjectName"
 
