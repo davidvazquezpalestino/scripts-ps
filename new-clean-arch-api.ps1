@@ -486,7 +486,7 @@ namespace $ProjectName.RabbitMQ
 {
     public static class DependencyContainer
     {
-        public static IServiceCollection AddRabbitMQ(this IServiceCollection services)
+        public static IServiceCollection AddRabbitMq(this IServiceCollection services)
         {  
             services.AddServicesCurrentAssembly();
             return services;
@@ -522,7 +522,7 @@ namespace $ProjectName.IoC
             services.AddCommands()
                         .AddQueries()
                         .AddValidators()
-                        .AddInfrastructure()$(if($USE_RABBITMQ){".AddRabbitMQ()"})
+                        .AddInfrastructure()$(if($USE_RABBITMQ){".AddRabbitMq()"})
                         .AddSerilog(configuration);            
             return services;
         }
