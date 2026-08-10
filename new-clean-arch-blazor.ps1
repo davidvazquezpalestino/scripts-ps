@@ -258,7 +258,7 @@ namespace $ProjectName.ViewModels
     {
         public static IServiceCollection AddViewModels(this IServiceCollection services)
         {  
-            services.AddCurrentAssembly();
+            services.AddServicesCurrentAssembly();
             return services;
         }
     }
@@ -275,7 +275,7 @@ namespace $ProjectName.WebApi
         public static IServiceCollection AddInfrastructure(this IServiceCollection services)
         {  
             services.AddSingleton<TokenService>();
-            services.AddCurrentAssembly();
+            services.AddServicesCurrentAssembly();
             return services;
         }
     }
@@ -290,7 +290,7 @@ namespace $ProjectName.Validators
     {
         public static IServiceCollection AddValidators(this IServiceCollection services)
         {  
-            services.AddCurrentAssembly();
+            services.AddServicesCurrentAssembly();
             return services;
         }
     }

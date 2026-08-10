@@ -261,7 +261,7 @@ namespace $ProjectName.Infrastructure
     {
         public static IServiceCollection AddInfrastructure(this IServiceCollection services)
         {  
-            services.AddCurrentAssembly();
+            services.AddServicesCurrentAssembly();
             return services;
         }
     }
@@ -286,7 +286,7 @@ namespace $ProjectName.UseCases
     {
         public static IServiceCollection AddUseCases(this IServiceCollection services)
         {  
-            services.AddCurrentAssembly();
+            services.AddServicesCurrentAssembly();
             return services;
         }
     }

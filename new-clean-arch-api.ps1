@@ -405,7 +405,7 @@ namespace $ProjectName.Commands
     {
         public static IServiceCollection AddCommands(this IServiceCollection services)
         {  
-            services.AddCurrentAssembly();
+            services.AddServicesCurrentAssembly();
             return services;
         }
     }
@@ -429,7 +429,7 @@ namespace $ProjectName.Queries
     {
         public static IServiceCollection AddQueries(this IServiceCollection services)
         {  
-            services.AddCurrentAssembly();
+            services.AddServicesCurrentAssembly();
             return services;
         }
     }
@@ -455,7 +455,7 @@ namespace $ProjectName.Validators
     {
         public static IServiceCollection AddValidators(this IServiceCollection services)
         {  
-            services.AddCurrentAssembly();
+            services.AddServicesCurrentAssembly();
             return services;
         }
     }
@@ -471,7 +471,7 @@ namespace $ProjectName.DataBase
     {
         public static IServiceCollection AddInfrastructure(this IServiceCollection services)
         {
-            services.AddCurrentAssembly();
+            services.AddServicesCurrentAssembly();
             return services;
         }
     }
@@ -488,7 +488,7 @@ namespace $ProjectName.RabbitMQ
     {
         public static IServiceCollection AddRabbitMQ(this IServiceCollection services)
         {  
-            services.AddCurrentAssembly();
+            services.AddServicesCurrentAssembly();
             return services;
         }
     }
