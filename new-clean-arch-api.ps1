@@ -271,6 +271,7 @@ dotnet add src/Infrastructure/DataBase package Microsoft.EntityFrameworkCore
 if ($USE_SQLSERVER) { dotnet add src/Infrastructure/DataBase package Microsoft.EntityFrameworkCore.SqlServer }
 if ($USE_MYSQL) { dotnet add src/Infrastructure/DataBase package Pomelo.EntityFrameworkCore.MySql }
 if ($USE_POSTGRES) { dotnet add src/Infrastructure/DataBase package Npgsql.EntityFrameworkCore.PostgreSQL }
+dotnet add src/Infrastructure/DataBase package Dapper
 dotnet add src/Infrastructure/DataBase package Microsoft.Extensions.DependencyInjection.Abstractions
 dotnet add src/Infrastructure/DataBase package DependencyInjection.ReflectionExtensions
 
@@ -989,11 +990,17 @@ Un caso de uso no sabe que existe `DbContext`; solo conoce interfaces.
 
 Implementa los puertos de Domain y Application.
 
-- `DataBase/`: EF Core, repositorios, migraciones, opciones.
+- `DataBase/`: EF Core, Dapper, repositorios, migraciones, opciones.
 - `Adapters/`: APIs externas, colas de mensajes, servicios de correo, etc.
 
 Es la única capa que conoce conexiones de base de datos, ORM y APIs
 externas.
+
+> **Estrategia de persistencia:** por convención, los **Commands**
+> (escritura) usan **Entity Framework Core** para aprovechar el
+> seguimiento de cambios, validaciones y migraciones. Los **Queries**
+> (lectura) usan **Dapper** para leer de forma ligera y eficiente,
+> especialmente cuando se proyectan DTOs planos.
 
 ### 2.4 Presentation — la entrega
 
@@ -1261,7 +1268,7 @@ Sigue estos pasos para mantener el orden de capas y Vertical Slice:
 
 - **Cambios localizados:** una feature vive junta; tocarla no rompe otras.
 - **Testabilidad:** Domain y Application se prueban sin infraestructura.
-- **Sustituibilidad:** cambiar EF Core por Dapper, SQL Server por Postgres,
+- **Sustituibilidad:** cambiar EF Core por Dapper (o viceversa), SQL Server por Postgres,
   o REST por gRPC es un cambio en una capa externa.
 - **Escalabilidad cognitiva:** un desarrollador solo necesita entender la
   feature que está tocando.
