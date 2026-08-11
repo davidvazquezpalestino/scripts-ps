@@ -3,17 +3,17 @@
 #  Powered by David Vázquez Palestino
 # =========================================================================
 
-# ============================================
-# 1. INFORMACION BASICA DEL PROYECTO
-# ============================================
-$ProjectName = Read-Host "Nombre del proyecto"
-
 param(
     [Parameter(Mandatory=$false)]
     [string]$OutputPath = "."
 )
 
 $ErrorActionPreference = "Stop"
+
+# ============================================
+# 1. INFORMACION BASICA DEL PROYECTO
+# ============================================
+$ProjectName = Read-Host "Nombre del proyecto"
 
 # =========================
 # COMPUTE PORT (deterministic per project name)
