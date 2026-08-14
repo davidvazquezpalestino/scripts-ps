@@ -948,6 +948,19 @@ if ($content -notmatch 'bootstrap\.bundle\.min\.js') {
 
 $content | Set-Content "src/Presentation/Client/wwwroot/index.html"
 
+# Update default app.css font stack
+$appCssPath = "src/Presentation/Client/wwwroot/css/app.css"
+if (Test-Path $appCssPath) {
+    $appCssContent = Get-Content -Raw -Path $appCssPath
+    $appCssContent = $appCssContent -replace "(?m)^html,\s*body\s*\{\s*[\r\n]+\s*font-family:\s*'Helvetica Neue',\s*Helvetica,\s*Arial,\s*sans-serif;\s*[\r\n]+\s*\}", "html, body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-size: 14px;
+}"
+    if ($appCssContent -ne (Get-Content -Raw -Path $appCssPath)) {
+        $appCssContent | Set-Content -Path $appCssPath -NoNewline
+    }
+}
+
 # Views _Imports.razor
 @"
 @using Microsoft.AspNetCore.Components
