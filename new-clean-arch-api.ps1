@@ -1040,7 +1040,8 @@ if (Test-Path "src/Presentation/Api/deploy.sh") {
 # =========================
 Write-Host "Writing documentation/architecture-guide.md..." -ForegroundColor Yellow
 New-Item -ItemType Directory -Path "documentation" -Force | Out-Null
-$architectureGuide = @"
+$architectureGuide = @'
+
 # Guía de arquitectura — ASP.NET Core Web API
 
 Esta plantilla combina dos ideas: **Clean Architecture** (Robert C. Martin,
@@ -1434,7 +1435,7 @@ Sigue estos pasos para mantener el orden de capas y Vertical Slice:
 - Vaughn Vernon — *Implementing Domain-Driven Design*.
 - Microsoft — *ASP.NET Core documentation*.
 - Martin Fowler — *Patterns of Enterprise Application Architecture*.
-"@
+'@
 $architectureGuide | Set-Content "documentation/architecture-guide.md"
 
 # Register documentation folder as a Solution Folder in the .slnx file
@@ -1464,7 +1465,7 @@ dotnet new gitignore
 
 # README.md
 Write-Host "Writing documentation/README.md..." -ForegroundColor Yellow
-$readme = @"
+$readme = @'
 # $ProjectName
 
 ASP.NET Core Web API con Clean Architecture y Vertical Slice Architecture.
@@ -1532,7 +1533,7 @@ git push -u origin master
 
 ---
 Powered by David Vazquez Palestino
-"@
+'@
 $readme | Set-Content "documentation/README.md"
 
 $endTime = Get-Date
