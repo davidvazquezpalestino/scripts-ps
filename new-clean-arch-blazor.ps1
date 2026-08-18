@@ -306,6 +306,8 @@ namespace $ProjectName.IoC
         {
             services.Configure<ApiOptions>(configuration.GetSection(ApiOptions.SectionKey));
 
+            services.AddSingleton<$ProjectName.Views.Layout.NavMenuStateService>();
+
             services.AddViewModels()
                     .AddValidators()
                     .AddInfrastructure();
@@ -656,8 +658,8 @@ namespace $ProjectName.ViewModels.Auth
 
 <PageTitle>Iniciar sesión</PageTitle>
 
-<div class="d-flex flex-column justify-content-center align-items-center w-100 px-3 py-4">
-    <div class="card shadow-sm w-100" style="max-width: 420px; background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%); border: 1px solid #0d6efd;">
+<div class="login-page d-flex flex-column justify-content-center align-items-center w-100 pt-4">
+    <div class="card shadow-sm border-primary" style="max-width: 420px; width: 100%;">
         <div class="card-body p-4">
             <div class="text-center mb-4">
                 <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-primary bg-opacity-10 text-primary mb-2"
@@ -979,6 +981,7 @@ if (Test-Path $appCssPath) {
 @"
 global using $ProjectName.Domain.Interfaces.Auth;
 global using $ProjectName.ViewModels.Auth;
+global using $ProjectName.Views.Layout;
 global using Microsoft.AspNetCore.Components;
 global using Microsoft.AspNetCore.Components.Routing;
 global using System.Text;
@@ -1010,26 +1013,40 @@ global using System.Text.Json;
 # MainLayout.razor in Views/Layout
 @"
 @inherits LayoutComponentBase
-<div class="page d-flex flex-column min-vh-100" @onclick="OnPageClick">
-    <NavMenu @ref="navMenu" />
+@inject NavMenuStateService NavMenuState
 
-    <main class="flex-fill d-flex flex-column justify-content-center">
-        <article class="content w-100">
-            @Body
-        </article>
-    </main>
+<div class="d-flex min-vh-100">
+    <NavMenu />
 
-    <footer class="app-footer px-3 px-md-4 py-2 d-flex flex-wrap align-items-center gap-2">
-        <span>
-            <i class="bi bi-c-circle me-1" aria-hidden="true"></i>
-            @DateTime.Now.Year $ProjectName
-        </span>
-        <span class="ms-auto d-inline-flex align-items-center gap-3">
-            <span class="badge rounded-pill text-bg-light border">
-                <i class="bi bi-tag me-1" aria-hidden="true"></i>v1.0
+    <div class="d-flex flex-column flex-fill min-vw-0">
+        <TopBar />
+
+        <main id="main-content" class="flex-fill bg-light">
+            <article class="p-3">
+                @Body
+            </article>
+        </main>
+
+        <footer class="px-3 px-md-4 py-2 d-flex flex-wrap align-items-center gap-2 border-top bg-white">
+            <span class="text-muted small">
+                <i class="bi bi-c-circle me-1" aria-hidden="true"></i>
+                @DateTime.Now.Year $ProjectName
             </span>
-        </span>
-    </footer>
+            <span class="ms-auto d-inline-flex align-items-center gap-3">
+                <span class="badge rounded-pill text-bg-light border">
+                    <i class="bi bi-tag me-1" aria-hidden="true"></i>v1.0
+                </span>
+            </span>
+        </footer>
+    </div>
+
+    @if (NavMenuState.IsOpen)
+    {
+        <div class="position-fixed top-0 start-0 end-0 bottom-0"
+             style="z-index: 1035; background-color: rgba(0, 0, 0, 0.45);"
+             @onclick="NavMenuState.CloseOpen"
+             aria-hidden="true"></div>
+    }
 </div>
 
 "@ | Set-Content "src/Presentation/Views/Layout/MainLayout.razor"
@@ -1038,103 +1055,66 @@ global using System.Text.Json;
 @"
 namespace $ProjectName.Views.Layout;
 
-public partial class MainLayout : LayoutComponentBase
+public partial class MainLayout : LayoutComponentBase, IDisposable
 {
-    private NavMenu? navMenu;
-
-    private void OnPageClick()
+    protected override void OnInitialized()
     {
-        navMenu?.CloseUserMenu();
+        NavMenuState.Changed += OnNavMenuStateChanged;
+    }
+
+    private async void OnNavMenuStateChanged(object? sender, EventArgs e)
+    {
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        NavMenuState.Changed -= OnNavMenuStateChanged;
     }
 }
 "@ | Set-Content "src/Presentation/Views/Layout/MainLayout.razor.cs"
 
 # NavMenu.razor in Views/Layout
 @"
-@inject IAuthState AuthState
-@inject ILoginViewModel ViewModel
+@inject NavMenuStateService NavMenuState
 @inject NavigationManager Navigation
 
-<nav class="navbar navbar-expand-md navbar-dark bg-primary" @onclick:stopPropagation="true">
-    <div class="container-fluid">
-        <a class="navbar-brand d-inline-flex align-items-center gap-2" href="">
-            <i class="bi bi-house-door" aria-hidden="true"></i>
-            <span>$ProjectName</span>
+<nav class="d-flex flex-column bg-white text-dark @NavMenuCssClass"
+     style="width: @(NavMenuState.IsCollapsed ? "60px" : "260px");"
+     aria-label="Navegación principal">
+    <div class="d-flex align-items-center justify-content-between p-3 border-bottom border-dark border-opacity-10" style="height: 56px;">
+        <a class="sidebar-brand d-inline-flex align-items-center gap-2 text-dark text-decoration-none fw-semibold text-nowrap overflow-hidden"
+           href="" title="$ProjectName">
+            <i class="bi bi-box-seam fs-4" aria-hidden="true"></i>
+            <span class="sidebar-text">$ProjectName</span>
         </a>
-        <button class="navbar-toggler" type="button" @onclick="ToggleNavMenu"
-                aria-controls="navbarMain"
-                aria-expanded="@(!collapseNavMenu)"
-                aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
+        <button type="button"
+                class="btn btn-link text-dark p-1 d-lg-none"
+                @onclick="NavMenuState.CloseOpen"
+                aria-label="Cerrar menú">
+            <i class="bi bi-x-lg fs-4" aria-hidden="true"></i>
         </button>
-        <div class="@NavMenuCssClass navbar-collapse" id="navbarMain">
-            @if (IsAuthenticated)
-            {
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item">
-                        <NavLink class="nav-link" href="" Match="NavLinkMatch.All" @onclick="CollapseNavMenu">
-                            <i class="bi bi-house-door" aria-hidden="true"></i>
-                            <span class="ms-1">Inicio</span>
-                        </NavLink>
-                    </li>
-                </ul>
-            }
-            <div class="navbar-nav ms-auto">
-                @if (IsAuthenticated)
-                {
-                    <div class="nav-item dropdown">
-                        <button class="btn btn-link nav-link dropdown-toggle d-inline-flex align-items-center gap-2"
-                                type="button"
-                                @onclick="ToggleUserMenu"
-                                @onfocusout="OnUserMenuFocusOut"
-                                aria-expanded="@IsUserMenuOpen"
-                                aria-label="Menú de usuario">
-                            <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-white bg-opacity-25 text-white"
-                                  style="width: 30px; height: 30px;">
-                                <i class="bi bi-person fs-6" aria-hidden="true"></i>
-                            </span>
-                            <span class="text-truncate" style="max-width: 140px;">@UserDisplayName</span>
-                        </button>
+    </div>
 
-                        @if (IsUserMenuOpen)
-                        {
-                            <div class="dropdown-menu dropdown-menu-end shadow-sm border rounded-3 p-2 show"
-                                 style="min-width: 240px; position: absolute; z-index: 1050; right: 0;"
-                                 tabindex="-1"
-                                 @onfocusout="OnUserMenuFocusOut">
-                                <div class="px-3 py-2">
-                                    <div class="fw-semibold">@UserDisplayName</div>
-                                    <div class="text-muted small text-break">@UserEmail</div>
-                                    @if (!string.IsNullOrEmpty(SessionExpiry))
-                                    {
-                                        <div class="text-muted mt-1 small">
-                                            <i class="bi bi-clock-history me-1" aria-hidden="true"></i>
-                                            @SessionExpiry
-                                        </div>
-                                    }
-                                </div>
-                                <div class="dropdown-divider"></div>
-                                <button type="button"
-                                        class="dropdown-item btn btn-light d-inline-flex align-items-center gap-2 rounded-2 w-100 text-start"
-                                        @onclick="SignOutAsync">
-                                    <i class="bi bi-power" aria-hidden="true"></i>
-                                    Cerrar sesión
-                                </button>
-                            </div>
-                        }
-                    </div>
-                }
-                else
-                {
-                    <div class="nav-item">
-                        <NavLink class="nav-link" href="login" @onclick="CollapseNavMenu">
-                            <i class="bi bi-box-arrow-in-right" aria-hidden="true"></i>
-                            <span class="ms-1">Iniciar sesión</span>
-                        </NavLink>
-                    </div>
-                }
-            </div>
-        </div>
+    <div class="flex-fill overflow-auto py-2 px-3">
+        <ul class="list-unstyled ps-0 mb-0">
+            <li class="mb-1">
+                <a href="/"
+                   class="btn btn-toggle d-inline-flex align-items-center justify-content-lg-start justify-content-center rounded px-0 text-secondary w-100 text-decoration-none"
+                   @onclick="OnLinkClicked">
+                    <i class="bi bi-house-door fs-5 me-lg-2" aria-hidden="true"></i>
+                    <span class="sidebar-text">Home</span>
+                </a>
+            </li>
+            <li class="mb-1">
+                <a href="/"
+                   class="btn btn-toggle d-inline-flex align-items-center justify-content-lg-start justify-content-center rounded px-0 text-secondary w-100 text-decoration-none"
+                   @onclick="OnLinkClicked">
+                    <i class="bi bi-speedometer2 fs-5 me-lg-2" aria-hidden="true"></i>
+                    <span class="sidebar-text">Dashboard</span>
+                </a>
+            </li>
+        </ul>
     </div>
 </nav>
 
@@ -1146,12 +1126,201 @@ namespace $ProjectName.Views.Layout;
 
 public partial class NavMenu : ComponentBase, IDisposable
 {
-    private bool collapseNavMenu = true;
+    private string NavMenuCssClass
+    {
+        get
+        {
+            var classes = new System.Text.StringBuilder("sidebar");
+            if (NavMenuState.IsCollapsed)
+                classes.Append(" sidebar-collapsed");
+            if (NavMenuState.IsOpen)
+                classes.Append(" sidebar-open");
+            else
+                classes.Append(" sidebar-closed");
+            return classes.ToString();
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        NavMenuState.Changed += OnStateChanged;
+    }
+
+    private async void OnStateChanged(object? sender, EventArgs e)
+    {
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void OnLinkClicked()
+    {
+        NavMenuState.CloseOpen();
+    }
+
+    private void OnToggleClicked(string id)
+    {
+        // Bootstrap JS handles the collapse toggle; this method keeps the
+        // sidebar open on mobile so the user sees the expand/collapse effect.
+    }
+
+    private void CloseNavMenu()
+    {
+        NavMenuState.CloseOpen();
+    }
+
+    public void Dispose()
+    {
+        NavMenuState.Changed -= OnStateChanged;
+    }
+}
+"@ | Set-Content "src/Presentation/Views/Layout/NavMenu.razor.cs"
+
+# NavMenuStateService
+@"
+namespace $ProjectName.Views.Layout;
+
+public class NavMenuStateService
+{
+    public bool IsCollapsed { get; private set; }
+    public bool IsOpen { get; private set; }
+
+    public event EventHandler? Changed;
+
+    public void ToggleCollapsed()
+    {
+        IsCollapsed = !IsCollapsed;
+        NotifyChanged();
+    }
+
+    public void SetCollapsed(bool collapsed)
+    {
+        IsCollapsed = collapsed;
+        NotifyChanged();
+    }
+
+    public void ToggleOpen()
+    {
+        IsOpen = !IsOpen;
+        NotifyChanged();
+    }
+
+    public void SetOpen(bool open)
+    {
+        IsOpen = open;
+        NotifyChanged();
+    }
+
+    public void CloseOpen()
+    {
+        if (IsOpen)
+        {
+            IsOpen = false;
+            NotifyChanged();
+        }
+    }
+
+    private void NotifyChanged()
+    {
+        Changed?.Invoke(this, EventArgs.Empty);
+    }
+}
+"@ | Set-Content "src/Presentation/Views/Layout/NavMenuStateService.cs"
+
+# TopBar.razor
+@"
+@inject NavMenuStateService NavMenuStateService
+@inject IAuthState AuthState
+@inject ILoginViewModel ViewModel
+@inject NavigationManager Navigation
+
+<header class="navbar navbar-expand bg-white px-3 shadow-sm" style="height: 56px;">
+    <div class="container-fluid">
+        <div class="d-flex align-items-center">
+            <button type="button"
+                    class="btn btn-link nav-link text-dark p-0 me-3 d-lg-none"
+                    @onclick="NavMenuStateService.ToggleOpen"
+                    aria-label="Abrir menú"
+                    aria-expanded="@NavMenuStateService.IsOpen">
+                <i class="bi bi-list fs-4" aria-hidden="true"></i>
+            </button>
+
+            <button type="button"
+                    class="btn btn-link nav-link text-dark p-0 me-3 d-none d-lg-inline-flex"
+                    @onclick="NavMenuStateService.ToggleCollapsed"
+                    aria-label="Contraer menú"
+                    aria-expanded="@(!NavMenuStateService.IsCollapsed)">
+                <i class="bi bi-list fs-4" aria-hidden="true"></i>
+            </button>
+        </div>
+
+        <div class="ms-auto navbar-nav">
+            @if (IsAuthenticated)
+            {
+                <div class="nav-item dropdown">
+                    <button class="btn btn-link nav-link dropdown-toggle d-inline-flex align-items-center gap-2 text-dark"
+                            type="button"
+                            @onclick="ToggleUserMenu"
+                            @onfocusout="OnUserMenuFocusOut"
+                            aria-expanded="@IsUserMenuOpen"
+                            aria-label="Menú de usuario">
+                        <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-dark bg-opacity-10 text-dark"
+                              style="width: 30px; height: 30px;">
+                            <i class="bi bi-person fs-6" aria-hidden="true"></i>
+                        </span>
+                        <span class="text-truncate d-none d-sm-inline" style="max-width: 140px;">@UserDisplayName</span>
+                    </button>
+
+                    @if (IsUserMenuOpen)
+                    {
+                        <div class="dropdown-menu dropdown-menu-end shadow-sm border rounded-3 p-2 show"
+                             style="min-width: 240px; position: absolute; z-index: 1050; right: 0;"
+                             tabindex="-1"
+                             @onfocusout="OnUserMenuFocusOut">
+                            <div class="px-3 py-2">
+                                <div class="fw-semibold">@UserDisplayName</div>
+                                <div class="text-muted small text-break">@UserEmail</div>
+                                @if (!string.IsNullOrEmpty(SessionExpiry))
+                                {
+                                    <div class="text-muted mt-1 small">
+                                        <i class="bi bi-clock-history me-1" aria-hidden="true"></i>
+                                        @SessionExpiry
+                                    </div>
+                                }
+                            </div>
+                            <div class="dropdown-divider"></div>
+                            <button type="button"
+                                    class="dropdown-item btn btn-light d-inline-flex align-items-center gap-2 rounded-2 w-100 text-start"
+                                    @onclick="SignOutAsync">
+                                <i class="bi bi-power" aria-hidden="true"></i>
+                                Cerrar sesión
+                            </button>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="nav-item d-inline-flex align-items-center gap-2">
+                    <a href="login" class="nav-link text-dark py-0">Iniciar sesión</a>
+                    <span class="text-muted">|</span>
+                    <a href="registro" class="nav-link text-dark py-0">Registrarse</a>
+                </div>
+            }
+        </div>
+    </div>
+</header>
+
+"@ | Set-Content "src/Presentation/Views/Layout/TopBar.razor"
+
+# TopBar.razor.cs
+@"
+namespace $ProjectName.Views.Layout;
+
+public partial class TopBar : ComponentBase, IDisposable
+{
     private bool IsUserMenuOpen { get; set; }
+    private EventHandler? _authStateChangedHandler;
 
     private bool IsAuthenticated => AuthState.IsAuthenticated;
-
-    private string NavMenuCssClass => collapseNavMenu ? "collapse" : "collapse show";
 
     private string UserDisplayName => AuthState.UserEmail is { Length: > 0 } email
         ? (email.IndexOf('@') is > 0 and var at ? email[..at] : email)
@@ -1159,25 +1328,13 @@ public partial class NavMenu : ComponentBase, IDisposable
 
     private string UserEmail => AuthState.UserEmail ?? string.Empty;
 
-    private string UserRole => string.Empty;
-
     private string SessionExpiry => GetSessionExpiryFromToken();
 
     protected override void OnInitialized()
     {
-        AuthState.AuthenticationStateChanged += (_, __) => StateHasChanged();
-    }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender == false)
-        {
-            return;
-        }
-
+        _authStateChangedHandler = (_, __) => StateHasChanged();
+        AuthState.AuthenticationStateChanged += _authStateChangedHandler;
         Navigation.LocationChanged += OnLocationChanged;
-        await Task.CompletedTask;
-        StateHasChanged();
     }
 
     private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
@@ -1188,16 +1345,9 @@ public partial class NavMenu : ComponentBase, IDisposable
 
     public void Dispose()
     {
+        if (_authStateChangedHandler != null)
+            AuthState.AuthenticationStateChanged -= _authStateChangedHandler;
         Navigation.LocationChanged -= OnLocationChanged;
-    }
-
-    public void CloseUserMenu()
-    {
-        if (IsUserMenuOpen)
-        {
-            IsUserMenuOpen = false;
-            StateHasChanged();
-        }
     }
 
     private async Task OnUserMenuFocusOut()
@@ -1214,19 +1364,14 @@ public partial class NavMenu : ComponentBase, IDisposable
         Navigation.NavigateTo("/login", forceLoad: true);
     }
 
-    private void ToggleNavMenu()
-    {
-        collapseNavMenu = collapseNavMenu == false;
-    }
-
-    private void CollapseNavMenu()
-    {
-        collapseNavMenu = true;
-    }
-
     private void ToggleUserMenu()
     {
-        IsUserMenuOpen = IsUserMenuOpen == false;
+        IsUserMenuOpen = !IsUserMenuOpen;
+    }
+
+    private void CollapseUserMenu()
+    {
+        IsUserMenuOpen = false;
     }
 
     private string GetSessionExpiryFromToken()
@@ -1253,7 +1398,148 @@ public partial class NavMenu : ComponentBase, IDisposable
         return string.Empty;
     }
 }
-"@ | Set-Content "src/Presentation/Views/Layout/NavMenu.razor.cs"
+"@ | Set-Content "src/Presentation/Views/Layout/TopBar.razor.cs"
+
+# NavMenu.razor.css
+@"
+.sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 1040;
+    transition: transform 0.25s ease-in-out, width 0.25s ease-in-out;
+}
+
+.sidebar-open {
+    transform: translateX(0);
+}
+
+.sidebar-closed {
+    transform: translateX(-100%);
+}
+
+.sidebar-text {
+    transition: opacity 0.2s ease-in-out, width 0.2s ease-in-out;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.sidebar-collapsed .sidebar-text,
+.sidebar-collapsed .toggle-icon {
+    opacity: 0;
+    width: 0;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    display: inline-block;
+}
+
+.sidebar-collapsed .btn-toggle,
+.sidebar-collapsed .sidebar-brand {
+    justify-content: center !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+}
+
+.sidebar-collapsed .btn-toggle-nav .sidebar-text {
+    display: none;
+}
+
+.sidebar-collapsed .btn-toggle-nav {
+    display: none !important;
+}
+
+.btn-toggle {
+    font-weight: 600;
+    background-color: transparent;
+    border: 0;
+}
+
+.btn-toggle:hover,
+.btn-toggle:focus {
+    color: rgba(255, 255, 255, 0.85) !important;
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.btn-toggle .toggle-icon {
+    transition: transform .35s ease;
+}
+
+.btn-toggle[aria-expanded="true"] .toggle-icon {
+    transform: rotate(90deg);
+}
+
+.btn-toggle-nav a {
+    margin-top: .125rem;
+    margin-left: 1.25rem;
+}
+
+.btn-toggle-nav a:hover,
+.btn-toggle-nav a:focus {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+@media (min-width: 992px) {
+    .sidebar {
+        position: relative;
+        transform: none !important;
+    }
+}
+
+@media (max-width: 991.98px) {
+    .sidebar-collapsed .sidebar-text,
+    .sidebar-collapsed .toggle-icon {
+        opacity: 1;
+        width: auto;
+    }
+
+    .sidebar-collapsed .btn-toggle,
+    .sidebar-collapsed .sidebar-brand {
+        justify-content: flex-start !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+    }
+
+    .sidebar-collapsed .btn-toggle-nav {
+        display: block !important;
+    }
+
+    .sidebar-collapsed .btn-toggle-nav .sidebar-text {
+        display: inline-block;
+    }
+}
+"@ | Set-Content "src/Presentation/Views/Layout/NavMenu.razor.css"
+
+# TopBar.razor.css
+@"
+.topbar .btn-link {
+    text-decoration: none;
+}
+
+.topbar .btn-link:hover,
+.topbar .btn-link:focus {
+    color: rgba(0, 0, 0, 0.7) !important;
+}
+"@ | Set-Content "src/Presentation/Views/Layout/TopBar.razor.css"
+
+# MainLayout.razor.css
+@"
+/* Empty: layout uses Bootstrap utility classes. Keep file if you need component-scoped overrides later. */
+"@ | Set-Content "src/Presentation/Views/Layout/MainLayout.razor.css"
+
+# Login.razor.css
+@"
+.login-page {
+    min-height: calc(100vh - 56px);
+    margin-top: -1rem;
+}
+
+@media (min-width: 992px) {
+    .login-page {
+        margin-top: -3rem;
+    }
+}
+"@ | Set-Content "src/Presentation/Views/Pages/Login.razor.css"
 
 Write-Host "Creating CI/CD files..." -ForegroundColor Yellow
 
