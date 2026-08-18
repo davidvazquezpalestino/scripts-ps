@@ -13,12 +13,14 @@ Write-Host "Selecciona la bases de datos a usar "
 Write-Host "1) SQL Server"
 Write-Host "2) MySQL"
 Write-Host "3) PostgreSQL"
+Write-Host "4) Oracle"
 $DB_SELECTION = Read-Host "Ejemplo: 1,3 para SQL Server y PostgreSQL"
 
 # Parsear seleccion de DBs
 $USE_SQLSERVER = $false
 $USE_MYSQL = $false
 $USE_POSTGRES = $false
+$USE_ORACLE = $false
 
 $DB_ARRAY = $DB_SELECTION -split ','
 foreach ($db in $DB_ARRAY) {
@@ -26,6 +28,7 @@ foreach ($db in $DB_ARRAY) {
         '1' { $USE_SQLSERVER = $true }
         '2' { $USE_MYSQL = $true }
         '3' { $USE_POSTGRES = $true }
+        '4' { $USE_ORACLE = $true }
     }
 }
 
@@ -38,6 +41,9 @@ elseif ($USE_MYSQL) {
 }
 elseif ($USE_POSTGRES) {
     $defaultConnection = "Host=[Server];Database=[Database];Username=postgres;Password=[Password];"
+}
+elseif ($USE_ORACLE) {
+    $defaultConnection = "Data Source=(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=[Server])(PORT=1521))(CONNECT_DATA=(SERVICE_NAME=[Database])));User Id=[User];Password=[Password];"
 }
 else {
     $defaultConnection = ""
@@ -120,7 +126,21 @@ dotnet new classlib -n "$ProjectName.IoC" -o "src/Presentation/IoC"
 dotnet new classlib -n "$ProjectName.Domain" -o "src/Domain"
 
 # Infrastructure
-dotnet new classlib -n "$ProjectName.DataBase" -o "src/Infrastructure/DataBase"
+New-Item -ItemType Directory -Path "src/Infrastructure/DataBases" -Force
+
+# Create specific DB projects based on selection
+if ($USE_SQLSERVER) {
+    dotnet new classlib -n "$ProjectName.SqlServer" -o "src/Infrastructure/DataBases/SQLServer"
+}
+if ($USE_MYSQL) {
+    dotnet new classlib -n "$ProjectName.MySql" -o "src/Infrastructure/DataBases/MySQL"
+}
+if ($USE_POSTGRES) {
+    dotnet new classlib -n "$ProjectName.PostgreSql" -o "src/Infrastructure/DataBases/PostgreSQL"
+}
+if ($USE_ORACLE) {
+    dotnet new classlib -n "$ProjectName.Oracle" -o "src/Infrastructure/DataBases/Oracle"
+}
 
 # RabbitMQ (opcional)
 if ($USE_RABBITMQ) {
@@ -152,7 +172,10 @@ Remove-Item "src/Presentation/Controllers/Class1.cs" -Force -ErrorAction Silentl
 Remove-Item "src/Presentation/IoC/Class1.cs" -Force -ErrorAction SilentlyContinue
 Remove-Item "src/Domain/Class1.cs" -Force -ErrorAction SilentlyContinue
 Remove-Item "src/Application/Validators/Class1.cs" -Force -ErrorAction SilentlyContinue
-Remove-Item "src/Infrastructure/DataBase/Class1.cs" -Force -ErrorAction SilentlyContinue
+if ($USE_SQLSERVER) { Remove-Item "src/Infrastructure/DataBases/SQLServer/Class1.cs" -Force -ErrorAction SilentlyContinue }
+if ($USE_MYSQL) { Remove-Item "src/Infrastructure/DataBases/MySQL/Class1.cs" -Force -ErrorAction SilentlyContinue }
+if ($USE_POSTGRES) { Remove-Item "src/Infrastructure/DataBases/PostgreSQL/Class1.cs" -Force -ErrorAction SilentlyContinue }
+if ($USE_ORACLE) { Remove-Item "src/Infrastructure/DataBases/Oracle/Class1.cs" -Force -ErrorAction SilentlyContinue }
 if ($USE_RABBITMQ) { Remove-Item "src/Infrastructure/Messaging/Class1.cs" -Force -ErrorAction SilentlyContinue }
 Remove-Item "tests/UnitTests/Class1.cs" -Force -ErrorAction SilentlyContinue
 Remove-Item "tests/UnitTests/UnitTest1.cs" -Force -ErrorAction SilentlyContinue
@@ -176,7 +199,10 @@ dotnet sln add src/Application/Validators
 dotnet sln add src/Presentation/Controllers
 dotnet sln add src/Presentation/IoC
 dotnet sln add src/Domain
-dotnet sln add src/Infrastructure/DataBase
+if ($USE_SQLSERVER) { dotnet sln add src/Infrastructure/DataBases/SQLServer }
+if ($USE_MYSQL) { dotnet sln add src/Infrastructure/DataBases/MySQL }
+if ($USE_POSTGRES) { dotnet sln add src/Infrastructure/DataBases/PostgreSQL }
+if ($USE_ORACLE) { dotnet sln add src/Infrastructure/DataBases/Oracle }
 if ($USE_RABBITMQ) { dotnet sln add src/Infrastructure/Messaging }
 dotnet sln add tests/UnitTests
 
@@ -201,11 +227,17 @@ dotnet add src/Presentation/IoC reference src/Application/Models
 dotnet add src/Presentation/IoC reference src/Application/Queries
 dotnet add src/Presentation/IoC reference src/Application/Validators
 dotnet add src/Presentation/IoC reference src/Presentation/Controllers
-dotnet add src/Presentation/IoC reference src/Infrastructure/DataBase
+if ($USE_SQLSERVER) { dotnet add src/Presentation/IoC reference src/Infrastructure/DataBases/SQLServer }
+if ($USE_MYSQL) { dotnet add src/Presentation/IoC reference src/Infrastructure/DataBases/MySQL }
+if ($USE_POSTGRES) { dotnet add src/Presentation/IoC reference src/Infrastructure/DataBases/PostgreSQL }
+if ($USE_ORACLE) { dotnet add src/Presentation/IoC reference src/Infrastructure/DataBases/Oracle }
 dotnet add src/Presentation/IoC reference src/Domain
 
 # Infrastructure depends only on Domain (implements interfaces defined there)
-dotnet add src/Infrastructure/DataBase reference src/Domain
+if ($USE_SQLSERVER) { dotnet add src/Infrastructure/DataBases/SQLServer reference src/Domain }
+if ($USE_MYSQL) { dotnet add src/Infrastructure/DataBases/MySQL reference src/Domain }
+if ($USE_POSTGRES) { dotnet add src/Infrastructure/DataBases/PostgreSQL reference src/Domain }
+if ($USE_ORACLE) { dotnet add src/Infrastructure/DataBases/Oracle reference src/Domain }
 if ($USE_RABBITMQ) {
     dotnet add src/Infrastructure/Messaging reference src/Domain
     dotnet add src/Presentation/IoC reference src/Infrastructure/Messaging
@@ -259,6 +291,7 @@ dotnet add src/Presentation/IoC package Microsoft.EntityFrameworkCore
 if ($USE_SQLSERVER) { dotnet add src/Presentation/IoC package Microsoft.EntityFrameworkCore.SqlServer }
 if ($USE_MYSQL) { dotnet add src/Presentation/IoC package Pomelo.EntityFrameworkCore.MySql }
 if ($USE_POSTGRES) { dotnet add src/Presentation/IoC package Npgsql.EntityFrameworkCore.PostgreSQL }
+if ($USE_ORACLE) { dotnet add src/Presentation/IoC package Oracle.EntityFrameworkCore }
 dotnet add src/Presentation/IoC package FluentValidation
 dotnet add src/Presentation/IoC package DependencyInjection.ReflectionExtensions
 dotnet add src/Presentation/IoC package Serilog
@@ -267,13 +300,34 @@ dotnet add src/Presentation/IoC package CoreJsonWebToken
 dotnet add src/Presentation/IoC package DevKit.ExecutionEngine.Redis
 
 # Infrastructure
-dotnet add src/Infrastructure/DataBase package Microsoft.EntityFrameworkCore
-if ($USE_SQLSERVER) { dotnet add src/Infrastructure/DataBase package Microsoft.EntityFrameworkCore.SqlServer }
-if ($USE_MYSQL) { dotnet add src/Infrastructure/DataBase package Pomelo.EntityFrameworkCore.MySql }
-if ($USE_POSTGRES) { dotnet add src/Infrastructure/DataBase package Npgsql.EntityFrameworkCore.PostgreSQL }
-dotnet add src/Infrastructure/DataBase package Dapper
-dotnet add src/Infrastructure/DataBase package Microsoft.Extensions.DependencyInjection.Abstractions
-dotnet add src/Infrastructure/DataBase package DependencyInjection.ReflectionExtensions
+if ($USE_SQLSERVER) {
+    dotnet add src/Infrastructure/DataBases/SQLServer package Microsoft.EntityFrameworkCore
+    dotnet add src/Infrastructure/DataBases/SQLServer package Microsoft.EntityFrameworkCore.SqlServer
+    dotnet add src/Infrastructure/DataBases/SQLServer package Dapper
+    dotnet add src/Infrastructure/DataBases/SQLServer package Microsoft.Extensions.DependencyInjection.Abstractions
+    dotnet add src/Infrastructure/DataBases/SQLServer package DependencyInjection.ReflectionExtensions
+}
+if ($USE_MYSQL) {
+    dotnet add src/Infrastructure/DataBases/MySQL package Microsoft.EntityFrameworkCore
+    dotnet add src/Infrastructure/DataBases/MySQL package Pomelo.EntityFrameworkCore.MySql
+    dotnet add src/Infrastructure/DataBases/MySQL package Dapper
+    dotnet add src/Infrastructure/DataBases/MySQL package Microsoft.Extensions.DependencyInjection.Abstractions
+    dotnet add src/Infrastructure/DataBases/MySQL package DependencyInjection.ReflectionExtensions
+}
+if ($USE_POSTGRES) {
+    dotnet add src/Infrastructure/DataBases/PostgreSQL package Microsoft.EntityFrameworkCore
+    dotnet add src/Infrastructure/DataBases/PostgreSQL package Npgsql.EntityFrameworkCore.PostgreSQL
+    dotnet add src/Infrastructure/DataBases/PostgreSQL package Dapper
+    dotnet add src/Infrastructure/DataBases/PostgreSQL package Microsoft.Extensions.DependencyInjection.Abstractions
+    dotnet add src/Infrastructure/DataBases/PostgreSQL package DependencyInjection.ReflectionExtensions
+}
+if ($USE_ORACLE) {
+    dotnet add src/Infrastructure/DataBases/Oracle package Microsoft.EntityFrameworkCore
+    dotnet add src/Infrastructure/DataBases/Oracle package Oracle.EntityFrameworkCore
+    dotnet add src/Infrastructure/DataBases/Oracle package Dapper
+    dotnet add src/Infrastructure/DataBases/Oracle package Microsoft.Extensions.DependencyInjection.Abstractions
+    dotnet add src/Infrastructure/DataBases/Oracle package DependencyInjection.ReflectionExtensions
+}
 
 # RabbitMQ
 if ($USE_RABBITMQ) {
@@ -302,7 +356,7 @@ New-Item -ItemType Directory -Path "src/Domain/Entities"
 New-Item -ItemType Directory -Path "src/Domain/ValueObjects"
 New-Item -ItemType Directory -Path "src/Domain/Enums"
 New-Item -ItemType Directory -Path "src/Domain/Interfaces"
-New-Item -ItemType Directory -Path "src/Infrastructure/DataBase/Options" -Force
+New-Item -ItemType Directory -Path "src/Infrastructure/DataBases/Options" -Force
 
 # Keep domain folders visible in Visual Studio Solution Explorer
 "" | Set-Content "src/Domain/Entities/.gitkeep"
@@ -399,7 +453,6 @@ New-Item -ItemType Directory -Path "src/Presentation/Api/Properties" -Force
 
 # DependencyContainer class in Commands Project
 @"
-
 namespace $ProjectName.Commands
 {
     public static class DependencyContainer
@@ -423,7 +476,6 @@ global using Microsoft.Extensions.DependencyInjection;
 
 # DependencyContainer class in Queries Project
 @"
-
 namespace $ProjectName.Queries
 {
     public static class DependencyContainer
@@ -449,7 +501,6 @@ global using Microsoft.Extensions.DependencyInjection;
 
 # DependencyContainer class in Validators Project
 @"
-
 namespace $ProjectName.Validators
 {
     public static class DependencyContainer
@@ -463,26 +514,78 @@ namespace $ProjectName.Validators
 }
 "@ | Set-Content "src/Application/Validators/DependencyContainer.cs"
 
-# DependencyContainer class in Infrastructure Project
-@"
-
-namespace $ProjectName.DataBase
+# DependencyContainer class in Infrastructure Projects
+$sqlServerDependencyContainer = @"
+namespace $ProjectName.SqlServer
 {
     public static class DependencyContainer
     {
-        public static IServiceCollection AddInfrastructure(this IServiceCollection services)
+        public static IServiceCollection AddSqlServer(this IServiceCollection services)
         {
             services.AddServicesCurrentAssembly();
             return services;
         }
     }
 }
-"@ | Set-Content "src/Infrastructure/DataBase/DependencyContainer.cs"
+"@
+
+$mySqlDependencyContainer = @"
+namespace $ProjectName.MySql
+{
+    public static class DependencyContainer
+    {
+        public static IServiceCollection AddMySql(this IServiceCollection services)
+        {
+            services.AddServicesCurrentAssembly();
+            return services;
+        }
+    }
+}
+"@
+
+$postgreSqlDependencyContainer = @"
+namespace $ProjectName.PostgreSql
+{
+    public static class DependencyContainer
+    {
+        public static IServiceCollection AddPostgreSql(this IServiceCollection services)
+        {
+            services.AddServicesCurrentAssembly();
+            return services;
+        }
+    }
+}
+"@
+
+$oracleDependencyContainer = @"
+namespace $ProjectName.Oracle
+{
+    public static class DependencyContainer
+    {
+        public static IServiceCollection AddOracle(this IServiceCollection services)
+        {
+            services.AddServicesCurrentAssembly();
+            return services;
+        }
+    }
+}
+"@
+
+if ($USE_SQLSERVER) {
+    $sqlServerDependencyContainer | Set-Content "src/Infrastructure/DataBases/SQLServer/DependencyContainer.cs"
+}
+if ($USE_MYSQL) {
+    $mySqlDependencyContainer | Set-Content "src/Infrastructure/DataBases/MySQL/DependencyContainer.cs"
+}
+if ($USE_POSTGRES) {
+    $postgreSqlDependencyContainer | Set-Content "src/Infrastructure/DataBases/PostgreSQL/DependencyContainer.cs"
+}
+if ($USE_ORACLE) {
+    $oracleDependencyContainer | Set-Content "src/Infrastructure/DataBases/Oracle/DependencyContainer.cs"
+}
 
 # DependencyContainer class in RabbitMQ Project (opcional)
-if ($USE_RABBITMQ) {
-@"
-
+$rabbitMqDependencyContainer = @"
 namespace $ProjectName.RabbitMQ
 {
     public static class DependencyContainer
@@ -494,20 +597,22 @@ namespace $ProjectName.RabbitMQ
         }
     }
 }
-"@ | Set-Content "src/Infrastructure/Messaging/DependencyContainer.cs"
+"@
 
-# GlobalUsings RabbitMQ
-@"
+$rabbitMqGlobalUsings = @"
 global using System.Reflection;
 global using DevKit.Injection.Extensions;
 global using Microsoft.Extensions.DependencyInjection;
 
-"@ | Set-Content "src/Infrastructure/Messaging/GlobalUsings.cs"
+"@
+
+if ($USE_RABBITMQ) {
+    $rabbitMqDependencyContainer | Set-Content "src/Infrastructure/Messaging/DependencyContainer.cs"
+    $rabbitMqGlobalUsings | Set-Content "src/Infrastructure/Messaging/GlobalUsings.cs"
 }
 
 # DependencyContainer class in IoC Project
 @"
-
 namespace $ProjectName.IoC
 {
     public static class DependencyContainer
@@ -522,8 +627,7 @@ namespace $ProjectName.IoC
 
             services.AddCommands()
                         .AddQueries()
-                        .AddValidators()
-                        .AddInfrastructure()$(if($USE_RABBITMQ){".AddRabbitMq()"})
+                        .AddValidators()$(if($USE_SQLSERVER){".AddSqlServer()"})$(if($USE_MYSQL){".AddMySql()"})$(if($USE_POSTGRES){".AddPostgreSql()"})$(if($USE_ORACLE){".AddOracle()"})$(if($USE_RABBITMQ){".AddRabbitMq()"})
                         .AddSerilog(configuration);            
             return services;
         }
@@ -543,29 +647,46 @@ namespace $ProjectName.IoC
 # GlobalUsings
 
 # GlobalUsings Validators
-@"
+$validatorsGlobalUsings = @"
 global using System.Reflection;
 global using DevKit.Injection.Extensions;
 global using Microsoft.Extensions.DependencyInjection;
+global using System;
 
-"@ | Set-Content "src/Application/Validators/GlobalUsings.cs"
+"@
+
+$validatorsGlobalUsings | Set-Content "src/Application/Validators/GlobalUsings.cs"
 
 # GlobalUsings Infrastructure
-@"
+$dbGlobalUsings = @"
 global using System.Reflection;
 global using DevKit.Injection.Extensions;
 global using Microsoft.Extensions.DependencyInjection;
+global using System;
 
-"@ | Set-Content "src/Infrastructure/DataBase/GlobalUsings.cs"
+"@
+
+if ($USE_SQLSERVER) {
+    $dbGlobalUsings | Set-Content "src/Infrastructure/DataBases/SQLServer/GlobalUsings.cs"
+}
+if ($USE_MYSQL) {
+    $dbGlobalUsings | Set-Content "src/Infrastructure/DataBases/MySQL/GlobalUsings.cs"
+}
+if ($USE_POSTGRES) {
+    $dbGlobalUsings | Set-Content "src/Infrastructure/DataBases/PostgreSQL/GlobalUsings.cs"
+}
+if ($USE_ORACLE) {
+    $dbGlobalUsings | Set-Content "src/Infrastructure/DataBases/Oracle/GlobalUsings.cs"
+}
 
 # GlobalUsings class in IoC Project
 @"
 global using $ProjectName.Commands;
-global using $ProjectName.DataBase;
+global using $ProjectName.DataBases;
 global using $ProjectName.Queries;
 global using $ProjectName.Validators;
 $(if($USE_RABBITMQ){"global using $ProjectName.RabbitMQ;"})
-global using $ProjectName.DataBase.Options;
+global using $ProjectName.DataBases.Options;
 global using Serilog;
 global using Microsoft.AspNetCore.Builder;
 global using Microsoft.Extensions.Configuration;
@@ -578,44 +699,45 @@ global using DevKit.ExecutionEngine.Redis.Options;
 "@ | Set-Content "src/Presentation/IoC/GlobalUsings.cs"
 
 # GlobalUsings Controllers
-@"
+$controllersGlobalUsings = @"
 global using Microsoft.AspNetCore.Mvc;
 global using Microsoft.AspNetCore.Http;
-"@ | Set-Content "src/Presentation/Controllers/GlobalUsings.cs"
+"@
+$controllersGlobalUsings | Set-Content "src/Presentation/Controllers/GlobalUsings.cs"
 
 # GlobalUsings Domain
-@"
-
-"@ | Set-Content "src/Domain/GlobalUsings.cs"
+$domainGlobalUsings = @"
+"@
+$domainGlobalUsings | Set-Content "src/Domain/GlobalUsings.cs"
 
 # DataBaseOptions class in Infrastructure
-@"
-
-namespace $ProjectName.DataBase.Options
+$dataBaseOptions = @"
+namespace $ProjectName.DataBases.Options
 {
     public class DataBaseOptions
     {
         public const string SectionKey = nameof(DataBaseOptions);
-        public string DefaultConnection { get; set; } 
+        public string DefaultConnection { get; set; }
     }
 }
-"@ | Set-Content "src/Infrastructure/DataBase/Options/DataBaseOptions.cs"
+"@
+$dataBaseOptions | Set-Content "src/Infrastructure/DataBases/Options/DataBaseOptions.cs"
 
 # EnvironmentOptions class in Infrastructure
-@"
-
-namespace $ProjectName.DataBase.Options
+$environmentOptions = @"
+namespace $ProjectName.DataBases.Options
 {
     public class EnvironmentOptions
     {
         public const string SectionKey = nameof(EnvironmentOptions);
-        public string EnvironmentName { get; set; } 
+        public string EnvironmentName { get; set; }
     }
 }
-"@ | Set-Content "src/Infrastructure/DataBase/Options/EnvironmentOptions.cs"
+"@
+$environmentOptions | Set-Content "src/Infrastructure/DataBases/Options/EnvironmentOptions.cs"
 
 # GlobalUsings Api
-@"
+$apiGlobalUsings = @"
 global using Microsoft.AspNetCore.Builder;
 global using Microsoft.AspNetCore.Http;
 global using Microsoft.Extensions.DependencyInjection;
@@ -625,19 +747,22 @@ global using Microsoft.OpenApi;
 global using Microsoft.AspNetCore.Mvc;
 global using $ProjectName.WebApi.Configurations;
 global using $ProjectName.WebApi.Middleware;
-global using $ProjectName.DataBase.Options;
+global using $ProjectName.DataBases.Options;
+global using System;
 
-"@ | Set-Content "src/Presentation/Api/GlobalUsings.cs"
+"@
+$apiGlobalUsings | Set-Content "src/Presentation/Api/GlobalUsings.cs"
 
 # GlobalUsings Tests
 @"
 global using FluentAssertions;
 global using Xunit;
+global using System;
+
 "@ | Set-Content "tests/UnitTests/GlobalUsings.cs"
 
 # API Configuration files
 @"
-
 namespace $ProjectName.WebApi.Configurations
 {
     public static class MiddlewaresConfiguration
@@ -659,7 +784,6 @@ namespace $ProjectName.WebApi.Configurations
 }
 "@ | Set-Content "src/Presentation/Api/Configurations/MiddlewaresConfiguration.cs"
 @"
-
 namespace $ProjectName.WebApi.Configurations
 {
     public static class ServicesConfiguration
@@ -697,7 +821,6 @@ namespace $ProjectName.WebApi.Configurations
 "@ | Set-Content "src/Presentation/Api/Configurations/ServicesConfiguration.cs"
 
 @"
-
 namespace $ProjectName.WebApi.Middleware
 {
     public class ErrorHandlerMiddleware(RequestDelegate next, Serilog.ILogger logger)
@@ -759,7 +882,6 @@ namespace $ProjectName.WebApi.Middleware
 
 # Minimal API starter
 @"
-
 WebApplication.CreateBuilder(args)
     .ConfigureWebApiServices()
     .ConfigureWebApiMiddlewares()
@@ -768,7 +890,7 @@ WebApplication.CreateBuilder(args)
 
 # Dockerfile
 @"
-# Base image for $ProjectName (DB: $(if($USE_SQLSERVER){"SQL Server"} elseif($USE_MYSQL){"MySQL"} elseif($USE_POSTGRES){"PostgreSQL"} else{"Not selected"}))
+# Base image for $ProjectName (DB: $(if($USE_SQLSERVER){"SQL Server"} elseif($USE_MYSQL){"MySQL"} elseif($USE_POSTGRES){"PostgreSQL"} elseif($USE_ORACLE){"Oracle"} else{"Not selected"}))
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
 WORKDIR /app
 EXPOSE 8080
@@ -780,7 +902,10 @@ COPY src/Presentation/Api/$ProjectName.WebApi.csproj src/Presentation/Api/
 COPY src/Application/Commands/$ProjectName.Commands.csproj src/Application/Commands/
 COPY src/Presentation/Controllers/$ProjectName.Controllers.csproj src/Presentation/Controllers/
 COPY src/Domain/$ProjectName.Domain.csproj src/Domain/
-COPY src/Infrastructure/DataBase/$ProjectName.DataBase.csproj src/Infrastructure/DataBase/
+$(if($USE_SQLSERVER){"COPY src/Infrastructure/DataBases/SQLServer/$ProjectName.SqlServer.csproj src/Infrastructure/DataBases/SQLServer/"})
+$(if($USE_MYSQL){"COPY src/Infrastructure/DataBases/MySQL/$ProjectName.MySql.csproj src/Infrastructure/DataBases/MySQL/"})
+$(if($USE_POSTGRES){"COPY src/Infrastructure/DataBases/PostgreSQL/$ProjectName.PostgreSql.csproj src/Infrastructure/DataBases/PostgreSQL/"})
+$(if($USE_ORACLE){"COPY src/Infrastructure/DataBases/Oracle/$ProjectName.Oracle.csproj src/Infrastructure/DataBases/Oracle/"})
 COPY src/Presentation/IoC/$ProjectName.IoC.csproj src/Presentation/IoC/
 COPY src/Application/Models/$ProjectName.Models.csproj src/Application/Models/
 COPY src/Application/Queries/$ProjectName.Queries.csproj src/Application/Queries/
@@ -807,7 +932,7 @@ ENTRYPOINT ["dotnet", "$ProjectName.WebApi.dll"]
 "@ | Set-Content "src/Presentation/Api/Dockerfile"
 
 # azure-pipelines.yml
-@'
+@"
 trigger:
     branches:
         include:
@@ -838,7 +963,7 @@ $azurePipelinesContent = $azurePipelinesContent.Replace("__PROJECT_DIR__", $proj
 $azurePipelinesContent | Set-Content "src/Presentation/Api/azure-pipelines.yml"
 
 # deploy.sh
-@'
+$deployScript = @"
 #!/bin/bash
 set -e
 
@@ -886,19 +1011,31 @@ docker run -d -e TZ=$TZ -p __DOCKER_PORT_4__:8080 --name webapi-__PROJECT_SLUG__
 echo "====================================="
 echo "Deploy finalizado correctamente"
 echo "====================================="
-'@ | Set-Content "src/Presentation/Api/deploy.sh"
+"@
 
-$deployScriptContent = Get-Content -Raw "src/Presentation/Api/deploy.sh"
-$deployScriptContent = $deployScriptContent.Replace("__PROJECT_DIR__", $projectDirName).Replace("__PROJECT_NAME__", $ProjectName).Replace("__PROJECT_SLUG__", $projectSlug).Replace("__DOCKER_PORT_1__", "$DockerPort1").Replace("__DOCKER_PORT_2__", "$DockerPort2").Replace("__DOCKER_PORT_3__", "$DockerPort3").Replace("__DOCKER_PORT_4__", "$DockerPort4")
-$deployScriptContent | Set-Content "src/Presentation/Api/deploy.sh"
+$deployScript | Set-Content "src/Presentation/Api/deploy.sh"
+
+$deployDir = Split-Path "src/Presentation/Api/deploy.sh" -Parent
+if (-not (Test-Path $deployDir)) {
+    New-Item -ItemType Directory -Path $deployDir -Force | Out-Null
+}
+$deployScript | Set-Content "src/Presentation/Api/deploy.sh"
+
+if (Test-Path "src/Presentation/Api/deploy.sh") {
+    $deployScriptContent = Get-Content -Raw "src/Presentation/Api/deploy.sh"
+    if ($deployScriptContent) {
+        $deployScriptContent = $deployScriptContent.Replace("__PROJECT_DIR__", $projectDirName).Replace("__PROJECT_NAME__", $ProjectName).Replace("__PROJECT_SLUG__", $projectSlug).Replace("__DOCKER_PORT_1__", "$DockerPort1").Replace("__DOCKER_PORT_2__", "$DockerPort2").Replace("__DOCKER_PORT_3__", "$DockerPort3").Replace("__DOCKER_PORT_4__", "$DockerPort4")
+        $deployScriptContent | Set-Content "src/Presentation/Api/deploy.sh"
+    }
+}
+
 
 # =========================
 # CLEAN ARCHITECTURE DOC
 # =========================
 Write-Host "Writing documentation/architecture-guide.md..." -ForegroundColor Yellow
 New-Item -ItemType Directory -Path "documentation" -Force | Out-Null
-@'
-
+$architectureGuide = @"
 # Guía de arquitectura — ASP.NET Core Web API
 
 Esta plantilla combina dos ideas: **Clean Architecture** (Robert C. Martin,
@@ -939,7 +1076,7 @@ La combinación de Clean + Vertical Slice evita eso:
 ## 2. Las capas (Clean Architecture)
 
 Imagina un pastel en capas. El centro es lo más importante y lo que menos
- cambia; las capas de afuera son detalles técnicos que puedes sustituir.
+cambia; las capas de afuera son detalles técnicos que puedes sustituir.
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -990,7 +1127,11 @@ Un caso de uso no sabe que existe `DbContext`; solo conoce interfaces.
 
 Implementa los puertos de Domain y Application.
 
-- `DataBase/`: EF Core, Dapper, repositorios, migraciones, opciones.
+- `DataBases/`: EF Core, Dapper, repositorios, migraciones, opciones.
+  - `SQLServer/`: Implementación específica para SQL Server.
+  - `MySQL/`: Implementación específica para MySQL.
+  - `PostgreSQL/`: Implementación específica para PostgreSQL.
+  - `Oracle/`: Implementación específica para Oracle.
 - `Adapters/`: APIs externas, colas de mensajes, servicios de correo, etc.
 
 Es la única capa que conoce conexiones de base de datos, ORM y APIs
@@ -1151,7 +1292,11 @@ los archivos de una feature, la organización está mal.
       /Enums
       /Interfaces
     /Infrastructure
-      /DataBase                        Persistencia (EF Core, repositorios)
+      /DataBases                        Persistencia (EF Core, repositorios)
+        /SQLServer                      Implementación SQL Server
+        /MySQL                          Implementación MySQL
+        /PostgreSQL                     Implementación PostgreSQL
+        /Oracle                         Implementación Oracle
         /Options
   /tests
     /UnitTests
@@ -1283,8 +1428,9 @@ Sigue estos pasos para mantener el orden de capas y Vertical Slice:
 - Jeffrey Palermo — *Onion Architecture*.
 - Vaughn Vernon — *Implementing Domain-Driven Design*.
 - Microsoft — *ASP.NET Core documentation*.
-```
-'@ | Set-Content "documentation/architecture-guide.md"
+- Martin Fowler — *Patterns of Enterprise Application Architecture*.
+"@
+$architectureGuide | Set-Content "documentation/architecture-guide.md"
 
 # Register documentation folder as a Solution Folder in the .slnx file
 $slnxFile = "$ProjectName.slnx"
