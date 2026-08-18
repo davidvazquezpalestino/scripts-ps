@@ -520,7 +520,7 @@ namespace $ProjectName.SqlServer
 {
     public static class DependencyContainer
     {
-        public static IServiceCollection AddSqlServer(this IServiceCollection services)
+        public static IServiceCollection AddRepositorySqlServer(this IServiceCollection services)
         {
             services.AddServicesCurrentAssembly();
             return services;
@@ -534,7 +534,7 @@ namespace $ProjectName.MySql
 {
     public static class DependencyContainer
     {
-        public static IServiceCollection AddMySql(this IServiceCollection services)
+        public static IServiceCollection AddRepositoryMySql(this IServiceCollection services)
         {
             services.AddServicesCurrentAssembly();
             return services;
@@ -548,7 +548,7 @@ namespace $ProjectName.PostgreSql
 {
     public static class DependencyContainer
     {
-        public static IServiceCollection AddPostgreSql(this IServiceCollection services)
+        public static IServiceCollection AddRepositoryPostgreSql(this IServiceCollection services)
         {
             services.AddServicesCurrentAssembly();
             return services;
@@ -562,7 +562,7 @@ namespace $ProjectName.Oracle
 {
     public static class DependencyContainer
     {
-        public static IServiceCollection AddOracle(this IServiceCollection services)
+        public static IServiceCollection AddRepositoryOracle(this IServiceCollection services)
         {
             services.AddServicesCurrentAssembly();
             return services;
@@ -627,7 +627,7 @@ namespace $ProjectName.IoC
 
             services.AddCommands()
                         .AddQueries()
-                        .AddValidators()$(if($USE_SQLSERVER){".AddSqlServer()"})$(if($USE_MYSQL){".AddMySql()"})$(if($USE_POSTGRES){".AddPostgreSql()"})$(if($USE_ORACLE){".AddOracle()"})$(if($USE_RABBITMQ){".AddRabbitMq()"})
+                        .AddValidators()$(if($USE_SQLSERVER){".AddRepositorySqlServer()"})$(if($USE_MYSQL){".AddRepositoryMySql()"})$(if($USE_POSTGRES){".AddRepositoryPostgreSql()"})$(if($USE_ORACLE){".AddRepositoryOracle()"})$(if($USE_RABBITMQ){".AddRabbitMq()"})
                         .AddSerilog(configuration);            
             return services;
         }
@@ -680,13 +680,16 @@ if ($USE_ORACLE) {
 }
 
 # GlobalUsings class in IoC Project
-@"
+$iocGlobalUsings = @"
 global using $ProjectName.Commands;
-global using $ProjectName.DataBases;
+$(if($USE_SQLSERVER){"global using $ProjectName.SqlServer;"})
+$(if($USE_MYSQL){"global using $ProjectName.MySql;"})
+$(if($USE_POSTGRES){"global using $ProjectName.PostgreSql;"})
+$(if($USE_ORACLE){"global using $ProjectName.Oracle;"})
 global using $ProjectName.Queries;
 global using $ProjectName.Validators;
 $(if($USE_RABBITMQ){"global using $ProjectName.RabbitMQ;"})
-global using $ProjectName.DataBases.Options;
+global using $ProjectName.IoC.Options;
 global using Serilog;
 global using Microsoft.AspNetCore.Builder;
 global using Microsoft.Extensions.Configuration;
@@ -696,7 +699,8 @@ global using DevKit.JWT.Options;
 global using DevKit.ExecutionEngine.Redis;
 global using DevKit.ExecutionEngine.Redis.Options;
 
-"@ | Set-Content "src/Presentation/IoC/GlobalUsings.cs"
+"@
+$iocGlobalUsings | Set-Content "src/Presentation/IoC/GlobalUsings.cs"
 
 # GlobalUsings Controllers
 $controllersGlobalUsings = @"
@@ -710,9 +714,10 @@ $domainGlobalUsings = @"
 "@
 $domainGlobalUsings | Set-Content "src/Domain/GlobalUsings.cs"
 
-# DataBaseOptions class in Infrastructure
+# DataBaseOptions class in IoC
+New-Item -ItemType Directory -Path "src/Presentation/IoC/Options" -Force | Out-Null
 $dataBaseOptions = @"
-namespace $ProjectName.DataBases.Options
+namespace $ProjectName.IoC.Options
 {
     public class DataBaseOptions
     {
@@ -721,11 +726,11 @@ namespace $ProjectName.DataBases.Options
     }
 }
 "@
-$dataBaseOptions | Set-Content "src/Infrastructure/DataBases/Options/DataBaseOptions.cs"
+$dataBaseOptions | Set-Content "src/Presentation/IoC/Options/DataBaseOptions.cs"
 
-# EnvironmentOptions class in Infrastructure
+# EnvironmentOptions class in IoC
 $environmentOptions = @"
-namespace $ProjectName.DataBases.Options
+namespace $ProjectName.IoC.Options
 {
     public class EnvironmentOptions
     {
@@ -734,7 +739,7 @@ namespace $ProjectName.DataBases.Options
     }
 }
 "@
-$environmentOptions | Set-Content "src/Infrastructure/DataBases/Options/EnvironmentOptions.cs"
+$environmentOptions | Set-Content "src/Presentation/IoC/Options/EnvironmentOptions.cs"
 
 # GlobalUsings Api
 $apiGlobalUsings = @"
@@ -747,7 +752,7 @@ global using Microsoft.OpenApi;
 global using Microsoft.AspNetCore.Mvc;
 global using $ProjectName.WebApi.Configurations;
 global using $ProjectName.WebApi.Middleware;
-global using $ProjectName.DataBases.Options;
+global using $ProjectName.IoC.Options;
 global using System;
 
 "@
