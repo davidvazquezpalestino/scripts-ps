@@ -1479,7 +1479,7 @@ Para más detalles, consulta [architecture-guide.md](architecture-guide.md).
 
 ## Estructura del Proyecto
 
-```
+```text
 src/
 ├── Domain/                    # Dominio y reglas de negocio
 ├── Application/              # Casos de uso (Commands, Queries, Validators)
@@ -1490,7 +1490,7 @@ src/
 
 ## Configuración
 
-Edita los archivos \`appsettings.json\` para configurar:
+Edita los archivos `appsettings.json` para configurar:
 - Connection strings de base de datos
 - Configuración de JWT
 - Configuración de Redis
