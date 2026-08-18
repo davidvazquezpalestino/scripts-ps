@@ -4,6 +4,7 @@
 # =========================================================================
 
 $ProjectName = Read-Host "Nombre del proyecto"
+$startTime = Get-Date
 
 # ============================================
 # SELECCION DE BASE DE DATOS
@@ -27,26 +28,9 @@ foreach ($db in $DB_ARRAY) {
     switch ($db.Trim()) {
         '1' { $USE_SQLSERVER = $true }
         '2' { $USE_MYSQL = $true }
-        '3' { $USE_POSTGRES = $true }
+        '3' { $USE_POSTGRES = $true}
         '4' { $USE_ORACLE = $true }
     }
-}
-
-# Connection string por defecto segun la primera DB seleccionada
-if ($USE_SQLSERVER) {
-    $defaultConnection = "Server=[Server];Database=[Database];User Id=sa;Password=[Password];MultipleActiveResultSets=true;encrypt=false;"
-}
-elseif ($USE_MYSQL) {
-    $defaultConnection = "Server=[Server];Database=[Database];User Id=root;Password=[Password];"
-}
-elseif ($USE_POSTGRES) {
-    $defaultConnection = "Host=[Server];Database=[Database];Username=postgres;Password=[Password];"
-}
-elseif ($USE_ORACLE) {
-    $defaultConnection = "Data Source=(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=[Server])(PORT=1521))(CONNECT_DATA=(SERVICE_NAME=[Database])));User Id=[User];Password=[Password];"
-}
-else {
-    $defaultConnection = ""
 }
 
 # Pregunta si se usara RabbitMQ
@@ -337,7 +321,6 @@ if ($USE_RABBITMQ) {
 }
 
 # API
-dotnet add src/Presentation/Api package Microsoft.EntityFrameworkCore.Design
 dotnet add src/Presentation/Api package Scalar.AspNetCore
 dotnet add src/Presentation/Api package Serilog
 dotnet add src/Presentation/Api package Serilog.Extensions.Hosting
@@ -407,10 +390,16 @@ New-Item -ItemType Directory -Path "src/Presentation/Api/Properties" -Force
 "@ | Set-Content "src/Presentation/Api/appsettings.json"
 
 # appsettings.Development.json
-@"
+$dataBaseOptionsDev = ""
+if ($USE_SQLSERVER) { $dataBaseOptionsDev += '        "SQLServer": "Server=[Server];Database=[Database];User Id=sa;Password=[Password];MultipleActiveResultSets=true;encrypt=false;",' + "`r`n" }
+if ($USE_MYSQL) { $dataBaseOptionsDev += '        "MySql": "Server=[Server];Database=[Database];User Id=[User];Password=[Password];",' + "`r`n" }
+if ($USE_POSTGRES) { $dataBaseOptionsDev += '        "PostgreSql": "Host=[Server];Database=[Database];Username=[User];Password=[Password];",' + "`r`n" }
+if ($USE_ORACLE) { $dataBaseOptionsDev += '        "Oracle": "Data Source=(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=[Server])(PORT=1521))(CONNECT_DATA=(SERVICE_NAME=[Service])));User Id=[User];Password=[Password];",' + "`r`n" }
+
+$devAppSettings = @"
 {
     "DataBaseOptions": {
-        "DefaultConnection": "$defaultConnection"
+$dataBaseOptionsDev
     },
     "JwtOptions": {
         "SecurityKey": "1234567890ABCDEFGHIJKLMN�OPQRSTU",
@@ -425,13 +414,20 @@ New-Item -ItemType Directory -Path "src/Presentation/Api/Properties" -Force
     },
     "AllowedHosts": "*"
 }
-"@ | Set-Content "src/Presentation/Api/appsettings.Development.json"
+"@
+$devAppSettings | Set-Content "src/Presentation/Api/appsettings.Development.json"
 
 # appsettings.Production.json
-@"
+$dataBaseOptionsProd = ""
+if ($USE_SQLSERVER) { $dataBaseOptionsProd += '        "SQLServer": "Server=[Server];Database=[Database];User Id=sa;Password=[Password];MultipleActiveResultSets=true;encrypt=false;",' + "`r`n" }
+if ($USE_MYSQL) { $dataBaseOptionsProd += '        "MySql": "Server=[Server];Database=[Database];User Id=[User];Password=[Password];",' + "`r`n" }
+if ($USE_POSTGRES) { $dataBaseOptionsProd += '        "PostgreSql": "Host=[Server];Database=[Database];Username=[User];Password=[Password];",' + "`r`n" }
+if ($USE_ORACLE) { $dataBaseOptionsProd += '        "Oracle": "Data Source=(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=[Server])(PORT=1521))(CONNECT_DATA=(SERVICE_NAME=[Service])));User Id=[User];Password=[Password];",' + "`r`n" }
+
+$prodAppSettings = @"
 {
     "DataBaseOptions": {
-        "DefaultConnection": "$defaultConnection"
+$dataBaseOptionsProd
     },
     "JwtOptions": {
         "SecurityKey": "1234567890ABCDEFGHIJKLMN�OPQRSTU",
@@ -446,7 +442,8 @@ New-Item -ItemType Directory -Path "src/Presentation/Api/Properties" -Force
     },
     "AllowedHosts": "*"
 }
-"@ | Set-Content "src/Presentation/Api/appsettings.Production.json"
+"@
+$prodAppSettings | Set-Content "src/Presentation/Api/appsettings.Production.json"
 
 # CREATE BASIC FILES
 # =========================
@@ -722,7 +719,10 @@ namespace $ProjectName.IoC.Options
     public class DataBaseOptions
     {
         public const string SectionKey = nameof(DataBaseOptions);
-        public string DefaultConnection { get; set; }
+$(if($USE_SQLSERVER){"        public string SQLServer { get; set; }"})
+$(if($USE_MYSQL){"        public string MySql { get; set; }"})
+$(if($USE_POSTGRES){"        public string PostgreSql { get; set; }"})
+$(if($USE_ORACLE){"        public string Oracle { get; set; }"})
     }
 }
 "@
@@ -1219,7 +1219,7 @@ subcarpetas con el mismo nombre dentro de cada capa.
 
 ### Ejemplo: CreateOrder
 
-```
+```text
 src
 ├── Domain
 │   ├── Entities/Orders/
@@ -1448,7 +1448,7 @@ if (Test-Path $slnxFile) {
         $folder.SetAttribute('Name', '/documentation/')
         [void]$root.AppendChild($folder)
     }
-    foreach ($docPath in @('documentation/architecture-guide.md')) {
+    foreach ($docPath in @('documentation/README.md', 'documentation/architecture-guide.md')) {
         $hasFile = @($folder.File) | Where-Object { $_ -and $_.Path -eq $docPath } | Select-Object -First 1
         if (-not $hasFile) {
             $file = $slnx.CreateElement('File')
@@ -1462,5 +1462,85 @@ if (Test-Path $slnxFile) {
 # Git ignore
 dotnet new gitignore
 
+# README.md
+Write-Host "Writing documentation/README.md..." -ForegroundColor Yellow
+$readme = @"
+# $ProjectName
+
+ASP.NET Core Web API con Clean Architecture y Vertical Slice Architecture.
+
+## Arquitectura
+
+Este proyecto combina:
+- **Clean Architecture**: Capas concéntricas donde el dominio es el centro
+- **Vertical Slice Architecture**: Código organizado por features (casos de uso)
+
+Para más detalles, consulta [architecture-guide.md](architecture-guide.md).
+
+## Estructura del Proyecto
+
+```
+src/
+├── Domain/                    # Dominio y reglas de negocio
+├── Application/              # Casos de uso (Commands, Queries, Validators)
+├── Infrastructure/           # Implementaciones (DataBases, Messaging)
+├── Presentation/             # API, Controllers, IoC
+└── IoC/                      # Inyección de dependencias
+```
+
+## Configuración
+
+Edita los archivos \`appsettings.json\` para configurar:
+- Connection strings de base de datos
+- Configuración de JWT
+- Configuración de Redis
+- Configuración de RabbitMQ (si aplica)
+
+## Ejecutar
+
+```bash
+dotnet run --project src/Presentation/Api
+```
+
+## Tests
+
+```bash
+dotnet test
+```
+
+## Git - Subir al repositorio
+
+```bash
+# Inicializar repositorio (si no existe)
+git init
+
+# Agregar todos los archivos
+git add .
+
+# Hacer commit inicial
+git commit -m "Initial commit - Clean Architecture setup"
+
+# Agregar repositorio remoto (reemplaza con tu URL)
+git remote add origin https://github.com/tu-usuario/tu-repositorio.git
+
+# Subir al repositorio (primera vez)
+git push -u origin main
+
+# O si usas master como rama principal
+git push -u origin master
+```
+
+---
+Powered by David Vazquez Palestino
+"@
+$readme | Set-Content "documentation/README.md"
+
+$endTime = Get-Date
+$duration = $endTime - $startTime
+$hours = [int]$duration.TotalHours
+$minutes = $duration.Minutes
+$seconds = $duration.Seconds
+
 Write-Host "Clean Architecture solution created successfully!"
 Write-Host "Powered by David Vazquez Palestino" -ForegroundColor DarkGray
+Write-Host "Time elapsed: $($hours)h $($minutes)m $($seconds)s" -ForegroundColor Green
