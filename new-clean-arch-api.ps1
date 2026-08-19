@@ -1534,7 +1534,8 @@ git push -u origin master
 ---
 Powered by David Vazquez Palestino
 '@
-$readme | Set-Content "documentation/README.md"
+$readmeContent = $readme -replace '\$ProjectName', $ProjectName
+$readmeContent | Set-Content "documentation/README.md"
 
 $endTime = Get-Date
 $duration = $endTime - $startTime

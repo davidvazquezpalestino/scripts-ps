@@ -2315,6 +2315,84 @@ Recomendaciones para esta solución (Blazor WebAssembly + Bootstrap):
 - [WAI — Web Accessibility Initiative](https://www.w3.org/WAI/)
 '@ | Set-Content "documentation/WCAG.md"
 
+# README.md
+Write-Host "Writing documentation/README.md..." -ForegroundColor Yellow
+$readme = @'
+# $ProjectName
+
+Aplicación Blazor WebAssembly con Clean Architecture y Vertical Slice Architecture.
+
+## Arquitectura
+
+Este proyecto combina:
+- **Clean Architecture**: Capas concéntricas donde el dominio es el centro
+- **Vertical Slice Architecture**: Código organizado por features (casos de uso)
+
+Para más detalles, consulta [architecture-guide.md](architecture-guide.md).
+
+## Estructura del Proyecto
+
+```text
+src/
+├── Domain/                    # Dominio y reglas de negocio
+├── Application/ViewModels/   # ViewModels y modelos de aplicación
+├── Application/Validators/   # Validaciones con FluentValidation
+├── Infrastructure/WebApi/    # Servicios externos, HTTP clients
+├── Presentation/Client/      # Blazor WebAssembly
+├── Presentation/Views/       # Componentes Razor, Layouts
+└── Presentation/IoC/         # Inyección de dependencias
+```
+
+## Configuración
+
+Edita los archivos `appsettings.json` para configurar:
+- API base URL
+- Configuración de autenticación
+- Configuración de logging
+
+## Ejecutar
+
+```bash
+dotnet run --project src/Presentation/Client
+```
+
+La aplicación estará disponible en http://localhost:$HttpPort
+
+## Tests
+
+```bash
+dotnet test
+```
+
+## Git - Subir al repositorio
+
+```bash
+# Inicializar repositorio (si no existe)
+git init
+
+# Agregar todos los archivos
+git add .
+
+# Hacer commit inicial
+git commit -m "Initial commit - Clean Architecture Blazor setup"
+
+# Agregar repositorio remoto (reemplaza con tu URL)
+git remote add origin https://github.com/tu-usuario/tu-repositorio.git
+
+# Subir al repositorio (primera vez)
+git push -u origin main
+
+# O si usas master como rama principal
+git push -u origin master
+```
+
+---
+Powered by David Vázquez Palestino
+'@
+$readmeContent = $readme -replace '\$ProjectName', $ProjectName
+$readmeContent = $readmeContent -replace '\$HttpPort', $HttpPort
+$readmeContent | Set-Content "documentation/README.md"
+
 # Register documentation folder as a Solution Folder in the .slnx file
 $slnxFile = "$ProjectName.slnx"
 if (Test-Path $slnxFile) {
@@ -2326,7 +2404,7 @@ if (Test-Path $slnxFile) {
         $folder.SetAttribute('Name', '/documentation/')
         [void]$root.AppendChild($folder)
     }
-    foreach ($docPath in @('documentation/architecture-guide.md', 'documentation/WCAG.md')) {
+    foreach ($docPath in @('documentation/README.md', 'documentation/architecture-guide.md', 'documentation/WCAG.md')) {
         $hasFile = @($folder.File) | Where-Object { $_ -and $_.Path -eq $docPath } | Select-Object -First 1
         if (-not $hasFile) {
             $file = $slnx.CreateElement('File')

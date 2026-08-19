@@ -7,7 +7,6 @@
 # 1. INFORMACION BASICA DEL PROYECTO
 # ============================================
 $ProjectName = Read-Host "Nombre del proyecto"
-$AUTHOR_NAME = Read-Host "Autor del proyecto"
 
 Write-Host "Creating Console project: $ProjectName"
 
@@ -15,8 +14,15 @@ Write-Host "Creating Console project: $ProjectName"
 New-Item -ItemType Directory -Path $ProjectName | Out-Null
 Set-Location $ProjectName
 
-# Solution
-dotnet new sln -n "$ProjectName"
+# Solution (.slnx format for solution folders support)
+$slnxContent = @"
+<Solution>
+  <SolutionLayout>
+    <RootFolder Name="$ProjectName" />
+  </SolutionLayout>
+</Solution>
+"@
+$slnxContent | Set-Content "$ProjectName.slnx"
 
 # =========================
 # CREATE PROJECTS (Hexagonal Architecture)
@@ -356,6 +362,107 @@ global using $ProjectName.UseCases.UseCases.Greeting;
 
 # Git ignore
 dotnet new gitignore
+
+# =========================
+# DOCUMENTATION
+# =========================
+Write-Host "Writing documentation/README.md..." -ForegroundColor Yellow
+New-Item -ItemType Directory -Path "documentation" -Force | Out-Null
+$readme = @'
+# $ProjectName
+
+Aplicación de consola con Clean Architecture y Vertical Slice Architecture.
+
+## Arquitectura
+
+Este proyecto combina:
+- **Clean Architecture**: Capas concéntricas donde el dominio es el centro
+- **Vertical Slice Architecture**: Código organizado por features (casos de uso)
+- **Hexagonal Architecture**: Puertos (interfaces) y adaptadores (implementaciones)
+
+## Estructura del Proyecto
+
+```text
+src/
+├── Domain/                    # Dominio y reglas de negocio (Ports)
+├── Application/UseCases/      # Casos de uso (UseCases)
+├── Infrastructure/           # Implementaciones (Adapters)
+├── Presentation/IoC/          # Inyección de dependencias
+└── Presentation/Console/      # Aplicación de consola
+```
+
+## Configuración
+
+Edita los archivos `appsettings.json` para configurar:
+- Variables de entorno
+- Configuración de logging
+
+## Ejecutar
+
+```bash
+dotnet run --project src/Presentation/Console
+```
+
+O con argumentos:
+```bash
+dotnet run --project src/Presentation/Console -- "TuNombre"
+```
+
+## Build
+
+```bash
+dotnet build
+```
+
+## Git - Subir al repositorio
+
+```bash
+# Inicializar repositorio (si no existe)
+git init
+
+# Agregar todos los archivos
+git add .
+
+# Hacer commit inicial
+git commit -m "Initial commit - Clean Architecture Console setup"
+
+# Agregar repositorio remoto (reemplaza con tu URL)
+git remote add origin https://github.com/tu-usuario/tu-repositorio.git
+
+# Subir al repositorio (primera vez)
+git push -u origin main
+
+# O si usas master como rama principal
+git push -u origin master
+```
+
+---
+Powered by David Vazquez Palestino
+'@
+$readmeContent = $readme -replace '\$ProjectName', $ProjectName
+$readmeContent | Set-Content "documentation/README.md"
+
+# Register documentation folder as a Solution Folder in the .slnx file
+$slnxFile = "$ProjectName.slnx"
+if (Test-Path $slnxFile) {
+    [xml]$slnx = Get-Content $slnxFile -Raw
+    $root = $slnx.DocumentElement
+    $folder = @($root.Folder) | Where-Object { $_ -and $_.Name -eq '/documentation/' } | Select-Object -First 1
+    if (-not $folder) {
+        $folder = $slnx.CreateElement('Folder')
+        $folder.SetAttribute('Name', '/documentation/')
+        [void]$root.AppendChild($folder)
+    }
+    foreach ($docPath in @('documentation/README.md')) {
+        $hasFile = @($folder.File) | Where-Object { $_ -and $_.Path -eq $docPath } | Select-Object -First 1
+        if (-not $hasFile) {
+            $file = $slnx.CreateElement('File')
+            $file.SetAttribute('Path', $docPath)
+            [void]$folder.AppendChild($file)
+        }
+    }
+    $slnx.Save((Resolve-Path $slnxFile))
+}
 
 # =========================
 # BUILD
