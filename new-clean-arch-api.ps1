@@ -372,8 +372,6 @@ if ($USE_RABBITMQ) {
 
 # External Services
 if ($USE_EXTERNAL_APIS) {
-    dotnet add src/Infrastructure/WebApis package Refit
-    dotnet add src/Infrastructure/WebApis package Refit.HttpClientFactory
     dotnet add src/Infrastructure/WebApis package Microsoft.Extensions.DependencyInjection.Abstractions
     dotnet add src/Infrastructure/WebApis package DependencyInjection.ReflectionExtensions
 }
