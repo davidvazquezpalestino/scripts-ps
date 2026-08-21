@@ -9,37 +9,69 @@ $startTime = Get-Date
 # ============================================
 # SELECCION DE BASE DE DATOS
 # ============================================
-Write-Host ""
-Write-Host "Selecciona la bases de datos a usar "
-Write-Host "1) SQL Server"
-Write-Host "2) MySQL"
-Write-Host "3) PostgreSQL"
-Write-Host "4) Oracle"
-$DB_SELECTION = Read-Host "Ejemplo: 1,3 para SQL Server y PostgreSQL"
-
-# Parsear seleccion de DBs
 $USE_SQLSERVER = $false
 $USE_MYSQL = $false
 $USE_POSTGRES = $false
 $USE_ORACLE = $false
 
-$DB_ARRAY = $DB_SELECTION -split ','
-foreach ($db in $DB_ARRAY) {
-    switch ($db.Trim()) {
-        '1' { $USE_SQLSERVER = $true }
-        '2' { $USE_MYSQL = $true }
-        '3' { $USE_POSTGRES = $true}
-        '4' { $USE_ORACLE = $true }
+Write-Host ""
+$dbInput = (Read-Host "¿Se usaran bases de datos relacionales? (S/N) [S]").Trim().ToUpper()
+if ([string]::IsNullOrWhiteSpace($dbInput)) {
+    $dbInput = "S"
+}
+
+if ($dbInput -eq 'S') {
+    Write-Host ""
+    Write-Host "Selecciona la bases de datos a usar "
+    Write-Host "1) SQL Server"
+    Write-Host "2) MySQL"
+    Write-Host "3) PostgreSQL"
+    Write-Host "4) Oracle"
+    $DB_SELECTION = Read-Host "Ejemplo: 1,3 para SQL Server y PostgreSQL"
+
+    # Parsear seleccion de DBs
+    $DB_ARRAY = $DB_SELECTION -split ','
+    foreach ($db in $DB_ARRAY) {
+        switch ($db.Trim()) {
+            '1' { $USE_SQLSERVER = $true }
+            '2' { $USE_MYSQL = $true }
+            '3' { $USE_POSTGRES = $true}
+            '4' { $USE_ORACLE = $true }
+        }
     }
 }
 
 # Pregunta si se usara RabbitMQ
 Write-Host ""
-$rabbitMQInput = (Read-Host "Se usara RabbitMQ? (S/N) [N]").Trim().ToUpper()
+$rabbitMQInput = (Read-Host "Se usara RabbitMQ? (S/N) [S]").Trim().ToUpper()
 if ([string]::IsNullOrWhiteSpace($rabbitMQInput)) {
-    $rabbitMQInput = "N"
+    $rabbitMQInput = "S"
 }
 $USE_RABBITMQ = $rabbitMQInput -eq 'S'
+
+# Pregunta si se usara MongoDB
+Write-Host ""
+$mongoInput = (Read-Host "Se usara MongoDB? (S/N) [S]").Trim().ToUpper()
+if ([string]::IsNullOrWhiteSpace($mongoInput)) {
+    $mongoInput = "S"
+}
+$USE_MONGO = $mongoInput -eq 'S'
+
+# Pregunta si se usara Redis
+Write-Host ""
+$redisInput = (Read-Host "Se usara Redis? (S/N) [S]").Trim().ToUpper()
+if ([string]::IsNullOrWhiteSpace($redisInput)) {
+    $redisInput = "S"
+}
+$USE_REDIS = $redisInput -eq 'S'
+
+# Pregunta si se consumiran APIs externas
+Write-Host ""
+$externalApisInput = (Read-Host "¿Se consumiran APIs externas o Servicios Web? (S/N) [S]").Trim().ToUpper()
+if ([string]::IsNullOrWhiteSpace($externalApisInput)) {
+    $externalApisInput = "S"
+}
+$USE_EXTERNAL_APIS = $externalApisInput -eq 'S'
 
 # =========================
 # COMPUTE PORTS (deterministic per project name)
@@ -110,7 +142,9 @@ dotnet new classlib -n "$ProjectName.IoC" -o "src/Presentation/IoC"
 dotnet new classlib -n "$ProjectName.Domain" -o "src/Domain"
 
 # Infrastructure
-New-Item -ItemType Directory -Path "src/Infrastructure/DataBases" -Force
+if ($USE_SQLSERVER -or $USE_MYSQL -or $USE_POSTGRES -or $USE_ORACLE -or $USE_MONGO) {
+    New-Item -ItemType Directory -Path "src/Infrastructure/DataBases" -Force
+}
 
 # Create specific DB projects based on selection
 if ($USE_SQLSERVER) {
@@ -125,10 +159,19 @@ if ($USE_POSTGRES) {
 if ($USE_ORACLE) {
     dotnet new classlib -n "$ProjectName.Oracle" -o "src/Infrastructure/DataBases/Oracle"
 }
+if ($USE_MONGO) {
+    dotnet new classlib -n "$ProjectName.MongoDb" -o "src/Infrastructure/DataBases/MongoDB"
+}
 
 # RabbitMQ (opcional)
 if ($USE_RABBITMQ) {
-    dotnet new classlib -n "$ProjectName.RabbitMQ" -o "src/Infrastructure/Messaging"
+    New-Item -ItemType Directory -Path "src/Infrastructure/Messaging" -Force -ErrorAction SilentlyContinue
+    dotnet new classlib -n "$ProjectName.RabbitMQ" -o "src/Infrastructure/Messaging/RabbitMQ"
+}
+
+# External APIs / Web Services (opcional)
+if ($USE_EXTERNAL_APIS) {
+    dotnet new classlib -n "$ProjectName.WebApis" -o "src/Infrastructure/WebApis"
 }
 
 # Tests (xUnit.net v3)
@@ -160,7 +203,9 @@ if ($USE_SQLSERVER) { Remove-Item "src/Infrastructure/DataBases/SQLServer/Class1
 if ($USE_MYSQL) { Remove-Item "src/Infrastructure/DataBases/MySQL/Class1.cs" -Force -ErrorAction SilentlyContinue }
 if ($USE_POSTGRES) { Remove-Item "src/Infrastructure/DataBases/PostgreSQL/Class1.cs" -Force -ErrorAction SilentlyContinue }
 if ($USE_ORACLE) { Remove-Item "src/Infrastructure/DataBases/Oracle/Class1.cs" -Force -ErrorAction SilentlyContinue }
-if ($USE_RABBITMQ) { Remove-Item "src/Infrastructure/Messaging/Class1.cs" -Force -ErrorAction SilentlyContinue }
+if ($USE_MONGO) { Remove-Item "src/Infrastructure/DataBases/MongoDB/Class1.cs" -Force -ErrorAction SilentlyContinue }
+if ($USE_RABBITMQ) { Remove-Item "src/Infrastructure/Messaging/RabbitMQ/Class1.cs" -Force -ErrorAction SilentlyContinue }
+if ($USE_EXTERNAL_APIS) { Remove-Item "src/Infrastructure/WebApis/Class1.cs" -Force -ErrorAction SilentlyContinue }
 Remove-Item "tests/UnitTests/Class1.cs" -Force -ErrorAction SilentlyContinue
 Remove-Item "tests/UnitTests/UnitTest1.cs" -Force -ErrorAction SilentlyContinue
 
@@ -187,7 +232,9 @@ if ($USE_SQLSERVER) { dotnet sln add src/Infrastructure/DataBases/SQLServer }
 if ($USE_MYSQL) { dotnet sln add src/Infrastructure/DataBases/MySQL }
 if ($USE_POSTGRES) { dotnet sln add src/Infrastructure/DataBases/PostgreSQL }
 if ($USE_ORACLE) { dotnet sln add src/Infrastructure/DataBases/Oracle }
-if ($USE_RABBITMQ) { dotnet sln add src/Infrastructure/Messaging }
+if ($USE_MONGO) { dotnet sln add src/Infrastructure/DataBases/MongoDB }
+if ($USE_RABBITMQ) { dotnet sln add src/Infrastructure/Messaging/RabbitMQ }
+if ($USE_EXTERNAL_APIS) { dotnet sln add src/Infrastructure/WebApis }
 dotnet sln add tests/UnitTests
 
 # =========================
@@ -215,6 +262,8 @@ if ($USE_SQLSERVER) { dotnet add src/Presentation/IoC reference src/Infrastructu
 if ($USE_MYSQL) { dotnet add src/Presentation/IoC reference src/Infrastructure/DataBases/MySQL }
 if ($USE_POSTGRES) { dotnet add src/Presentation/IoC reference src/Infrastructure/DataBases/PostgreSQL }
 if ($USE_ORACLE) { dotnet add src/Presentation/IoC reference src/Infrastructure/DataBases/Oracle }
+if ($USE_MONGO) { dotnet add src/Presentation/IoC reference src/Infrastructure/DataBases/MongoDB }
+if ($USE_EXTERNAL_APIS) { dotnet add src/Presentation/IoC reference src/Infrastructure/WebApis }
 dotnet add src/Presentation/IoC reference src/Domain
 
 # Infrastructure depends only on Domain (implements interfaces defined there)
@@ -222,9 +271,13 @@ if ($USE_SQLSERVER) { dotnet add src/Infrastructure/DataBases/SQLServer referenc
 if ($USE_MYSQL) { dotnet add src/Infrastructure/DataBases/MySQL reference src/Domain }
 if ($USE_POSTGRES) { dotnet add src/Infrastructure/DataBases/PostgreSQL reference src/Domain }
 if ($USE_ORACLE) { dotnet add src/Infrastructure/DataBases/Oracle reference src/Domain }
+if ($USE_MONGO) { dotnet add src/Infrastructure/DataBases/MongoDB reference src/Domain }
 if ($USE_RABBITMQ) {
-    dotnet add src/Infrastructure/Messaging reference src/Domain
-    dotnet add src/Presentation/IoC reference src/Infrastructure/Messaging
+    dotnet add src/Infrastructure/Messaging/RabbitMQ reference src/Domain
+    dotnet add src/Presentation/IoC reference src/Infrastructure/Messaging/RabbitMQ
+}
+if ($USE_EXTERNAL_APIS) {
+    dotnet add src/Infrastructure/WebApis reference src/Domain
 }
 
 # API depends on IoC
@@ -271,17 +324,12 @@ if (-not ($controllersXml.Project.ItemGroup | Where-Object { $_.FrameworkReferen
 
 # IoC
 dotnet add src/Presentation/IoC package Microsoft.Extensions.DependencyInjection
-dotnet add src/Presentation/IoC package Microsoft.EntityFrameworkCore
-if ($USE_SQLSERVER) { dotnet add src/Presentation/IoC package Microsoft.EntityFrameworkCore.SqlServer }
-if ($USE_MYSQL) { dotnet add src/Presentation/IoC package Pomelo.EntityFrameworkCore.MySql }
-if ($USE_POSTGRES) { dotnet add src/Presentation/IoC package Npgsql.EntityFrameworkCore.PostgreSQL }
-if ($USE_ORACLE) { dotnet add src/Presentation/IoC package Oracle.EntityFrameworkCore }
 dotnet add src/Presentation/IoC package FluentValidation
 dotnet add src/Presentation/IoC package DependencyInjection.ReflectionExtensions
-dotnet add src/Presentation/IoC package Serilog
-dotnet add src/Presentation/IoC package Serilog.Settings.Configuration
 dotnet add src/Presentation/IoC package CoreJsonWebToken
-dotnet add src/Presentation/IoC package DevKit.ExecutionEngine.Redis
+if ($USE_REDIS) {
+    dotnet add src/Presentation/IoC package DevKit.ExecutionEngine.Redis
+}
 
 # Infrastructure
 if ($USE_SQLSERVER) {
@@ -312,12 +360,25 @@ if ($USE_ORACLE) {
     dotnet add src/Infrastructure/DataBases/Oracle package Microsoft.Extensions.DependencyInjection.Abstractions
     dotnet add src/Infrastructure/DataBases/Oracle package DependencyInjection.ReflectionExtensions
 }
+if ($USE_MONGO) {
+    dotnet add src/Infrastructure/DataBases/MongoDB package MongoDB.Driver
+    dotnet add src/Infrastructure/DataBases/MongoDB package Microsoft.Extensions.DependencyInjection.Abstractions
+    dotnet add src/Infrastructure/DataBases/MongoDB package DependencyInjection.ReflectionExtensions
+}
 
 # RabbitMQ
 if ($USE_RABBITMQ) {
-    dotnet add src/Infrastructure/Messaging package RabbitMQ.Client
-    dotnet add src/Infrastructure/Messaging package Microsoft.Extensions.DependencyInjection.Abstractions
-    dotnet add src/Infrastructure/Messaging package DependencyInjection.ReflectionExtensions
+    dotnet add src/Infrastructure/Messaging/RabbitMQ package RabbitMQ.Client
+    dotnet add src/Infrastructure/Messaging/RabbitMQ package Microsoft.Extensions.DependencyInjection.Abstractions
+    dotnet add src/Infrastructure/Messaging/RabbitMQ package DependencyInjection.ReflectionExtensions
+}
+
+# External Services
+if ($USE_EXTERNAL_APIS) {
+    dotnet add src/Infrastructure/WebApis package Refit
+    dotnet add src/Infrastructure/WebApis package Refit.HttpClientFactory
+    dotnet add src/Infrastructure/WebApis package Microsoft.Extensions.DependencyInjection.Abstractions
+    dotnet add src/Infrastructure/WebApis package DependencyInjection.ReflectionExtensions
 }
 
 # API
@@ -390,11 +451,12 @@ New-Item -ItemType Directory -Path "src/Presentation/Api/Properties" -Force
 "@ | Set-Content "src/Presentation/Api/appsettings.json"
 
 # appsettings.Development.json
-$dataBaseOptionsDev = ""
-if ($USE_SQLSERVER) { $dataBaseOptionsDev += '        "SQLServer": "Server=[Server];Database=[Database];User Id=sa;Password=[Password];MultipleActiveResultSets=true;encrypt=false;",' + "`r`n" }
-if ($USE_MYSQL) { $dataBaseOptionsDev += '        "MySql": "Server=[Server];Database=[Database];User Id=[User];Password=[Password];",' + "`r`n" }
-if ($USE_POSTGRES) { $dataBaseOptionsDev += '        "PostgreSql": "Host=[Server];Database=[Database];Username=[User];Password=[Password];",' + "`r`n" }
-if ($USE_ORACLE) { $dataBaseOptionsDev += '        "Oracle": "Data Source=(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=[Server])(PORT=1521))(CONNECT_DATA=(SERVICE_NAME=[Service])));User Id=[User];Password=[Password];",' + "`r`n" }
+$dataBaseOptionsDevList = @()
+if ($USE_SQLSERVER) { $dataBaseOptionsDevList += '        "SQLServer": "Server=[Server];Database=[Database];User Id=sa;Password=[Password];MultipleActiveResultSets=true;encrypt=false;"' }
+if ($USE_MYSQL) { $dataBaseOptionsDevList += '        "MySql": "Server=[Server];Database=[Database];User Id=[User];Password=[Password];"' }
+if ($USE_POSTGRES) { $dataBaseOptionsDevList += '        "PostgreSql": "Host=[Server];Database=[Database];Username=[User];Password=[Password];"' }
+if ($USE_ORACLE) { $dataBaseOptionsDevList += '        "Oracle": "Data Source=(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=[Server])(PORT=1521))(CONNECT_DATA=(SERVICE_NAME=[Service])));User Id=[User];Password=[Password];"' }
+$dataBaseOptionsDev = $dataBaseOptionsDevList -join ",`r`n"
 
 $devAppSettings = @"
 {
@@ -406,23 +468,29 @@ $dataBaseOptionsDev
         "ValidIssuer": "empresa",
         "ValidAudience": "empresa",
         "ExpireInMinutes": 1440
-    },
-    "RedisOptions": {
-        "ConnectionRedis": "[Server],password=[Password]",
-        "Environment": "Development",
-        "DiasCache": 1
-    },
-    "AllowedHosts": "*"
+    }$(if($USE_REDIS){",`n    `"RedisOptions`": {`n        `"ConnectionRedis`": `"[Server],password=[Password]`",`n        `"Environment`": `"Development`",`n        `"DiasCache`": 1`n    }"}),
+    "AllowedHosts": "*",
+    "Serilog": {
+        "MinimumLevel": {
+            "Default": "Warning",
+            "Override": {
+                "Microsoft": "Warning",
+                "System": "Warning",
+                "$ProjectName": "Information"
+            }
+        }
+    }
 }
 "@
 $devAppSettings | Set-Content "src/Presentation/Api/appsettings.Development.json"
 
 # appsettings.Production.json
-$dataBaseOptionsProd = ""
-if ($USE_SQLSERVER) { $dataBaseOptionsProd += '        "SQLServer": "Server=[Server];Database=[Database];User Id=sa;Password=[Password];MultipleActiveResultSets=true;encrypt=false;",' + "`r`n" }
-if ($USE_MYSQL) { $dataBaseOptionsProd += '        "MySql": "Server=[Server];Database=[Database];User Id=[User];Password=[Password];",' + "`r`n" }
-if ($USE_POSTGRES) { $dataBaseOptionsProd += '        "PostgreSql": "Host=[Server];Database=[Database];Username=[User];Password=[Password];",' + "`r`n" }
-if ($USE_ORACLE) { $dataBaseOptionsProd += '        "Oracle": "Data Source=(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=[Server])(PORT=1521))(CONNECT_DATA=(SERVICE_NAME=[Service])));User Id=[User];Password=[Password];",' + "`r`n" }
+$dataBaseOptionsProdList = @()
+if ($USE_SQLSERVER) { $dataBaseOptionsProdList += '        "SQLServer": "Server=[Server];Database=[Database];User Id=sa;Password=[Password];MultipleActiveResultSets=true;encrypt=false;"' }
+if ($USE_MYSQL) { $dataBaseOptionsProdList += '        "MySql": "Server=[Server];Database=[Database];User Id=[User];Password=[Password];"' }
+if ($USE_POSTGRES) { $dataBaseOptionsProdList += '        "PostgreSql": "Host=[Server];Database=[Database];Username=[User];Password=[Password];"' }
+if ($USE_ORACLE) { $dataBaseOptionsProdList += '        "Oracle": "Data Source=(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=[Server])(PORT=1521))(CONNECT_DATA=(SERVICE_NAME=[Service])));User Id=[User];Password=[Password];"' }
+$dataBaseOptionsProd = $dataBaseOptionsProdList -join ",`r`n"
 
 $prodAppSettings = @"
 {
@@ -434,13 +502,18 @@ $dataBaseOptionsProd
         "ValidIssuer": "empresa",
         "ValidAudience": "empresa",
         "ExpireInMinutes": 1440
-    },
-    "RedisOptions": {
-        "ConnectionRedis": "[Server],password=[Password]",
-        "Environment": "Production",
-        "DiasCache": 1
-    },
-    "AllowedHosts": "*"
+    }$(if($USE_REDIS){",`n    `"RedisOptions`": {`n        `"ConnectionRedis`": `"[Server],password=[Password]`",`n        `"Environment`": `"Production`",`n        `"DiasCache`": 1`n    }"}),
+    "AllowedHosts": "*",
+    "Serilog": {
+        "MinimumLevel": {
+            "Default": "Warning",
+            "Override": {
+                "Microsoft": "Warning",
+                "System": "Warning",
+                "$ProjectName": "Information"
+            }
+        }
+    }
 }
 "@
 $prodAppSettings | Set-Content "src/Presentation/Api/appsettings.Production.json"
@@ -568,6 +641,27 @@ namespace $ProjectName.Oracle
 }
 "@
 
+$mongoDbDependencyContainer = @"
+namespace $ProjectName.MongoDb
+{
+    public static class DependencyContainer
+    {
+        public static IServiceCollection AddRepositoryMongo(this IServiceCollection services)
+        {
+            services.AddServicesCurrentAssembly();
+            return services;
+        }
+    }
+}
+"@
+
+$mongoDbGlobalUsings = @"
+global using System.Reflection;
+global using DevKit.Injection.Extensions;
+global using Microsoft.Extensions.DependencyInjection;
+
+"@
+
 if ($USE_SQLSERVER) {
     $sqlServerDependencyContainer | Set-Content "src/Infrastructure/DataBases/SQLServer/DependencyContainer.cs"
 }
@@ -579,6 +673,10 @@ if ($USE_POSTGRES) {
 }
 if ($USE_ORACLE) {
     $oracleDependencyContainer | Set-Content "src/Infrastructure/DataBases/Oracle/DependencyContainer.cs"
+}
+if ($USE_MONGO) {
+    $mongoDbDependencyContainer | Set-Content "src/Infrastructure/DataBases/MongoDB/DependencyContainer.cs"
+    $mongoDbGlobalUsings | Set-Content "src/Infrastructure/DataBases/MongoDB/GlobalUsings.cs"
 }
 
 # DependencyContainer class in RabbitMQ Project (opcional)
@@ -604,8 +702,35 @@ global using Microsoft.Extensions.DependencyInjection;
 "@
 
 if ($USE_RABBITMQ) {
-    $rabbitMqDependencyContainer | Set-Content "src/Infrastructure/Messaging/DependencyContainer.cs"
-    $rabbitMqGlobalUsings | Set-Content "src/Infrastructure/Messaging/GlobalUsings.cs"
+    $rabbitMqDependencyContainer | Set-Content "src/Infrastructure/Messaging/RabbitMQ/DependencyContainer.cs"
+    $rabbitMqGlobalUsings | Set-Content "src/Infrastructure/Messaging/RabbitMQ/GlobalUsings.cs"
+}
+
+# DependencyContainer class in WebApis Project (opcional)
+$webApisDependencyContainer = @"
+namespace $ProjectName.WebApis
+{
+    public static class DependencyContainer
+    {
+        public static IServiceCollection AddWebApis(this IServiceCollection services)
+        {  
+            services.AddServicesCurrentAssembly();
+            return services;
+        }
+    }
+}
+"@
+
+$webApisGlobalUsings = @"
+global using System.Reflection;
+global using DevKit.Injection.Extensions;
+global using Microsoft.Extensions.DependencyInjection;
+
+"@
+
+if ($USE_EXTERNAL_APIS) {
+    $webApisDependencyContainer | Set-Content "src/Infrastructure/WebApis/DependencyContainer.cs"
+    $webApisGlobalUsings | Set-Content "src/Infrastructure/WebApis/GlobalUsings.cs"
 }
 
 # DependencyContainer class in IoC Project
@@ -618,23 +743,13 @@ namespace $ProjectName.IoC
         {
             services.Configure<EnvironmentOptions>(configuration.GetSection(EnvironmentOptions.SectionKey));
             services.Configure<DataBaseOptions>(configuration.GetSection(DataBaseOptions.SectionKey));
-            services.Configure<RedisOptions>(configuration.GetSection(RedisOptions.SectionKey));
+            $(if($USE_REDIS){"services.Configure<RedisOptions>(configuration.GetSection(RedisOptions.SectionKey));"})
             services.AddJwtServices(options => configuration.GetSection(JwtOptions.SectionKey).Bind(options));
-            services.AddRedisCache();
+            $(if($USE_REDIS){"services.AddRedisCache();"})
 
             services.AddCommands()
                         .AddQueries()
-                        .AddValidators()$(if($USE_SQLSERVER){".AddRepositorySqlServer()"})$(if($USE_MYSQL){".AddRepositoryMySql()"})$(if($USE_POSTGRES){".AddRepositoryPostgreSql()"})$(if($USE_ORACLE){".AddRepositoryOracle()"})$(if($USE_RABBITMQ){".AddRabbitMq()"})
-                        .AddSerilog(configuration);            
-            return services;
-        }
-
-        public static IServiceCollection AddSerilog(this IServiceCollection services, IConfiguration configuration)
-        {
-            services.AddSingleton<ILogger>(new LoggerConfiguration()
-                .MinimumLevel.Debug()
-                .ReadFrom.Configuration(configuration)
-                .CreateLogger());
+                        .AddValidators()$(if($USE_SQLSERVER){".AddRepositorySqlServer()"})$(if($USE_MYSQL){".AddRepositoryMySql()"})$(if($USE_POSTGRES){".AddRepositoryPostgreSql()"})$(if($USE_ORACLE){".AddRepositoryOracle()"})$(if($USE_MONGO){".AddRepositoryMongo()"})$(if($USE_RABBITMQ){".AddRabbitMq()"})$(if($USE_EXTERNAL_APIS){".AddWebApis()"});
             return services;
         }
     }
@@ -686,15 +801,14 @@ $(if($USE_ORACLE){"global using $ProjectName.Oracle;"})
 global using $ProjectName.Queries;
 global using $ProjectName.Validators;
 $(if($USE_RABBITMQ){"global using $ProjectName.RabbitMQ;"})
+$(if($USE_EXTERNAL_APIS){"global using $ProjectName.WebApis;"})
 global using $ProjectName.IoC.Options;
-global using Serilog;
-global using Microsoft.AspNetCore.Builder;
 global using Microsoft.Extensions.Configuration;
 global using Microsoft.Extensions.DependencyInjection;
 global using DevKit.JWT.Extensions;
 global using DevKit.JWT.Options;
-global using DevKit.ExecutionEngine.Redis;
-global using DevKit.ExecutionEngine.Redis.Options;
+$(if($USE_REDIS){"global using DevKit.ExecutionEngine.Redis;"})
+$(if($USE_REDIS){"global using DevKit.ExecutionEngine.Redis.Options;"})
 
 "@
 $iocGlobalUsings | Set-Content "src/Presentation/IoC/GlobalUsings.cs"
@@ -819,6 +933,13 @@ namespace $ProjectName.WebApi.Configurations
             app.Services.AddAuthorization();
             app.Services.AddHealthChecks();
             
+            app.Host.UseSerilog((context, configuration) => configuration
+                .ReadFrom.Configuration(context.Configuration)
+                .Enrich.FromLogContext()
+                .Enrich.WithProperty("Application", "$ProjectName")
+                .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {SourceContext} {Message:lj}{NewLine}{Exception}")
+            );
+
             return app.Build();
         }
     }
@@ -915,7 +1036,8 @@ COPY src/Presentation/IoC/$ProjectName.IoC.csproj src/Presentation/IoC/
 COPY src/Application/Models/$ProjectName.Models.csproj src/Application/Models/
 COPY src/Application/Queries/$ProjectName.Queries.csproj src/Application/Queries/
 COPY src/Application/Validators/$ProjectName.Validators.csproj src/Application/Validators/
-$(if($USE_RABBITMQ){"COPY src/Infrastructure/Messaging/$ProjectName.RabbitMQ.csproj src/Infrastructure/Messaging/"})
+$(if($USE_RABBITMQ){"COPY src/Infrastructure/Messaging/RabbitMQ/$ProjectName.RabbitMQ.csproj src/Infrastructure/Messaging/RabbitMQ/"})
+$(if($USE_EXTERNAL_APIS){"COPY src/Infrastructure/WebApis/$ProjectName.WebApis.csproj src/Infrastructure/WebApis/"})
 RUN dotnet restore src/Presentation/Api/$ProjectName.WebApi.csproj
 COPY . .
 WORKDIR /src/src/Presentation/Api
