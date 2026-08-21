@@ -307,9 +307,6 @@ dotnet add src/Application/Validators package FluentValidation
 dotnet add src/Application/Validators package Microsoft.Extensions.DependencyInjection.Abstractions
 dotnet add src/Application/Validators package DependencyInjection.ReflectionExtensions
 
-dotnet add src/Presentation/Controllers package Microsoft.Extensions.DependencyInjection.Abstractions
-dotnet add src/Presentation/Controllers package DependencyInjection.ReflectionExtensions
-
 # Controllers needs ASP.NET Core framework reference (ControllerBase, [ApiController], etc.)
 $controllersCsproj = "src/Presentation/Controllers/$ProjectName.Controllers.csproj"
 [xml]$controllersXml = Get-Content $controllersCsproj
@@ -383,9 +380,7 @@ if ($USE_EXTERNAL_APIS) {
 
 # API
 dotnet add src/Presentation/Api package Scalar.AspNetCore
-dotnet add src/Presentation/Api package Serilog
-dotnet add src/Presentation/Api package Serilog.Extensions.Hosting
-dotnet add src/Presentation/Api package Serilog.Sinks.Console
+dotnet add src/Presentation/Api package Serilog.AspNetCore
 dotnet add src/Presentation/Api package Swashbuckle.AspNetCore
 
 # Tests
@@ -798,6 +793,7 @@ $(if($USE_SQLSERVER){"global using $ProjectName.SqlServer;"})
 $(if($USE_MYSQL){"global using $ProjectName.MySql;"})
 $(if($USE_POSTGRES){"global using $ProjectName.PostgreSql;"})
 $(if($USE_ORACLE){"global using $ProjectName.Oracle;"})
+$(if($USE_MONGO){"global using $ProjectName.MongoDb;"})
 global using $ProjectName.Queries;
 global using $ProjectName.Validators;
 $(if($USE_RABBITMQ){"global using $ProjectName.RabbitMQ;"})
@@ -861,6 +857,7 @@ global using Microsoft.AspNetCore.Builder;
 global using Microsoft.AspNetCore.Http;
 global using Microsoft.Extensions.DependencyInjection;
 global using System.Text.Json.Serialization;
+global using Serilog;
 global using $ProjectName.IoC;
 global using Microsoft.OpenApi;
 global using Microsoft.AspNetCore.Mvc;
@@ -1021,9 +1018,12 @@ FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
 WORKDIR /app
 EXPOSE 8080
 
+# Build stage
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG Configuration=Release
 WORKDIR /src
+
+# Copy project files
 COPY src/Presentation/Api/$ProjectName.WebApi.csproj src/Presentation/Api/
 COPY src/Application/Commands/$ProjectName.Commands.csproj src/Application/Commands/
 COPY src/Presentation/Controllers/$ProjectName.Controllers.csproj src/Presentation/Controllers/
@@ -1032,29 +1032,39 @@ $(if($USE_SQLSERVER){"COPY src/Infrastructure/DataBases/SQLServer/$ProjectName.S
 $(if($USE_MYSQL){"COPY src/Infrastructure/DataBases/MySQL/$ProjectName.MySql.csproj src/Infrastructure/DataBases/MySQL/"})
 $(if($USE_POSTGRES){"COPY src/Infrastructure/DataBases/PostgreSQL/$ProjectName.PostgreSql.csproj src/Infrastructure/DataBases/PostgreSQL/"})
 $(if($USE_ORACLE){"COPY src/Infrastructure/DataBases/Oracle/$ProjectName.Oracle.csproj src/Infrastructure/DataBases/Oracle/"})
+$(if($USE_MONGO){"COPY src/Infrastructure/DataBases/MongoDB/$ProjectName.MongoDb.csproj src/Infrastructure/DataBases/MongoDB/"})
 COPY src/Presentation/IoC/$ProjectName.IoC.csproj src/Presentation/IoC/
 COPY src/Application/Models/$ProjectName.Models.csproj src/Application/Models/
 COPY src/Application/Queries/$ProjectName.Queries.csproj src/Application/Queries/
 COPY src/Application/Validators/$ProjectName.Validators.csproj src/Application/Validators/
 $(if($USE_RABBITMQ){"COPY src/Infrastructure/Messaging/RabbitMQ/$ProjectName.RabbitMQ.csproj src/Infrastructure/Messaging/RabbitMQ/"})
 $(if($USE_EXTERNAL_APIS){"COPY src/Infrastructure/WebApis/$ProjectName.WebApis.csproj src/Infrastructure/WebApis/"})
+
+# Restore dependencies
 RUN dotnet restore src/Presentation/Api/$ProjectName.WebApi.csproj
+
+# Copy all source code
 COPY . .
+
+# Build project
 WORKDIR /src/src/Presentation/Api
 RUN dotnet build $ProjectName.WebApi.csproj -c `${Configuration} -o /app/build
 
+# Publish stage
 FROM build AS publish
 ARG Configuration=Release
 RUN dotnet publish $ProjectName.WebApi.csproj -c `${Configuration} -o /app/publish /p:UseAppHost=false
 
+# Final stage
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
 ENTRYPOINT ["dotnet", "$ProjectName.WebApi.dll"]
 
-#docker build -f src/Presentation/Api/Dockerfile -t "$($ProjectName.ToLower())-api:latest" .
-#docker container rm -f "$($ProjectName.ToLower())-api"
-#docker run -d --name "$($ProjectName.ToLower())-api" -p $($DockerPort1):8080 "$($ProjectName.ToLower())-api:latest"
+# Helper commands:
+# docker build -f src/Presentation/Api/Dockerfile -t "$($ProjectName.ToLower())-api:latest" .
+# docker container rm -f "$($ProjectName.ToLower())-api"
+# docker run -d --name "$($ProjectName.ToLower())-api" -p $($DockerPort1):8080 "$($ProjectName.ToLower())-api:latest"
 
 "@ | Set-Content "src/Presentation/Api/Dockerfile"
 
