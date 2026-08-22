@@ -1095,7 +1095,7 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
      style="width: @(NavMenuState.IsCollapsed ? "60px" : "260px");"
      aria-label="Navegación principal">
     <div class="d-flex align-items-center justify-content-between p-3 border-bottom border-dark border-opacity-10" style="height: 56px;">
-        <a class="d-inline-flex align-items-center gap-2 text-dark text-decoration-none fw-semibold text-nowrap overflow-hidden"
+        <a class="d-inline-flex align-items-center gap-2 text-dark text-decoration-none fw-semibold text-nowrap overflow-hidden @(NavMenuState.IsCollapsed ? "justify-content-center" : "")"
            href="" title="$ProjectName">
             <i class="bi bi-box-seam fs-4" aria-hidden="true"></i>
             <span class="@(NavMenuState.IsCollapsed ? "d-none" : "")">$ProjectName</span>
@@ -1106,7 +1106,7 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
         <ul class="list-unstyled ps-0 mb-0">
             <li class="mb-1">
                 <a href="/"
-                   class="btn btn-toggle d-inline-flex align-items-center justify-content-center rounded px-0 text-secondary w-100 text-decoration-none"
+                   class="btn btn-toggle d-inline-flex align-items-center @(NavMenuState.IsCollapsed ? "justify-content-center" : "justify-content-start") rounded px-0 text-secondary w-100 text-decoration-none"
                    @onclick="OnLinkClicked">
                     <i class="bi bi-house-door fs-5" aria-hidden="true"></i>
                     <span class="@(NavMenuState.IsCollapsed ? "d-none" : "") ms-2">Home</span>
@@ -1114,7 +1114,7 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
             </li>
             <li class="mb-1">
                 <a href="/"
-                   class="btn btn-toggle d-inline-flex align-items-center justify-content-center rounded px-0 text-secondary w-100 text-decoration-none"
+                   class="btn btn-toggle d-inline-flex align-items-center @(NavMenuState.IsCollapsed ? "justify-content-center" : "justify-content-start") rounded px-0 text-secondary w-100 text-decoration-none"
                    @onclick="OnLinkClicked">
                     <i class="bi bi-speedometer2 fs-5" aria-hidden="true"></i>
                     <span class="@(NavMenuState.IsCollapsed ? "d-none" : "") ms-2">Dashboard</span>
