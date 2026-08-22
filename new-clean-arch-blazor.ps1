@@ -987,6 +987,7 @@ global using $ProjectName.Views.Layout;
 global using Microsoft.AspNetCore.Components;
 global using Microsoft.AspNetCore.Components.Routing;
 global using System;
+global using System.Collections.Generic;
 global using System.Text;
 global using System.Text.Json;
 "@ | Set-Content "src/Presentation/Views/GlobalUsings.cs"
@@ -1639,6 +1640,55 @@ public partial class PaginationComponent
     private async Task LastPage() => await OnPageChanged.InvokeAsync(TotalPages);
 }
 "@ | Set-Content "src/Presentation/Views/Shared/Components/PaginationComponent.razor.cs"
+
+# ListComponent.razor in Views/Shared/Components
+@"
+@namespace $ProjectName.Views.Shared.Components
+@typeparam TItem
+
+@if (IsLoading)
+{
+    <div class="d-flex justify-content-center align-items-center py-4">
+        <div class="spinner-border text-primary" role="status" aria-label="Cargando">
+            <span class="visually-hidden">Cargando...</span>
+        </div>
+    </div>
+}
+else if (Items == null || !Items.Any())
+{
+    <div class="text-center text-muted py-4">
+        <i class="bi bi-inbox fs-1 d-block mb-2" aria-hidden="true"></i>
+        <span>@EmptyMessage</span>
+    </div>
+}
+else
+{
+    <div class="list-group">
+        @foreach (var item in Items)
+        {
+            <div class="list-group-item list-group-item-action @ItemCssClass">
+                @ItemTemplate(item)
+            </div>
+        }
+    </div>
+}
+"@ | Set-Content "src/Presentation/Views/Shared/Components/ListComponent.razor"
+
+# ListComponent.razor.cs code-behind
+@"
+namespace $ProjectName.Views.Shared.Components;
+
+public partial class ListComponent<TItem>
+{
+    [Parameter] public IEnumerable<TItem> Items { get; set; } = Array.Empty<TItem>();
+    [Parameter] public RenderFragment<TItem> ItemTemplate { get; set; } = _ => new RenderFragment(builder => { });
+    [Parameter] public string Title { get; set; } = string.Empty;
+    [Parameter] public string EmptyMessage { get; set; } = "No hay elementos para mostrar.";
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public string ItemCssClass { get; set; } = string.Empty;
+    [Parameter] public RenderFragment? Actions { get; set; }
+}
+"@ | Set-Content "src/Presentation/Views/Shared/Components/ListComponent.razor.cs"
 
 Write-Host "Creating CI/CD files..." -ForegroundColor Yellow
 
