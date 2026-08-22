@@ -1552,9 +1552,12 @@ Write-Host "Creating CI/CD files..." -ForegroundColor Yellow
 
 # Dockerfile
 @"
+# Build stage
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG Configuration=Release
 WORKDIR /src
+
+# Copy project files
 COPY src/Presentation/Client/$ProjectName.Web.csproj src/Presentation/Client/
 COPY src/Domain/$ProjectName.Domain.csproj src/Domain/
 COPY src/Application/ViewModels/$ProjectName.ViewModels.csproj src/Application/ViewModels/
@@ -1562,20 +1565,28 @@ COPY src/Infrastructure/WebApi/$ProjectName.WebApi.csproj src/Infrastructure/Web
 COPY src/Presentation/IoC/$ProjectName.IoC.csproj src/Presentation/IoC/
 COPY src/Application/Validators/$ProjectName.Validators.csproj src/Application/Validators/
 COPY src/Presentation/Views/$ProjectName.Views.csproj src/Presentation/Views/
-RUN dotnet restore src/Presentation/Client/$ProjectName.Web.csproj
-COPY . .
-WORKDIR /src/src/Presentation/Client
-RUN dotnet publish $ProjectName.Web.csproj -c `${Configuration} -o /app/publish
 
+# Restore dependencies
+RUN dotnet restore src/Presentation/Client/$ProjectName.Web.csproj
+
+# Copy all source code
+COPY . .
+
+# Publish project
+WORKDIR /src/src/Presentation/Client
+RUN dotnet publish $ProjectName.Web.csproj -c $Configuration -o /app/publish
+
+# Final stage (Nginx)
 FROM nginx:alpine AS final
 WORKDIR /usr/share/nginx/html
-COPY --from=build /app/publish/wwwroot .
-COPY src/Presentation/Client/nginx.conf /etc/nginx/nginx.conf
-EXPOSE 80
 
-#docker build -f src/Presentation/Client/Dockerfile -t "$($ProjectName.ToLower())-web:latest" .
-#docker container rm -f "$($ProjectName.ToLower())-web"
-#docker run -d --name "$($ProjectName.ToLower())-web" -p $($DockerPort1):80 "$($ProjectName.ToLower())-web:latest"
+# Copy published files
+COPY --from=build /app/publish/wwwroot .
+
+# Copy custom nginx configuration
+COPY src/Presentation/Client/nginx.conf /etc/nginx/nginx.conf
+
+EXPOSE 80
 "@ | Set-Content "src/Presentation/Client/Dockerfile"
 
 # nginx.conf
