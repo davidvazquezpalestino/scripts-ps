@@ -189,6 +189,7 @@ New-Item -ItemType Directory -Path "src/Domain/Enums" -Force | Out-Null
 "" | Set-Content "src/Domain/Enums/.gitkeep"
 New-Item -ItemType Directory -Path "src/Presentation/Views/Layout" -Force | Out-Null
 New-Item -ItemType Directory -Path "src/Presentation/Views/Pages" -Force | Out-Null
+New-Item -ItemType Directory -Path "src/Presentation/Views/Shared/Components" -Force | Out-Null
 New-Item -ItemType Directory -Path "src/Infrastructure/WebApi/Options" -Force | Out-Null
 New-Item -ItemType Directory -Path "src/Domain/Interfaces/Auth" -Force | Out-Null
 New-Item -ItemType Directory -Path "src/Infrastructure/WebApi/Auth" -Force | Out-Null
@@ -971,6 +972,7 @@ if (Test-Path $appCssPath) {
 @using System.Net.Http.Json
 @using Microsoft.AspNetCore.Components.Web
 @using $ProjectName.Views.Layout
+@using $ProjectName.Views.Shared.Components
 @using Microsoft.AspNetCore.Components.Routing
 @using $ProjectName.ViewModels.Auth
 @using $ProjectName.Domain.Interfaces.Auth
@@ -984,6 +986,7 @@ global using $ProjectName.ViewModels.Auth;
 global using $ProjectName.Views.Layout;
 global using Microsoft.AspNetCore.Components;
 global using Microsoft.AspNetCore.Components.Routing;
+global using System;
 global using System.Text;
 global using System.Text.Json;
 "@ | Set-Content "src/Presentation/Views/GlobalUsings.cs"
@@ -1540,6 +1543,102 @@ public partial class TopBar : ComponentBase, IDisposable
     }
 }
 "@ | Set-Content "src/Presentation/Views/Pages/Login.razor.css"
+
+# PaginationComponent.razor in Views/Shared/Components
+@"
+@namespace $ProjectName.Views.Shared.Components
+
+<div class="card-footer bg-white border-top py-2">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-2">
+        <div class="text-muted small">
+            Mostrando @CurrentItemsCount de @TotalCount
+            @(TotalCount == 1 ? ItemName : ItemPluralName)
+            @if (HasActiveFilters)
+            {
+                <span>(filtradas)</span>
+            }
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <div class="input-group input-group-sm" style="width: auto;">
+                <label class="input-group-text bg-white" for="pageSizeSelect">Tamaño</label>
+                <select class="form-select form-select-sm" id="pageSizeSelect"
+                        value="@PageSize"
+                        @onchange="OnPageSizeChange"
+                        disabled="@IsLoading"
+                        aria-label="Tamaño de página">
+                    <option value="10">10</option>
+                    <option value="25">25</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                    <option value="500">500</option>
+                    <option value="1000">1000</option>
+                </select>
+            </div>
+            <nav aria-label="Navegación de páginas">
+                <ul class="pagination pagination-sm mb-0">
+                    <li class="page-item @(CurrentPage == 1 ? "disabled" : "")">
+                        <button class="page-link" @onclick="FirstPage" disabled="@(CurrentPage == 1)" aria-label="Primera página">
+                            <i class="bi bi-chevron-double-left" aria-hidden="true"></i>
+                        </button>
+                    </li>
+                    <li class="page-item @(CurrentPage == 1 ? "disabled" : "")">
+                        <button class="page-link" @onclick="PreviousPage" disabled="@(CurrentPage == 1)" aria-label="Página anterior">
+                            <i class="bi bi-chevron-left" aria-hidden="true"></i>
+                        </button>
+                    </li>
+                    <li class="page-item disabled">
+                        <span class="page-link" aria-current="page">Página @CurrentPage de @(Math.Max(1, TotalPages))</span>
+                    </li>
+                    <li class="page-item @(CurrentPage == TotalPages || TotalPages == 0 ? "disabled" : "")">
+                        <button class="page-link" @onclick="NextPage" disabled="@(CurrentPage == TotalPages || TotalPages == 0)" aria-label="Página siguiente">
+                            <i class="bi bi-chevron-right" aria-hidden="true"></i>
+                        </button>
+                    </li>
+                    <li class="page-item @(CurrentPage == TotalPages || TotalPages == 0 ? "disabled" : "")">
+                        <button class="page-link" @onclick="LastPage" disabled="@(CurrentPage == TotalPages || TotalPages == 0)" aria-label="Última página">
+                            <i class="bi bi-chevron-double-right" aria-hidden="true"></i>
+                        </button>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+</div>
+"@ | Set-Content "src/Presentation/Views/Shared/Components/PaginationComponent.razor"
+
+# PaginationComponent.razor.cs code-behind
+@"
+namespace $ProjectName.Views.Shared.Components;
+
+public partial class PaginationComponent
+{
+    [Parameter] public int CurrentPage { get; set; } = 1;
+    [Parameter] public int TotalPages { get; set; } = 1;
+    [Parameter] public int TotalCount { get; set; }
+    [Parameter] public int CurrentItemsCount { get; set; }
+    [Parameter] public int PageSize { get; set; } = 1000;
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public bool HasActiveFilters { get; set; }
+    [Parameter] public string ItemName { get; set; } = "registro";
+    [Parameter] public string ItemPluralName { get; set; } = "registros";
+
+    [Parameter] public EventCallback<int> OnPageChanged { get; set; }
+    [Parameter] public EventCallback<int> OnPageSizeChanged { get; set; }
+
+    private async Task OnPageSizeChange(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int size))
+        {
+            await OnPageSizeChanged.InvokeAsync(size);
+        }
+    }
+
+    private async Task FirstPage() => await OnPageChanged.InvokeAsync(1);
+    private async Task PreviousPage() => await OnPageChanged.InvokeAsync(CurrentPage - 1);
+    private async Task NextPage() => await OnPageChanged.InvokeAsync(CurrentPage + 1);
+    private async Task LastPage() => await OnPageChanged.InvokeAsync(TotalPages);
+}
+"@ | Set-Content "src/Presentation/Views/Shared/Components/PaginationComponent.razor.cs"
 
 Write-Host "Creating CI/CD files..." -ForegroundColor Yellow
 
