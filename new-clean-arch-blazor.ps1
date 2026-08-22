@@ -659,7 +659,7 @@ namespace $ProjectName.ViewModels.Auth
 
 <PageTitle>Iniciar sesión</PageTitle>
 
-<div class="login-page d-flex flex-column justify-content-center align-items-center w-100 pt-4">
+<div class="d-flex flex-column justify-content-center align-items-center w-100 pt-4 pt-lg-5">
     <div class="card shadow-sm border-primary" style="max-width: 420px; width: 100%;">
         <div class="card-body p-4">
             <div class="text-center mb-4">
@@ -1043,16 +1043,24 @@ global using System.Text.Json;
             </span>
         </footer>
     </div>
-
-    @if (NavMenuState.IsOpen)
-    {
-        <div class="position-fixed top-0 start-0 end-0 bottom-0"
-             style="z-index: 1035; background-color: rgba(0, 0, 0, 0.45);"
-             @onclick="NavMenuState.CloseOpen"
-             aria-hidden="true"></div>
-    }
 </div>
 
+<div class="offcanvas offcanvas-start d-lg-none @(NavMenuState.IsOpen ? "show" : "")"
+     tabindex="-1"
+     aria-labelledby="mobileNavMenuLabel"
+     style="visibility: @(NavMenuState.IsOpen ? "visible" : "hidden");">
+    <div class="offcanvas-header border-bottom">
+        <h5 class="offcanvas-title" id="mobileNavMenuLabel">$ProjectName</h5>
+        <button type="button"
+                class="btn-close text-reset"
+                @onclick="NavMenuState.CloseOpen"
+                aria-label="Cerrar menú">
+        </button>
+    </div>
+    <div class="offcanvas-body p-0">
+        <NavMenu />
+    </div>
+</div>
 "@ | Set-Content "src/Presentation/Views/Layout/MainLayout.razor"
 
 # MainLayout.razor.cs code-behind
@@ -1083,39 +1091,33 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
 @inject NavMenuStateService NavMenuState
 @inject NavigationManager Navigation
 
-<nav class="d-flex flex-column bg-white text-dark @NavMenuCssClass"
+<nav class="d-none d-lg-flex flex-column bg-white text-dark flex-shrink-0"
      style="width: @(NavMenuState.IsCollapsed ? "60px" : "260px");"
      aria-label="Navegación principal">
     <div class="d-flex align-items-center justify-content-between p-3 border-bottom border-dark border-opacity-10" style="height: 56px;">
-        <a class="sidebar-brand d-inline-flex align-items-center gap-2 text-dark text-decoration-none fw-semibold text-nowrap overflow-hidden"
+        <a class="d-inline-flex align-items-center gap-2 text-dark text-decoration-none fw-semibold text-nowrap overflow-hidden"
            href="" title="$ProjectName">
             <i class="bi bi-box-seam fs-4" aria-hidden="true"></i>
-            <span class="sidebar-text">$ProjectName</span>
+            <span class="@(NavMenuState.IsCollapsed ? "d-none" : "")">$ProjectName</span>
         </a>
-        <button type="button"
-                class="btn btn-link text-dark p-1 d-lg-none"
-                @onclick="NavMenuState.CloseOpen"
-                aria-label="Cerrar menú">
-            <i class="bi bi-x-lg fs-4" aria-hidden="true"></i>
-        </button>
     </div>
 
     <div class="flex-fill overflow-auto py-2 px-3">
         <ul class="list-unstyled ps-0 mb-0">
             <li class="mb-1">
                 <a href="/"
-                   class="btn btn-toggle d-inline-flex align-items-center justify-content-lg-start justify-content-center rounded px-0 text-secondary w-100 text-decoration-none"
+                   class="btn btn-toggle d-inline-flex align-items-center justify-content-center rounded px-0 text-secondary w-100 text-decoration-none"
                    @onclick="OnLinkClicked">
-                    <i class="bi bi-house-door fs-5 me-lg-2" aria-hidden="true"></i>
-                    <span class="sidebar-text">Home</span>
+                    <i class="bi bi-house-door fs-5" aria-hidden="true"></i>
+                    <span class="@(NavMenuState.IsCollapsed ? "d-none" : "") ms-2">Home</span>
                 </a>
             </li>
             <li class="mb-1">
                 <a href="/"
-                   class="btn btn-toggle d-inline-flex align-items-center justify-content-lg-start justify-content-center rounded px-0 text-secondary w-100 text-decoration-none"
+                   class="btn btn-toggle d-inline-flex align-items-center justify-content-center rounded px-0 text-secondary w-100 text-decoration-none"
                    @onclick="OnLinkClicked">
-                    <i class="bi bi-speedometer2 fs-5 me-lg-2" aria-hidden="true"></i>
-                    <span class="sidebar-text">Dashboard</span>
+                    <i class="bi bi-speedometer2 fs-5" aria-hidden="true"></i>
+                    <span class="@(NavMenuState.IsCollapsed ? "d-none" : "") ms-2">Dashboard</span>
                 </a>
             </li>
         </ul>
@@ -1130,21 +1132,6 @@ namespace $ProjectName.Views.Layout;
 
 public partial class NavMenu : ComponentBase, IDisposable
 {
-    private string NavMenuCssClass
-    {
-        get
-        {
-            var classes = new System.Text.StringBuilder("sidebar");
-            if (NavMenuState.IsCollapsed)
-                classes.Append(" sidebar-collapsed");
-            if (NavMenuState.IsOpen)
-                classes.Append(" sidebar-open");
-            else
-                classes.Append(" sidebar-closed");
-            return classes.ToString();
-        }
-    }
-
     protected override void OnInitialized()
     {
         NavMenuState.Changed += OnStateChanged;
@@ -1156,17 +1143,6 @@ public partial class NavMenu : ComponentBase, IDisposable
     }
 
     private void OnLinkClicked()
-    {
-        NavMenuState.CloseOpen();
-    }
-
-    private void OnToggleClicked(string id)
-    {
-        // Bootstrap JS handles the collapse toggle; this method keeps the
-        // sidebar open on mobile so the user sees the expand/collapse effect.
-    }
-
-    private void CloseNavMenu()
     {
         NavMenuState.CloseOpen();
     }
@@ -1404,115 +1380,8 @@ public partial class TopBar : ComponentBase, IDisposable
 }
 "@ | Set-Content "src/Presentation/Views/Layout/TopBar.razor.cs"
 
-# NavMenu.razor.css
-@"
-.sidebar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    z-index: 1040;
-    transition: transform 0.25s ease-in-out, width 0.25s ease-in-out;
-}
-
-.sidebar-open {
-    transform: translateX(0);
-}
-
-.sidebar-closed {
-    transform: translateX(-100%);
-}
-
-.sidebar-text {
-    transition: opacity 0.2s ease-in-out, width 0.2s ease-in-out;
-    white-space: nowrap;
-    overflow: hidden;
-}
-
-.sidebar-collapsed .sidebar-text,
-.sidebar-collapsed .toggle-icon {
-    opacity: 0;
-    width: 0;
-    margin-left: 0 !important;
-    margin-right: 0 !important;
-    display: inline-block;
-}
-
-.sidebar-collapsed .btn-toggle,
-.sidebar-collapsed .sidebar-brand {
-    justify-content: center !important;
-    padding-left: 0 !important;
-    padding-right: 0 !important;
-}
-
-.sidebar-collapsed .btn-toggle-nav .sidebar-text {
-    display: none;
-}
-
-.sidebar-collapsed .btn-toggle-nav {
-    display: none !important;
-}
-
-.btn-toggle {
-    font-weight: 600;
-    background-color: transparent;
-    border: 0;
-}
-
-.btn-toggle:hover,
-.btn-toggle:focus {
-    color: rgba(255, 255, 255, 0.85) !important;
-    background-color: rgba(255, 255, 255, 0.1);
-}
-
-.btn-toggle .toggle-icon {
-    transition: transform .35s ease;
-}
-
-.btn-toggle[aria-expanded="true"] .toggle-icon {
-    transform: rotate(90deg);
-}
-
-.btn-toggle-nav a {
-    margin-top: .125rem;
-    margin-left: 1.25rem;
-}
-
-.btn-toggle-nav a:hover,
-.btn-toggle-nav a:focus {
-    background-color: rgba(255, 255, 255, 0.1);
-}
-
-@media (min-width: 992px) {
-    .sidebar {
-        position: relative;
-        transform: none !important;
-    }
-}
-
-@media (max-width: 991.98px) {
-    .sidebar-collapsed .sidebar-text,
-    .sidebar-collapsed .toggle-icon {
-        opacity: 1;
-        width: auto;
-    }
-
-    .sidebar-collapsed .btn-toggle,
-    .sidebar-collapsed .sidebar-brand {
-        justify-content: flex-start !important;
-        padding-left: 0 !important;
-        padding-right: 0 !important;
-    }
-
-    .sidebar-collapsed .btn-toggle-nav {
-        display: block !important;
-    }
-
-    .sidebar-collapsed .btn-toggle-nav .sidebar-text {
-        display: inline-block;
-    }
-}
-"@ | Set-Content "src/Presentation/Views/Layout/NavMenu.razor.css"
+# NavMenu.razor.css (no custom CSS — using Bootstrap utility classes in NavMenu.razor and MainLayout.razor)
+"" | Set-Content "src/Presentation/Views/Layout/NavMenu.razor.css"
 
 # TopBar.razor.css
 @"
@@ -1531,19 +1400,8 @@ public partial class TopBar : ComponentBase, IDisposable
 /* Empty: layout uses Bootstrap utility classes. Keep file if you need component-scoped overrides later. */
 "@ | Set-Content "src/Presentation/Views/Layout/MainLayout.razor.css"
 
-# Login.razor.css
-@"
-.login-page {
-    min-height: calc(100vh - 56px);
-    margin-top: -1rem;
-}
-
-@media (min-width: 992px) {
-    .login-page {
-        margin-top: -3rem;
-    }
-}
-"@ | Set-Content "src/Presentation/Views/Pages/Login.razor.css"
+# Login.razor.css (no custom CSS — using Bootstrap utility classes in Login.razor)
+"" | Set-Content "src/Presentation/Views/Pages/Login.razor.css"
 
 # PaginationComponent.razor in Views/Shared/Components
 @"
