@@ -1595,7 +1595,7 @@ COPY . .
 
 # Publish project
 WORKDIR /src/src/Presentation/Client
-RUN dotnet publish $ProjectName.Web.csproj -c $Configuration -o /app/publish
+RUN dotnet publish $ProjectName.Web.csproj -c `$Configuration -o /app/publish
 
 # Final stage (Nginx)
 FROM nginx:alpine AS final
