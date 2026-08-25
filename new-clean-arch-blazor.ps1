@@ -72,7 +72,8 @@ New-Item -ItemType Directory -Path "src/Presentation/Client/Properties" -Force |
     "http": {
       "commandName": "Project",
       "launchBrowser": true,
-      "applicationUrl": "http://localhost:$HttpPort",
+       "inspectUri": "{wsProtocol}://{url.hostname}:{url.port}/_framework/debug/ws-proxy?browser={browserInspectUri}",
+       "applicationUrl": "http://localhost:$HttpPort",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       }
