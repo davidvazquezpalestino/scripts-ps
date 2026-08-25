@@ -1020,7 +1020,9 @@ global using System.Text.Json;
 @inject NavMenuStateService NavMenuState
 
 <div class="d-flex min-vh-100">
-    <NavMenu />
+    <div class="d-none d-lg-flex">
+        <NavMenu />
+    </div>
 
     <div class="d-flex flex-column flex-fill min-vw-0">
         <TopBar />
@@ -1089,10 +1091,9 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
 # NavMenu.razor in Views/Layout
 @"
 @inject NavMenuStateService NavMenuState
-@inject NavigationManager Navigation
 
-<nav class="d-none d-lg-flex flex-column bg-white text-dark flex-shrink-0"
-     style="width: @(NavMenuState.IsCollapsed ? "60px" : "260px");"
+<nav class="flex-column bg-white text-dark flex-shrink-0"
+     style="min-width: @(NavMenuState.IsCollapsed ? "60px" : "260px");"
      aria-label="Navegación principal">
     <div class="d-flex align-items-center justify-content-between p-3 border-bottom border-dark border-opacity-10" style="height: 56px;">
         <a class="d-inline-flex align-items-center gap-2 text-dark text-decoration-none fw-semibold text-nowrap overflow-hidden @(NavMenuState.IsCollapsed ? "justify-content-center" : "")"
@@ -1114,11 +1115,20 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
             </li>
             <li class="mb-1">
                 <a href="/"
-                   class="btn btn-toggle d-inline-flex align-items-center @(NavMenuState.IsCollapsed ? "justify-content-center" : "justify-content-start") rounded px-0 text-secondary w-100 text-decoration-none"
-                   @onclick="OnLinkClicked">
+                   class="btn btn-toggle d-inline-flex align-items-center justify-content-start rounded px-0 text-secondary w-100 text-decoration-none"
+                   @onclick="OnDashboardClick">
                     <i class="bi bi-speedometer2 fs-5" aria-hidden="true"></i>
                     <span class="@(NavMenuState.IsCollapsed ? "d-none" : "") ms-2">Dashboard</span>
                 </a>
+                <ul class="list-unstyled ps-3 mb-0 @(NavMenuState.IsCollapsed ? "d-none" : "") @(_isDashboardExpanded ? "" : "d-none")">
+                    <li>
+                        <a href="/"
+                           class="btn btn-toggle d-inline-flex align-items-center justify-content-start rounded px-0 text-secondary w-100 text-decoration-none"
+                           @onclick="OnLinkClicked">
+                            <span class="ms-2">Resumen</span>
+                        </a>
+                    </li>
+                </ul>
             </li>
         </ul>
     </div>
@@ -1132,6 +1142,10 @@ namespace $ProjectName.Views.Layout;
 
 public partial class NavMenu : ComponentBase, IDisposable
 {
+    [Inject] private NavigationManager Navigation { get; set; } = default!;
+
+    private bool _isDashboardExpanded;
+
     protected override void OnInitialized()
     {
         NavMenuState.Changed += OnStateChanged;
@@ -1145,6 +1159,13 @@ public partial class NavMenu : ComponentBase, IDisposable
     private void OnLinkClicked()
     {
         NavMenuState.CloseOpen();
+    }
+
+    private async Task OnDashboardClick()
+    {
+        _isDashboardExpanded = !_isDashboardExpanded;
+        Navigation.NavigateTo("/");
+        await InvokeAsync(StateHasChanged);
     }
 
     public void Dispose()
@@ -1587,6 +1608,11 @@ COPY --from=build /app/publish/wwwroot .
 COPY src/Presentation/Client/nginx.conf /etc/nginx/nginx.conf
 
 EXPOSE 80
+
+# Helper commands:
+# docker build -f src/Presentation/Client/Dockerfile -t $($ProjectName.ToLower())-web:latest .
+# docker container rm -f $($ProjectName.ToLower())-web
+# docker run -d --name $($ProjectName.ToLower())-web -p $DockerPort1`:80 $($ProjectName.ToLower())-web:latest
 "@ | Set-Content "src/Presentation/Client/Dockerfile"
 
 # nginx.conf
