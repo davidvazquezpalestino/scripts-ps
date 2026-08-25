@@ -1067,7 +1067,7 @@ ENTRYPOINT ["dotnet", "$ProjectName.WebApi.dll"]
 "@ | Set-Content "src/Presentation/Api/Dockerfile"
 
 # azure-pipelines.yml
-@"
+@'
 trigger:
     branches:
         include:
@@ -1098,7 +1098,7 @@ $azurePipelinesContent = $azurePipelinesContent.Replace("__PROJECT_DIR__", $proj
 $azurePipelinesContent | Set-Content "src/Presentation/Api/azure-pipelines.yml"
 
 # deploy.sh
-$deployScript = @"
+$deployScript = @'
 #!/bin/bash
 set -e
 
@@ -1146,9 +1146,7 @@ docker run -d -e TZ=$TZ -p __DOCKER_PORT_4__:8080 --name webapi-__PROJECT_SLUG__
 echo "====================================="
 echo "Deploy finalizado correctamente"
 echo "====================================="
-"@
-
-$deployScript | Set-Content "src/Presentation/Api/deploy.sh"
+'@
 
 $deployDir = Split-Path "src/Presentation/Api/deploy.sh" -Parent
 if (-not (Test-Path $deployDir)) {
