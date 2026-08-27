@@ -194,8 +194,12 @@ New-Item -ItemType Directory -Path "src/Presentation/Views/Shared/Components" -F
 New-Item -ItemType Directory -Path "src/Infrastructure/WebApi/Options" -Force | Out-Null
 New-Item -ItemType Directory -Path "src/Domain/Interfaces/Auth" -Force | Out-Null
 New-Item -ItemType Directory -Path "src/Infrastructure/WebApi/Auth" -Force | Out-Null
+New-Item -ItemType Directory -Path "src/Domain/ValueObjects/Auth" -Force | Out-Null
+New-Item -ItemType Directory -Path "src/Presentation/Views/Shared/Auth" -Force | Out-Null
 New-Item -ItemType Directory -Path "src/Application/ViewModels/Auth" -Force | Out-Null
-New-Item -ItemType Directory -Path "src/Infrastructure/WebApi/Services" -Force | Out-Null
+New-Item -ItemType Directory -Path "src/Application/ViewModels/Base" -Force | Out-Null
+New-Item -ItemType Directory -Path "src/Domain/Shared/Errors" -Force | Out-Null
+New-Item -ItemType Directory -Path "src/Infrastructure/WebApi/Handlers" -Force | Out-Null
 New-Item -ItemType Directory -Path "src/Application/ViewModels/Options" -Force | Out-Null
 
 Write-Host "Adding projects to solution..." -ForegroundColor Yellow
@@ -234,20 +238,28 @@ dotnet add src/Infrastructure/WebApi package DependencyInjection.ReflectionExten
 dotnet add src/Presentation/IoC package DependencyInjection.ReflectionExtensions
 dotnet add src/Presentation/IoC package FluentValidation
 dotnet add src/Presentation/IoC package Microsoft.Extensions.Configuration.Abstractions
+dotnet add src/Presentation/IoC package Microsoft.Extensions.Http
+dotnet add src/Presentation/Views package Microsoft.AspNetCore.Components.Authorization
+dotnet add src/Infrastructure/WebApi package Microsoft.JSInterop
 dotnet add tests/UnitTests package FluentAssertions
 
 Write-Host "Creating GlobalUsings files..." -ForegroundColor Yellow
 
 # Domain GlobalUsings
 @"
+global using System.Collections.Generic;
 "@ | Set-Content "src/Domain/GlobalUsings.cs"
 
 # Application (ViewModels) GlobalUsings
 @"
 global using DevKit.Injection.Extensions;
 global using Microsoft.Extensions.DependencyInjection;
+global using System.ComponentModel;
 global using System.Reflection;
+global using System.Runtime.CompilerServices;
 global using $ProjectName.Domain.Interfaces.Auth;
+global using $ProjectName.Domain.Shared.Errors;
+global using $ProjectName.ViewModels.Base;
 
 "@ | Set-Content "src/Application/ViewModels/GlobalUsings.cs"
 
@@ -275,7 +287,7 @@ namespace $ProjectName.WebApi
     {
         public static IServiceCollection AddInfrastructure(this IServiceCollection services)
         {  
-            services.AddSingleton<TokenService>();
+            services.AddTransient<GlobalExceptionHandler>();
             services.AddServicesCurrentAssembly();
             return services;
         }
@@ -304,7 +316,7 @@ namespace $ProjectName.IoC
 {
     public static class DependencyContainer
     {
-        public static IServiceCollection AddIoC(this IServiceCollection services, IConfiguration configuration)
+        public static IServiceCollection AddIoC(this IServiceCollection services, IConfiguration configuration, string apiBaseUrl)
         {
             services.Configure<ApiOptions>(configuration.GetSection(ApiOptions.SectionKey));
 
@@ -313,6 +325,24 @@ namespace $ProjectName.IoC
             services.AddViewModels()
                     .AddValidators()
                     .AddInfrastructure();
+
+            services.AddAuthorizationCore();
+            services.AddCascadingAuthenticationState();
+            services.AddScoped<IJwtTokenService, JwtTokenService>();
+            services.AddScoped<AuthenticationStateProvider, JwtAuthenticationStateProvider>();
+
+            services.AddHttpClient("ApiClient", client =>
+            {
+                client.BaseAddress = new Uri(apiBaseUrl);
+                client.Timeout = TimeSpan.FromSeconds(30);
+            }).AddHttpMessageHandler<GlobalExceptionHandler>();
+
+            services.AddScoped(sp =>
+            {
+                IHttpClientFactory factory = sp.GetRequiredService<IHttpClientFactory>();
+                return factory.CreateClient("ApiClient");
+            });
+
             return services;
         }
     }
@@ -334,15 +364,21 @@ namespace $ProjectName.WebApi.Options
 
 # Infrastructure GlobalUsings
 @"
+global using System.Collections.Generic;
+global using System.Linq;
+global using System.Net;
 global using System.Net.Http.Json;
 global using System.Reflection;
 global using System.Text;
 global using System.Text.Json;
 global using DevKit.Injection.Extensions;
 global using Microsoft.Extensions.DependencyInjection;
+global using Microsoft.JSInterop;
+global using $ProjectName.WebApi.Handlers;
 global using $ProjectName.WebApi.Options;
 global using $ProjectName.Domain.Interfaces.Auth;
-global using $ProjectName.WebApi.Services;
+global using $ProjectName.Domain.Shared.Errors;
+global using $ProjectName.Domain.ValueObjects.Auth;
 "@ | Set-Content "src/Infrastructure/WebApi/GlobalUsings.cs"
 
 # Validators GlobalUsings
@@ -355,21 +391,28 @@ global using FluentValidation;
 
 # IoC GlobalUsings
 @"
+global using Microsoft.AspNetCore.Components.Authorization;
 global using Microsoft.Extensions.DependencyInjection;
 global using Microsoft.Extensions.Configuration;
 global using FluentValidation;
 global using $ProjectName.ViewModels;
 global using $ProjectName.WebApi;
+global using $ProjectName.WebApi.Auth;
+global using $ProjectName.WebApi.Handlers;
 global using $ProjectName.WebApi.Options;
 global using $ProjectName.Validators;
+global using $ProjectName.Domain.Interfaces.Auth;
+global using $ProjectName.Views.Shared.Auth;
 "@ | Set-Content "src/Presentation/IoC/GlobalUsings.cs"
 
 # Client GlobalUsings
 @"
 global using $ProjectName.IoC;
 global using $ProjectName.Views;
+global using $ProjectName.WebApi.Handlers;
 global using Microsoft.AspNetCore.Components.Web;
 global using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
+global using Microsoft.Extensions.DependencyInjection;
 
 "@ | Set-Content "src/Presentation/Client/GlobalUsings.cs"
 
@@ -386,10 +429,8 @@ WebAssemblyHostBuilder builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
-var apiBaseUrl = builder.Configuration["ApiOptions:BaseUrl"] ?? builder.HostEnvironment.BaseAddress;
-builder.Services.AddScoped(_ => new HttpClient { BaseAddress = new Uri(apiBaseUrl) });
-
-builder.Services.AddIoC(builder.Configuration);
+string apiBaseUrl = builder.Configuration["ApiOptions:BaseUrl"] ?? builder.HostEnvironment.BaseAddress;
+builder.Services.AddIoC(builder.Configuration, apiBaseUrl);
 
 await builder.Build().RunAsync();
 "@ | Set-Content "src/Presentation/Client/Program.cs"
@@ -408,10 +449,9 @@ Remove-Item "src/Presentation/Client/App.razor" -Force -ErrorAction SilentlyCont
 # Index.razor lives in the Views assembly so the Router (AppAssembly = typeof(App).Assembly) can discover it.
 @"
 @page "/"
-@inject IAuthState AuthState
-@inject NavigationManager Navigation
+@attribute [Authorize]
 
-<PageTitle>Index — 100% Clean Architecture (o eso dice el README)</PageTitle>
+<PageTitle>Index</PageTitle>
 
 <div class="container-fluid px-3 px-md-4">
 <div class="card shadow-sm my-4">
@@ -452,15 +492,9 @@ Remove-Item "src/Presentation/Client/App.razor" -Force -ErrorAction SilentlyCont
 @"
 namespace $ProjectName.Views.Pages;
 
+[Authorize]
 public partial class Index : ComponentBase
 {
-    protected override void OnInitialized()
-    {
-        if (!AuthState.IsAuthenticated)
-        {
-            Navigation.NavigateTo("/login");
-        }
-    }
 }
 "@ | Set-Content "src/Presentation/Views/Pages/Index.razor.cs"
 
@@ -495,106 +529,560 @@ namespace $ProjectName.Domain.Interfaces.Auth
 {
     public interface IAuthService
     {
-        Task<string?> LoginAsync(string userEmail, string password, CancellationToken cancellationToken = default);
-        void Logout();
+        Task<string> LoginAsync(string userEmail, string password, CancellationToken cancellationToken = default);
+        Task LogoutAsync();
     }
 }
 "@ | Set-Content "src/Domain/Interfaces/Auth/IAuthService.cs"
 
-# IAuthState in Domain
+# UserSessionInfo in Domain/ValueObjects/Auth
+@"
+namespace $ProjectName.Domain.ValueObjects.Auth
+{
+    public class UserSessionInfo
+    {
+        public string UserId { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public IReadOnlyList<string> Roles { get; set; } = Array.Empty<string>();
+        public bool IsExpired { get; set; }
+    }
+}
+"@ | Set-Content "src/Domain/ValueObjects/Auth/UserSessionInfo.cs"
+
+# IJwtTokenService in Domain
 @"
 namespace $ProjectName.Domain.Interfaces.Auth
 {
-    public interface IAuthState
+    public interface IJwtTokenService
     {
-        string? Token { get; }
-        string? UserEmail { get; }
-        bool IsAuthenticated { get; }
-        event EventHandler? AuthenticationStateChanged;
-
-        void SetToken(string token, string userEmail);
-        void Clear();
+        event EventHandler TokenChanged;
+        Task<string> GetTokenAsync(CancellationToken cancellationToken = default);
+        Task SetTokenAsync(string token, CancellationToken cancellationToken = default);
+        Task ClearTokenAsync(CancellationToken cancellationToken = default);
+        Task<ValueObjects.Auth.UserSessionInfo> GetUserSessionAsync(CancellationToken cancellationToken = default);
     }
 }
-"@ | Set-Content "src/Domain/Interfaces/Auth/IAuthState.cs"
+"@ | Set-Content "src/Domain/Interfaces/Auth/IJwtTokenService.cs"
 
-# TokenService in Infrastructure/WebApi/Services
-@"
-namespace $ProjectName.WebApi.Services
-{
-    public class TokenService
-    {
-        public string GenerateToken(string userEmail)
-        {
-            // TODO: Reemplazar por JWT real firmado en backend.
-            // Token simulado: base64 de un payload JSON con el correo y expiración.
-            var payload = new
-            {
-                email = userEmail,
-                exp = DateTimeOffset.UtcNow.AddHours(8).ToUnixTimeSeconds()
-            };
-            var json = JsonSerializer.Serialize(payload);
-            return Convert.ToBase64String(Encoding.UTF8.GetBytes(json));
-        }
-    }
-}
-"@ | Set-Content "src/Infrastructure/WebApi/Services/TokenService.cs"
-
-# AuthState in Infrastructure/WebApi/Auth
+# JwtTokenService in Infrastructure/WebApi/Auth
 @"
 namespace $ProjectName.WebApi.Auth
 {
-    public class AuthState : IAuthState
+    public class JwtTokenService(IJSRuntime jsRuntime) : IJwtTokenService
     {
-        public string? Token { get; private set; }
-        public string? UserEmail { get; private set; }
-        public bool IsAuthenticated => !string.IsNullOrWhiteSpace(Token);
+        private const string TokenKey = "auth_token";
 
-        public event EventHandler? AuthenticationStateChanged;
+        public event EventHandler TokenChanged;
 
-        public void SetToken(string token, string userEmail)
+        public async Task<string> GetTokenAsync(CancellationToken cancellationToken = default)
         {
-            Token = token;
-            UserEmail = userEmail;
-            OnAuthenticationStateChanged();
+            return await jsRuntime.InvokeAsync<string>("localStorage.getItem", cancellationToken, TokenKey).ConfigureAwait(false);
         }
 
-        public void Clear()
+        public async Task SetTokenAsync(string token, CancellationToken cancellationToken = default)
         {
-            Token = null;
-            UserEmail = null;
-            OnAuthenticationStateChanged();
+            await jsRuntime.InvokeVoidAsync("localStorage.setItem", cancellationToken, TokenKey, token).ConfigureAwait(false);
+            OnTokenChanged();
         }
 
-        private void OnAuthenticationStateChanged()
+        public async Task ClearTokenAsync(CancellationToken cancellationToken = default)
         {
-            AuthenticationStateChanged?.Invoke(this, EventArgs.Empty);
+            await jsRuntime.InvokeVoidAsync("localStorage.removeItem", cancellationToken, TokenKey).ConfigureAwait(false);
+            OnTokenChanged();
+        }
+
+        public async Task<UserSessionInfo> GetUserSessionAsync(CancellationToken cancellationToken = default)
+        {
+            string token = await GetTokenAsync(cancellationToken).ConfigureAwait(false);
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                return new UserSessionInfo { IsExpired = true };
+            }
+
+            try
+            {
+                string[] parts = token.Split('.');
+                if (parts.Length != 3)
+                {
+                    return new UserSessionInfo { IsExpired = true };
+                }
+
+                string payload = Base64UrlDecode(parts[1]);
+                using JsonDocument document = JsonDocument.Parse(payload);
+                JsonElement root = document.RootElement;
+
+                UserSessionInfo session = new UserSessionInfo
+                {
+                    UserId = GetString(root, "sub") ?? GetString(root, "nameid") ?? string.Empty,
+                    Name = GetString(root, "name") ?? GetString(root, "unique_name") ?? string.Empty,
+                    Email = GetString(root, "email") ?? string.Empty
+                };
+
+                if (root.TryGetProperty("exp", out JsonElement expProperty) && expProperty.TryGetInt64(out long exp))
+                {
+                    session.IsExpired = DateTimeOffset.UtcNow >= DateTimeOffset.FromUnixTimeSeconds(exp);
+                }
+
+                List<string> roles = new List<string>();
+                if (root.TryGetProperty("roles", out JsonElement rolesProperty) && rolesProperty.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (JsonElement role in rolesProperty.EnumerateArray())
+                    {
+                        if (role.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(role.GetString()))
+                        {
+                            roles.Add(role.GetString()!);
+                        }
+                    }
+                }
+                else if (root.TryGetProperty("role", out JsonElement roleProperty) && roleProperty.ValueKind == JsonValueKind.String)
+                {
+                    string role = roleProperty.GetString();
+                    if (!string.IsNullOrWhiteSpace(role))
+                    {
+                        roles.Add(role);
+                    }
+                }
+                session.Roles = roles;
+
+                return session;
+            }
+            catch
+            {
+                return new UserSessionInfo { IsExpired = true };
+            }
+        }
+
+        private static string GetString(JsonElement element, string propertyName)
+        {
+            if (element.TryGetProperty(propertyName, out JsonElement property)
+                && property.ValueKind == JsonValueKind.String)
+            {
+                return property.GetString();
+            }
+
+            return null;
+        }
+
+        private static string Base64UrlDecode(string input)
+        {
+            string padded = input.Length % 4 == 0
+                ? input
+                : input + new string('=', 4 - input.Length % 4);
+            string base64 = padded.Replace('-', '+').Replace('_', '/');
+            return Encoding.UTF8.GetString(Convert.FromBase64String(base64));
+        }
+
+        private void OnTokenChanged()
+        {
+            TokenChanged?.Invoke(this, EventArgs.Empty);
         }
     }
 }
-"@ | Set-Content "src/Infrastructure/WebApi/Auth/AuthState.cs"
+"@ | Set-Content "src/Infrastructure/WebApi/Auth/JwtTokenService.cs"
 
 # AuthWebApi in Infrastructure/WebApi
 @"
 namespace $ProjectName.WebApi.Auth
 {
-    public class AuthWebApi(HttpClient httpClient, IAuthState authState, TokenService tokenService) : IAuthService
+    public class AuthWebApi(HttpClient httpClient, IJwtTokenService tokenService) : IAuthService
     {
-        public async Task<string?> LoginAsync(string userEmail, string password, CancellationToken cancellationToken = default)
+        public async Task<string> LoginAsync(string userEmail, string password, CancellationToken cancellationToken = default)
         {
             // TODO: Implementar llamada real a la API
             // var response = await httpClient.PostAsJsonAsync("api/auth/login", new { userEmail, password }, cancellationToken);
             // response.EnsureSuccessStatusCode();
+            // var token = await response.Content.ReadAsStringAsync(cancellationToken);
 
-            var token = tokenService.GenerateToken(userEmail);
-            authState.SetToken(token, userEmail);
+            // Token simulado mientras no haya backend real.
+            string header = Base64UrlEncode(JsonSerializer.Serialize(new { alg = "none", typ = "JWT" }));
+            string payload = Base64UrlEncode(JsonSerializer.Serialize(new
+            {
+                sub = Guid.NewGuid().ToString(),
+                name = userEmail.Split('@')[0],
+                email = userEmail,
+                exp = DateTimeOffset.UtcNow.AddHours(8).ToUnixTimeSeconds(),
+                roles = new[] { "User" }
+            }));
+            string token = $"{header}.{payload}.signature";
+
+            await tokenService.SetTokenAsync(token, cancellationToken).ConfigureAwait(false);
             return token;
         }
 
-        public void Logout() => authState.Clear();
+        public async Task LogoutAsync()
+        {
+            await tokenService.ClearTokenAsync().ConfigureAwait(false);
+        }
+
+        private static string Base64UrlEncode(string value)
+        {
+            return Convert.ToBase64String(Encoding.UTF8.GetBytes(value))
+                .TrimEnd('=')
+                .Replace('+', '-')
+                .Replace('/', '_');
+        }
     }
 }
 "@ | Set-Content "src/Infrastructure/WebApi/Auth/AuthWebApi.cs"
+
+# GlobalExceptionHandler in Infrastructure/WebApi/Handlers
+@"
+namespace $ProjectName.WebApi.Handlers
+{
+    public class GlobalExceptionHandler : DelegatingHandler
+    {
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            HttpResponseMessage response;
+            try
+            {
+                response = await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException exception) when (!cancellationToken.IsCancellationRequested)
+            {
+                throw new GlobalApplicationException(
+                    userMessage: $"La solicitud tardó demasiado tiempo. Intenta nuevamente. {exception.Message}",
+                    kind: ErrorKind.Timeout,
+                    statusCode: (int)HttpStatusCode.RequestTimeout,
+                    isRetryable: true,
+                    innerException: exception);
+            }
+            catch (HttpRequestException exception)
+            {
+                throw new GlobalApplicationException(
+                    userMessage: $"No fue posible conectar con el servicio. Verifica tu conexión e intenta nuevamente. {exception.Message}",
+                    kind: ErrorKind.Network,
+                    statusCode: exception.StatusCode is null ? null : (int)exception.StatusCode.Value,
+                    isRetryable: true,
+                    innerException: exception);
+            }
+
+            if (response.IsSuccessStatusCode)
+            {
+                return response;
+            }
+
+            string body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            int statusCode = (int)response.StatusCode;
+            string message = BuildMessage(response.StatusCode, body);
+            bool isTransient = response.StatusCode is HttpStatusCode.RequestTimeout
+                or HttpStatusCode.TooManyRequests
+                or HttpStatusCode.BadGateway
+                or HttpStatusCode.ServiceUnavailable
+                or HttpStatusCode.GatewayTimeout
+                || statusCode >= 500;
+
+            response.Dispose();
+
+            throw new GlobalApplicationException(
+                userMessage: message,
+                kind: MapErrorKind(statusCode),
+                statusCode: statusCode,
+                isRetryable: isTransient);
+        }
+
+        private static string BuildMessage(HttpStatusCode statusCode, string responseBody)
+        {
+            string apiMessage = TryGetApiMessage(responseBody);
+            if (!string.IsNullOrWhiteSpace(apiMessage))
+            {
+                return apiMessage;
+            }
+
+            return statusCode switch
+            {
+                HttpStatusCode.BadRequest => "La solicitud contiene información inválida.",
+                HttpStatusCode.Unauthorized => "Tu sesión ha expirado o no es válida. Inicia sesión nuevamente.",
+                HttpStatusCode.Forbidden => "No tienes permisos para realizar esta acción.",
+                HttpStatusCode.NotFound => "No se encontró el recurso solicitado.",
+                HttpStatusCode.Conflict => "La operación no pudo completarse porque existe un conflicto con la información actual.",
+                HttpStatusCode.UnprocessableEntity => "No fue posible procesar la información enviada.",
+                HttpStatusCode.TooManyRequests => "Se realizaron demasiadas solicitudes. Espera un momento e intenta nuevamente.",
+                HttpStatusCode.BadGateway or HttpStatusCode.ServiceUnavailable or HttpStatusCode.GatewayTimeout =>
+                    "El servicio no está disponible temporalmente. Intenta nuevamente más tarde.",
+                _ when (int)statusCode >= 500 =>
+                    "El servicio presentó un error inesperado. Intenta nuevamente más tarde.",
+                _ => $"La solicitud no pudo completarse (código {(int)statusCode})."
+            };
+        }
+
+        private static string TryGetApiMessage(string responseBody)
+        {
+            if (string.IsNullOrWhiteSpace(responseBody))
+            {
+                return null;
+            }
+
+            try
+            {
+                using JsonDocument document = JsonDocument.Parse(responseBody);
+                JsonElement root = document.RootElement;
+                if (root.ValueKind != JsonValueKind.Object)
+                {
+                    return null;
+                }
+
+                foreach (string propertyName in new[] { "detail", "message", "error", "title" })
+                {
+                    if (root.TryGetProperty(propertyName, out JsonElement property)
+                        && property.ValueKind == JsonValueKind.String
+                        && !string.IsNullOrWhiteSpace(property.GetString()))
+                    {
+                        return property.GetString();
+                    }
+                }
+
+                if (root.TryGetProperty("errors", out JsonElement errors)
+                    && errors.ValueKind == JsonValueKind.Object)
+                {
+                    List<string> messages = [];
+                    foreach (JsonProperty error in errors.EnumerateObject())
+                    {
+                        if (error.Value.ValueKind == JsonValueKind.Array)
+                        {
+                            messages.AddRange(error.Value.EnumerateArray()
+                                .Where(item => item.ValueKind == JsonValueKind.String)
+                                .Select(item => item.GetString())
+                                .Where(item => !string.IsNullOrWhiteSpace(item)));
+                        }
+                    }
+
+                    return string.Join(" ", messages.Take(3));
+                }
+            }
+            catch (JsonException)
+            {
+            }
+
+            return null;
+        }
+
+        private static ErrorKind MapErrorKind(int statusCode)
+        {
+            return statusCode switch
+            {
+                401 => ErrorKind.Unauthorized,
+                403 => ErrorKind.Forbidden,
+                404 => ErrorKind.NotFound,
+                408 => ErrorKind.Timeout,
+                409 => ErrorKind.Conflict,
+                429 => ErrorKind.Server,
+                >= 500 => ErrorKind.Server,
+                _ => ErrorKind.Unexpected
+            };
+        }
+    }
+}
+"@ | Set-Content "src/Infrastructure/WebApi/Handlers/GlobalExceptionHandler.cs"
+
+# ErrorKind in Domain/Shared/Errors
+@"
+namespace $ProjectName.Domain.Shared.Errors
+{
+    public enum ErrorKind
+    {
+        Unknown,
+        Network,
+        Timeout,
+        Unauthorized,
+        Forbidden,
+        NotFound,
+        Conflict,
+        Validation,
+        Server,
+        Unexpected
+    }
+}
+"@ | Set-Content "src/Domain/Shared/Errors/ErrorKind.cs"
+
+# GlobalApplicationException in Domain/Shared/Errors
+@"
+namespace $ProjectName.Domain.Shared.Errors
+{
+    public class GlobalApplicationException(
+        string userMessage,
+        ErrorKind kind,
+        int? statusCode = null,
+        bool isRetryable = false,
+        Exception innerException = null) : Exception(userMessage, innerException)
+    {
+        public string UserMessage { get; } = userMessage;
+        public ErrorKind Kind { get; } = kind;
+        public int? StatusCode { get; } = statusCode;
+        public bool IsRetryable { get; } = isRetryable;
+    }
+}
+"@ | Set-Content "src/Domain/Shared/Errors/GlobalApplicationException.cs"
+
+# ViewModelBase in Application/ViewModels/Base
+@"
+namespace $ProjectName.ViewModels.Base
+{
+    public class ViewModelBase(int pageSize = 25) : INotifyPropertyChanged
+    {
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        /// <summary>
+        /// Indica si el ViewModel está ejecutando una operación asíncrona.
+        /// </summary>
+        public bool IsLoading
+        {
+            get;
+            set
+            {
+                if (field == value)
+                {
+                    return;
+                }
+
+                field = value;
+                OnPropertyChanged();
+            }
+        }
+
+        /// <summary>
+        /// Obtiene la información estructurada del último error procesado por el ViewModel.
+        /// </summary>
+        public GlobalApplicationException Error
+        {
+            get;
+            protected set
+            {
+                if (Equals(field, value))
+                {
+                    return;
+                }
+
+                field = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(ErrorMessage));
+            }
+        }
+
+        /// <summary>
+        /// Obtiene el mensaje seguro para el usuario del último error procesado.
+        /// </summary>
+        public string ErrorMessage => Error?.UserMessage;
+
+        /// <summary>
+        /// Obtiene o establece el número de la página actual. La primera página es 1.
+        /// </summary>
+        public virtual int CurrentPage
+        {
+            get;
+            set
+            {
+                if (field == value)
+                {
+                    return;
+                }
+
+                field = value;
+                OnPropertyChanged();
+            }
+        } = 1;
+
+        /// <summary>
+        /// Obtiene o establece la cantidad de elementos solicitados por página.
+        /// </summary>
+        public virtual int PageSize
+        {
+            get;
+            set
+            {
+                if (field == value)
+                {
+                    return;
+                }
+
+                field = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(PageCount));
+            }
+        } = pageSize;
+
+        /// <summary>
+        /// Obtiene o establece la cantidad total de elementos disponibles.
+        /// </summary>
+        public virtual int TotalCount
+        {
+            get;
+            set
+            {
+                if (field == value)
+                {
+                    return;
+                }
+
+                field = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(PageCount));
+            }
+        }
+
+        /// <summary>
+        /// Obtiene la cantidad total de páginas informada por el origen de datos.
+        /// </summary>
+        public int TotalPages
+        {
+            get;
+            protected set
+            {
+                if (field == value)
+                {
+                    return;
+                }
+
+                field = value;
+                OnPropertyChanged();
+            }
+        }
+
+        /// <summary>
+        /// Obtiene la cantidad de páginas calculada a partir de <see cref="TotalCount"/>
+        /// y <see cref="PageSize"/>.
+        /// </summary>
+        public virtual int PageCount => (int)Math.Ceiling((double)TotalCount / PageSize);
+
+        protected void ClearError() => Error = null;
+
+        protected void HandleException(Exception exception, Action resetData = null)
+        {
+            resetData?.Invoke();
+
+            Error = exception is GlobalApplicationException applicationException
+                ? applicationException
+                : new GlobalApplicationException(
+                    "Ocurrió un error inesperado. Intenta nuevamente.",
+                    ErrorKind.Unexpected);
+        }
+
+        protected static ErrorKind MapErrorKind(int? statusCode)
+        {
+            if (statusCode is null)
+            {
+                return ErrorKind.Unexpected;
+            }
+
+            return statusCode.Value switch
+            {
+                401 => ErrorKind.Unauthorized,
+                403 => ErrorKind.Forbidden,
+                404 => ErrorKind.NotFound,
+                408 => ErrorKind.Timeout,
+                409 => ErrorKind.Conflict,
+                429 => ErrorKind.Server,
+                >= 500 => ErrorKind.Server,
+                _ => ErrorKind.Unexpected
+            };
+        }
+
+        protected void OnPropertyChanged([CallerMemberName] string propertyName = "") =>
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    }
+}
+"@ | Set-Content "src/Application/ViewModels/Base/ViewModelBase.cs"
 
 # ILoginViewModel in Application/ViewModels/Auth
 @"
@@ -604,9 +1092,9 @@ namespace $ProjectName.ViewModels.Auth
     {
         LoginRequest Request { get; set; }
         bool IsLoading { get; set; }
-        string? ErrorMessage { get; set; }
+        string ErrorMessage { get; }
 
-        Task<string?> SubmitAsync();
+        Task<string> SubmitAsync();
         Task LogoutAsync();
     }
 }
@@ -616,16 +1104,14 @@ namespace $ProjectName.ViewModels.Auth
 @"
 namespace $ProjectName.ViewModels.Auth
 {
-    public class LoginViewModel(IAuthService authService, IAuthState authState) : ILoginViewModel
+    public class LoginViewModel(IAuthService authService) : ViewModelBase(), ILoginViewModel
     {
         public LoginRequest Request { get; set; } = new();
-        public bool IsLoading { get; set; }
-        public string? ErrorMessage { get; set; }
 
-        public async Task<string?> SubmitAsync()
+        public async Task<string> SubmitAsync()
         {
             IsLoading = true;
-            ErrorMessage = null;
+            ClearError();
 
             try
             {
@@ -633,7 +1119,7 @@ namespace $ProjectName.ViewModels.Auth
             }
             catch (Exception ex)
             {
-                ErrorMessage = ex.Message;
+                HandleException(ex);
                 return null;
             }
             finally
@@ -642,10 +1128,17 @@ namespace $ProjectName.ViewModels.Auth
             }
         }
 
-        public Task LogoutAsync()
+        public async Task LogoutAsync()
         {
-            authService.Logout();
-            return Task.CompletedTask;
+            IsLoading = true;
+            try
+            {
+                await authService.LogoutAsync();
+            }
+            finally
+            {
+                IsLoading = false;
+            }
         }
     }
 }
@@ -655,12 +1148,11 @@ namespace $ProjectName.ViewModels.Auth
 @"
 @page "/login"
 @inject ILoginViewModel ViewModel
-@inject IAuthState AuthState
 @inject NavigationManager Navigation
 
 <PageTitle>Iniciar sesión</PageTitle>
 
-<div class="d-flex flex-column justify-content-center align-items-center w-100 pt-4 pt-lg-5">
+<div class="d-flex flex-column flex-fill justify-content-center align-items-center w-100">
     <div class="card shadow-sm border-primary" style="max-width: 420px; width: 100%;">
         <div class="card-body p-4">
             <div class="text-center mb-4">
@@ -745,7 +1237,7 @@ public partial class Login : ComponentBase
 
     private async Task SubmitAsync()
     {
-        var token = await ViewModel.SubmitAsync();
+        string token = await ViewModel.SubmitAsync();
         if (!string.IsNullOrWhiteSpace(token))
         {
             Navigation.NavigateTo("/");
@@ -766,7 +1258,7 @@ public partial class Login : ComponentBase
 
 <PageTitle>Registro de usuario</PageTitle>
 
-<div class="d-flex flex-column justify-content-center align-items-center w-100 px-3 py-4">
+<div class="d-flex flex-column justify-content-center align-items-center w-100 px-3 pt-5 pb-4">
     <div class="card shadow-sm w-100" style="max-width: 420px; background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%); border: 1px solid #0d6efd;">
         <div class="card-body p-4">
             <div class="text-center mb-4">
@@ -880,7 +1372,7 @@ public partial class Register : ComponentBase
     private string ConfirmPassword { get; set; } = string.Empty;
     private bool IsLoading { get; set; }
     private bool IsSuccess { get; set; }
-    private string? Message { get; set; }
+    private string Message { get; set; }
 
     private bool IsRegisterPasswordVisible { get; set; }
     private string RegisterPasswordType => IsRegisterPasswordVisible ? "text" : "password";
@@ -975,40 +1467,123 @@ if (Test-Path $appCssPath) {
 @using $ProjectName.Views.Layout
 @using $ProjectName.Views.Shared.Components
 @using Microsoft.AspNetCore.Components.Routing
+@using Microsoft.AspNetCore.Components.Authorization
 @using $ProjectName.ViewModels.Auth
 @using $ProjectName.Domain.Interfaces.Auth
+@using $ProjectName.Views.Shared.Auth
 
 "@ | Set-Content "src/Presentation/Views/_Imports.razor"
 
 # Views GlobalUsings.cs
 @"
 global using $ProjectName.Domain.Interfaces.Auth;
+global using $ProjectName.Domain.ValueObjects.Auth;
 global using $ProjectName.ViewModels.Auth;
 global using $ProjectName.Views.Layout;
+global using $ProjectName.Views.Shared.Auth;
 global using Microsoft.AspNetCore.Components;
+global using Microsoft.AspNetCore.Authorization;
+global using Microsoft.AspNetCore.Components.Authorization;
 global using Microsoft.AspNetCore.Components.Routing;
 global using System;
 global using System.Collections.Generic;
+global using System.Security.Claims;
 global using System.Text;
 global using System.Text.Json;
 "@ | Set-Content "src/Presentation/Views/GlobalUsings.cs"
 
 # App.razor in Views root
 @"
-<Router AppAssembly="@typeof(App).Assembly">
-    <Found Context="routeData">
-        <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
-        <FocusOnNavigate RouteData="@routeData" Selector="h1" />
-    </Found>
-    <NotFound>
-        <PageTitle>Not found</PageTitle>
-        <LayoutView Layout="@typeof(MainLayout)">
-            <p role="alert">Sorry, there's nothing at this address.</p>
-        </LayoutView>
-    </NotFound>
-</Router>
+<CascadingAuthenticationState>
+    <Router AppAssembly="@typeof(App).Assembly">
+        <Found Context="routeData">
+            <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
+                <NotAuthorized>
+                    @if (context.User.Identity?.IsAuthenticated != true)
+                    {
+                        <RedirectToLogin />
+                    }
+                    else
+                    {
+                        <div class="container-fluid px-3 px-md-4">
+                            <div class="alert alert-warning d-flex align-items-center gap-2 my-4" role="alert">
+                                <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
+                                <span>No tienes permisos para ver este contenido.</span>
+                            </div>
+                        </div>
+                    }
+                </NotAuthorized>
+            </AuthorizeRouteView>
+            <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+        </Found>
+        <NotFound>
+            <PageTitle>Not found</PageTitle>
+            <LayoutView Layout="@typeof(MainLayout)">
+                <p role="alert">Sorry, there's nothing at this address.</p>
+            </LayoutView>
+        </NotFound>
+    </Router>
+</CascadingAuthenticationState>
 
 "@ | Set-Content "src/Presentation/Views/App.razor"
+
+# RedirectToLogin.razor in Views/Shared/Auth
+@"
+@inject NavigationManager Navigation
+
+@code {
+    protected override void OnInitialized()
+    {
+        Navigation.NavigateTo("/login", forceLoad: false);
+    }
+}
+"@ | Set-Content "src/Presentation/Views/Shared/Auth/RedirectToLogin.razor"
+
+# JwtAuthenticationStateProvider in Views/Shared/Auth
+@"
+namespace $ProjectName.Views.Shared.Auth
+{
+    public class JwtAuthenticationStateProvider : AuthenticationStateProvider
+    {
+        public JwtAuthenticationStateProvider(IJwtTokenService jwtTokenService) : base()
+        {
+            _jwtTokenService = jwtTokenService;
+            _jwtTokenService.TokenChanged += (_, _) =>
+                NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
+        }
+
+        private readonly IJwtTokenService _jwtTokenService;
+
+        public override async Task<AuthenticationState> GetAuthenticationStateAsync()
+        {
+            UserSessionInfo session = await _jwtTokenService.GetUserSessionAsync().ConfigureAwait(false);
+
+            if (string.IsNullOrWhiteSpace(session.UserId) || session.IsExpired)
+            {
+                return new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity()));
+            }
+
+            List<Claim> claims = new List<Claim>
+            {
+                new(ClaimTypes.NameIdentifier, session.UserId),
+                new(ClaimTypes.Name, session.Name),
+                new(ClaimTypes.Email, session.Email)
+            };
+
+            foreach (string role in session.Roles)
+            {
+                if (string.IsNullOrWhiteSpace(role) == false)
+                {
+                    claims.Add(new Claim(ClaimTypes.Role, role));
+                }
+            }
+
+            ClaimsIdentity identity = new ClaimsIdentity(claims, "jwt");
+            return new AuthenticationState(new ClaimsPrincipal(identity));
+        }
+    }
+}
+"@ | Set-Content "src/Presentation/Views/Shared/Auth/JwtAuthenticationStateProvider.cs"
 
 # NotFound.razor in Views/Pages
 @"
@@ -1077,7 +1652,7 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
         NavMenuState.Changed += OnNavMenuStateChanged;
     }
 
-    private async void OnNavMenuStateChanged(object? sender, EventArgs e)
+    private async void OnNavMenuStateChanged(object sender, EventArgs e)
     {
         await InvokeAsync(StateHasChanged);
     }
@@ -1152,7 +1727,7 @@ public partial class NavMenu : ComponentBase, IDisposable
         NavMenuState.Changed += OnStateChanged;
     }
 
-    private async void OnStateChanged(object? sender, EventArgs e)
+    private async void OnStateChanged(object sender, EventArgs e)
     {
         await InvokeAsync(StateHasChanged);
     }
@@ -1185,7 +1760,7 @@ public class NavMenuStateService
     public bool IsCollapsed { get; private set; }
     public bool IsOpen { get; private set; }
 
-    public event EventHandler? Changed;
+    public event EventHandler Changed;
 
     public void ToggleCollapsed()
     {
@@ -1230,7 +1805,7 @@ public class NavMenuStateService
 # TopBar.razor
 @"
 @inject NavMenuStateService NavMenuStateService
-@inject IAuthState AuthState
+@inject AuthenticationStateProvider AuthenticationStateProvider
 @inject ILoginViewModel ViewModel
 @inject NavigationManager Navigation
 
@@ -1280,13 +1855,6 @@ public class NavMenuStateService
                             <div class="px-3 py-2">
                                 <div class="fw-semibold">@UserDisplayName</div>
                                 <div class="text-muted small text-break">@UserEmail</div>
-                                @if (!string.IsNullOrEmpty(SessionExpiry))
-                                {
-                                    <div class="text-muted mt-1 small">
-                                        <i class="bi bi-clock-history me-1" aria-hidden="true"></i>
-                                        @SessionExpiry
-                                    </div>
-                                }
                             </div>
                             <div class="dropdown-divider"></div>
                             <button type="button"
@@ -1320,26 +1888,36 @@ namespace $ProjectName.Views.Layout;
 public partial class TopBar : ComponentBase, IDisposable
 {
     private bool IsUserMenuOpen { get; set; }
-    private EventHandler? _authStateChangedHandler;
+    private ClaimsPrincipal _user = new ClaimsPrincipal(new ClaimsIdentity());
 
-    private bool IsAuthenticated => AuthState.IsAuthenticated;
+    private bool IsAuthenticated => _user.Identity?.IsAuthenticated ?? false;
 
-    private string UserDisplayName => AuthState.UserEmail is { Length: > 0 } email
-        ? (email.IndexOf('@') is > 0 and var at ? email[..at] : email)
+    private string UserDisplayName => _user.Identity?.Name is { Length: > 0 } name
+        ? name
         : "Usuario";
 
-    private string UserEmail => AuthState.UserEmail ?? string.Empty;
-
-    private string SessionExpiry => GetSessionExpiryFromToken();
+    private string UserEmail => _user.FindFirst(ClaimTypes.Email)?.Value ?? string.Empty;
 
     protected override void OnInitialized()
     {
-        _authStateChangedHandler = (_, __) => StateHasChanged();
-        AuthState.AuthenticationStateChanged += _authStateChangedHandler;
+        AuthenticationStateProvider.AuthenticationStateChanged += OnAuthenticationStateChanged;
         Navigation.LocationChanged += OnLocationChanged;
     }
 
-    private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    protected override async Task OnInitializedAsync()
+    {
+        AuthenticationState authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        _user = authState.User;
+    }
+
+    private async void OnAuthenticationStateChanged(Task<AuthenticationState> task)
+    {
+        AuthenticationState authState = await task;
+        _user = authState.User;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async void OnLocationChanged(object sender, LocationChangedEventArgs e)
     {
         IsUserMenuOpen = false;
         await InvokeAsync(StateHasChanged);
@@ -1347,8 +1925,7 @@ public partial class TopBar : ComponentBase, IDisposable
 
     public void Dispose()
     {
-        if (_authStateChangedHandler != null)
-            AuthState.AuthenticationStateChanged -= _authStateChangedHandler;
+        AuthenticationStateProvider.AuthenticationStateChanged -= OnAuthenticationStateChanged;
         Navigation.LocationChanged -= OnLocationChanged;
     }
 
@@ -1374,30 +1951,6 @@ public partial class TopBar : ComponentBase, IDisposable
     private void CollapseUserMenu()
     {
         IsUserMenuOpen = false;
-    }
-
-    private string GetSessionExpiryFromToken()
-    {
-        var token = AuthState.Token;
-        if (string.IsNullOrWhiteSpace(token))
-            return string.Empty;
-
-        try
-        {
-            var json = Encoding.UTF8.GetString(Convert.FromBase64String(token));
-            using var doc = JsonDocument.Parse(json);
-            if (doc.RootElement.TryGetProperty("exp", out var expProperty) && expProperty.TryGetInt64(out var exp))
-            {
-                var expiry = DateTimeOffset.FromUnixTimeSeconds(exp).ToLocalTime();
-                return $"Expira: {expiry:HH:mm}";
-            }
-        }
-        catch
-        {
-            // Ignorar errores de decodificación.
-        }
-
-        return string.Empty;
     }
 }
 "@ | Set-Content "src/Presentation/Views/Layout/TopBar.razor.cs"
@@ -1544,7 +2097,7 @@ else if (Items == null || !Items.Any())
 else
 {
     <div class="list-group">
-        @foreach (var item in Items)
+        @foreach (TItem item in Items)
         {
             <div class="list-group-item list-group-item-action @ItemCssClass">
                 @ItemTemplate(item)
@@ -1566,7 +2119,7 @@ public partial class ListComponent<TItem>
     [Parameter] public string EmptyMessage { get; set; } = "No hay elementos para mostrar.";
     [Parameter] public bool IsLoading { get; set; }
     [Parameter] public string ItemCssClass { get; set; } = string.Empty;
-    [Parameter] public RenderFragment? Actions { get; set; }
+    [Parameter] public RenderFragment Actions { get; set; }
 }
 "@ | Set-Content "src/Presentation/Views/Shared/Components/ListComponent.razor.cs"
 
@@ -1803,6 +2356,9 @@ Orquesta el dominio para resolver una necesidad concreta del usuario.
 
 - `ViewModels/`: cada caso de uso expuesto como un ViewModel que la UI
   puede invocar (`LoginViewModel`, `CreateOrderViewModel`).
+- `ViewModels/Base/`: clase base reutilizable (`ViewModelBase`) con
+    `INotifyPropertyChanged`, manejo de errores (`GlobalApplicationException`) y
+  paginación.
 - `Validators/`: reglas de validación de entrada con FluentValidation.
 - `Interfaces/`: puertos que la aplicación necesita (`IApiClient`).
 
@@ -1813,10 +2369,57 @@ Un ViewModel no sabe que existe `HttpClient`; solo conoce interfaces.
 Implementa los puertos de Domain y Application.
 
 - `WebApi/`: adaptador HTTP que consume la API remota.
+- `WebApi/Auth/`: estado de autenticación, tokens e implementación de `IAuthService`.
+- `WebApi/Handlers/`: `DelegatingHandler`s del pipeline `HttpClient`.
 - `Options/`: configuración (`BaseUrl`, keys).
-- `Auth/`, `LocalStorage/`, etc.: otros adaptadores técnicos.
 
 Es la única capa que conoce URLs, verbos HTTP y JSON de la API.
+
+#### Manejo centralizado de errores HTTP
+
+La plantilla incluye `GlobalExceptionHandler` (`DelegatingHandler`) para
+unificar el tratamiento de errores de red y respuestas no exitosas de la API
+remota. Infrastructure los traduce a `GlobalApplicationException`, que vive
+en Domain, por lo que Application no depende de detalles HTTP.
+
+- `GlobalExceptionHandler` intercepta cada solicitud saliente y:
+    - Convierte `OperationCanceledException` por timeout en
+        `GlobalApplicationException` con `ErrorKind.Timeout`.
+    - Convierte `HttpRequestException` (sin conexión, DNS, etc.) en
+        `GlobalApplicationException` con `ErrorKind.Network`.
+  - Lee el cuerpo de respuestas no exitosas y genera un mensaje amigable.
+  - Marca como transientes los errores recuperables (timeouts, 5xx, 429, etc.).
+  - Extrae mensajes del payload JSON usando las propiedades comunes
+    `detail`, `message`, `error`, `title` o el diccionario `errors`.
+
+- `GlobalApplicationException` expone:
+    - `UserMessage`: mensaje localizado y legible para el usuario.
+  - `StatusCode`: código de estado HTTP devuelto por la API.
+    - `Kind`: clasificación del error (`Network`, `Timeout`, `Validation`, etc.).
+    - `IsRetryable`: indica si el error es candidato a reintentos.
+
+Ejemplo de uso en un ViewModel:
+
+```csharp
+public async Task<string> SubmitAsync()
+{
+    try
+    {
+        return await authService.LoginAsync(email, password);
+    }
+    catch (GlobalApplicationException ex) when (ex.IsRetryable)
+    {
+        // Mostrar mensaje de reintento o exponerlo en la UI
+        ErrorMessage = ex.UserMessage;
+        return null;
+    }
+    catch (GlobalApplicationException ex)
+    {
+        ErrorMessage = ex.UserMessage;
+        return null;
+    }
+}
+```
 
 ### 2.4 Presentation — la entrega
 
@@ -1858,6 +2461,24 @@ La interfaz pertenece a la capa interna; la implementación, a la externa.
 Así las dependencias apuntan hacia adentro, aunque el flujo de control
 vaya hacia la API.
 
+### 3.2 Autenticación con JWT
+
+La plantilla usa el proveedor de estado de autenticación nativo de Blazor:
+
+1. `Domain/ValueObjects/Auth/UserSessionInfo.cs` describe la sesión.
+2. `Domain/Interfaces/Auth/IJwtTokenService.cs` define lectura/escritura
+   del token (en este caso, `localStorage`).
+3. `Infrastructure/WebApi/Auth/JwtTokenService.cs` implementa el puerto con
+   `IJSRuntime`.
+4. `Presentation/Views/Shared/Auth/JwtAuthenticationStateProvider.cs`
+   hereda de `AuthenticationStateProvider` y genera un `ClaimsPrincipal`
+   a partir del token.
+5. `Presentation/IoC/DependencyContainer.cs` registra
+   `AuthenticationStateProvider` y `IJwtTokenService`.
+6. `App.razor` envuelve el router con `<CascadingAuthenticationState>` y
+   usa `<AuthorizeRouteView>` para redirigir al login cuando sea necesario.
+7. Las páginas protegidas usan `@attribute [Authorize]`.
+
 ---
 
 ## 4. Organización por features (Vertical Slice)
@@ -1873,10 +2494,11 @@ subcarpetas con el mismo nombre dentro de cada capa.
 ```
 src
 ├── Domain
-│   ├── Entities/Auth/           (opcional: User, Session)
+│   ├── ValueObjects/Auth/
+│   │   └── UserSessionInfo.cs
 │   └── Interfaces/Auth/
 │       ├── IAuthService.cs
-│       └── IAuthState.cs
+│       └── IJwtTokenService.cs
 ├── Application
 │   ├── ViewModels/Auth/
 │   │   ├── LoginRequest.cs
@@ -1887,14 +2509,17 @@ src
 ├── Infrastructure
 │   └── WebApi/Auth/
 │       ├── AuthWebApi.cs
-│       ├── AuthState.cs
-│       └── TokenService.cs
+│       └── JwtTokenService.cs
 └── Presentation
-    └── Views/Pages/
-        ├── Login.razor
-        ├── Login.razor.cs
-        ├── Register.razor
-        └── Register.razor.cs
+    └── Views/
+        ├── Pages/
+        │   ├── Login.razor
+        │   ├── Login.razor.cs
+        │   ├── Register.razor
+        │   └── Register.razor.cs
+        └── Shared/Auth/
+            ├── JwtAuthenticationStateProvider.cs
+            └── RedirectToLogin.razor
 
 tests/UnitTests/Auth
 ├── LoginViewModelTests.cs
@@ -1958,6 +2583,7 @@ los archivos de una feature, la organización está mal.
       /ValueObjects
       /Enums
       /Interfaces
+      /Shared/Errors
     /Application
       /ViewModels
       /Validators
@@ -2018,6 +2644,16 @@ Reglas prácticas:
 - Los ViewModels no usan `NavigationManager`, `IJSRuntime` ni `HttpClient`.
 - Los Validators no acceden a la red.
 - Infrastructure es el único lugar que conoce la API remota.
+- El `HttpClient` se registra con `IHttpClientFactory` y el
+  `GlobalExceptionHandler` se adjunta como `DelegatingHandler`.
+- Los errores HTTP se traducen en Infrastructure a `GlobalApplicationException`;
+    los ViewModels los procesan mediante `ViewModelBase.HandleException`.
+- Los componentes leen `ViewModel.ErrorMessage` para mostrar mensajes amigables.
+- La autenticación usa el patrón nativo de Blazor:
+  `AuthenticationStateProvider`, `AuthorizeRouteView`, `[Authorize]` y
+  `<CascadingAuthenticationState>`.
+- El token JWT se almacena en `localStorage` a través de `IJwtTokenService`.
+  `JwtAuthenticationStateProvider` notifica a la UI cuando el token cambia.
 
 ---
 
@@ -2030,12 +2666,18 @@ Sigue estos pasos para mantener el orden de capas y Vertical Slice:
    - `Domain/Entities/{Feature}/{Entity}.cs`
 
 2. **Application:** crea el ViewModel y el Validator.
+   - Hereda de `Application/ViewModels/Base/ViewModelBase.cs` si necesitas
+     `INotifyPropertyChanged`, manejo de errores o paginación.
    - `Application/ViewModels/{Feature}/{Action}ViewModel.cs`
    - `Application/ViewModels/{Feature}/{Action}Request.cs`
    - `Application/Validators/{Feature}/{Action}Validator.cs`
 
 3. **Infrastructure:** implementa el puerto.
    - `Infrastructure/WebApi/{Feature}/{Feature}WebApi.cs`
+   - Si el adaptador necesita un `DelegatingHandler` propio (por ejemplo,
+     un header de correlación o reintentos por feature), regístralo en
+     `Infrastructure/WebApi/Handlers/` y adjúntalo al `HttpClient` en
+     `Program.cs` o en `DependencyContainer`.
 
 4. **Presentation:** crea el componente Razor.
    - `Presentation/Views/Pages/{Feature}/{Action}.razor`
@@ -2062,6 +2704,8 @@ Sigue estos pasos para mantener el orden de capas y Vertical Slice:
 - ❌ Crear carpetas genéricas grandes como `Services/`, `Models/`,
   `Helpers/` fuera de una feature.
 - ❌ Compartir request/response DTOs entre features sin necesidad.
+- ❌ Duplicar lógica de `INotifyPropertyChanged` en cada ViewModel; usa
+  `ViewModelBase`.
 
 ---
 
