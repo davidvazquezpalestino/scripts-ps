@@ -2123,6 +2123,123 @@ public partial class ListComponent<TItem>
 }
 "@ | Set-Content "src/Presentation/Views/Shared/Components/ListComponent.razor.cs"
 
+# SearchSelect.razor in Views/Shared/Components
+@"
+@namespace $ProjectName.Views.Shared.Components
+@implements IDisposable
+@typeparam TItem
+
+<div class="mb-3 position-relative">
+    <label for="@InputId" class="form-label">@Label <span class="text-danger">*</span></label>
+    <input id="@InputId"
+           type="search"
+           class="form-control"
+           autocomplete="off"
+           placeholder="@Placeholder"
+           aria-autocomplete="list"
+           aria-controls="@ResultsId"
+           aria-expanded="@(SearchResults.Count > 0)"
+           value="@SearchTerm"
+           @oninput="OnInputAsync"
+           disabled="@Disabled" />
+
+    @if (IsSearching)
+    {
+        <div class="position-absolute end-0 top-0 mt-4 me-2">
+            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+        </div>
+    }
+
+    @if (SearchResults.Count > 0)
+    {
+        <ul id="@ResultsId" class="list-group position-absolute w-100 shadow-sm mt-1" style="z-index: 1000; max-height: 260px; overflow-y: auto;">
+            @foreach (TItem item in SearchResults)
+            {
+                <li class="list-group-item list-group-item-action"
+                    style="cursor: pointer;"
+                    @onclick="() => SelectServiceAsync(item)"
+                    @onclick:stopPropagation="true">
+                    <div class="fw-semibold">@ItemText(item)</div>
+                </li>
+            }
+        </ul>
+    }
+</div>
+"@ | Set-Content "src/Presentation/Views/Shared/Components/SearchSelect.razor"
+
+# SearchSelect.razor.cs code-behind
+@"
+namespace $ProjectName.Views.Shared.Components;
+
+public partial class SearchSelect<TItem> : IDisposable
+{
+    private CancellationTokenSource? SearchCts;
+
+    [Parameter, EditorRequired]
+    public string Label { get; set; } = string.Empty;
+
+    [Parameter]
+    public string Placeholder { get; set; } = "Type at least 2 characters...";
+
+    [Parameter]
+    public string InputId { get; set; } = "searchSelect";
+
+    [Parameter]
+    public string ResultsId { get; set; } = "search-select-results";
+
+    [Parameter]
+    public string SearchTerm { get; set; } = string.Empty;
+
+    [Parameter]
+    public IReadOnlyList<TItem> SearchResults { get; set; } = [];
+
+    [Parameter, EditorRequired]
+    public Func<TItem, string> ItemText { get; set; } = item => item?.ToString() ?? string.Empty;
+
+    [Parameter]
+    public bool IsSearching { get; set; }
+
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    [Parameter, EditorRequired]
+    public Func<string, CancellationToken, Task> SearchAsync { get; set; }
+
+    [Parameter, EditorRequired]
+    public EventCallback<TItem> ItemSelected { get; set; }
+
+    private async Task OnInputAsync(ChangeEventArgs eventArgs)
+    {
+        string searchTerm = eventArgs.Value?.ToString() ?? string.Empty;
+
+        SearchCts?.Cancel();
+        SearchCts?.Dispose();
+        SearchCts = new CancellationTokenSource();
+
+        try
+        {
+            await Task.Delay(400, SearchCts.Token);
+            await SearchAsync(searchTerm, SearchCts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    private async Task SelectServiceAsync(TItem item)
+    {
+        SearchCts?.Cancel();
+        await ItemSelected.InvokeAsync(item);
+    }
+
+    public void Dispose()
+    {
+        SearchCts?.Cancel();
+        SearchCts?.Dispose();
+    }
+}
+"@ | Set-Content "src/Presentation/Views/Shared/Components/SearchSelect.razor.cs"
+
 Write-Host "Creating CI/CD files..." -ForegroundColor Yellow
 
 # Dockerfile
