@@ -2087,7 +2087,7 @@ public partial class PaginationComponent
         </div>
     </div>
 }
-else if (Items == null || !Items.Any())
+else if (Items == null || Items.Any() == false)
 {
     <div class="text-center text-muted py-4">
         <i class="bi bi-inbox fs-1 d-block mb-2" aria-hidden="true"></i>
