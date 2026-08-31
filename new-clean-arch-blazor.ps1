@@ -191,6 +191,7 @@ New-Item -ItemType Directory -Path "src/Domain/Enums" -Force | Out-Null
 New-Item -ItemType Directory -Path "src/Presentation/Views/Layout" -Force | Out-Null
 New-Item -ItemType Directory -Path "src/Presentation/Views/Pages" -Force | Out-Null
 New-Item -ItemType Directory -Path "src/Presentation/Views/Shared/Components" -Force | Out-Null
+New-Item -ItemType Directory -Path "src/Presentation/Views/Shared/Helper" -Force | Out-Null
 New-Item -ItemType Directory -Path "src/Infrastructure/WebApi/Options" -Force | Out-Null
 New-Item -ItemType Directory -Path "src/Domain/Interfaces/Auth" -Force | Out-Null
 New-Item -ItemType Directory -Path "src/Infrastructure/WebApi/Auth" -Force | Out-Null
@@ -1466,6 +1467,7 @@ if (Test-Path $appCssPath) {
 @using Microsoft.AspNetCore.Components.Web
 @using $ProjectName.Views.Layout
 @using $ProjectName.Views.Shared.Components
+@using $ProjectName.Views.Shared.Helper
 @using Microsoft.AspNetCore.Components.Routing
 @using Microsoft.AspNetCore.Components.Authorization
 @using $ProjectName.ViewModels.Auth
@@ -1481,12 +1483,14 @@ global using $ProjectName.Domain.ValueObjects.Auth;
 global using $ProjectName.ViewModels.Auth;
 global using $ProjectName.Views.Layout;
 global using $ProjectName.Views.Shared.Auth;
+global using $ProjectName.Views.Shared.Helper;
 global using Microsoft.AspNetCore.Components;
 global using Microsoft.AspNetCore.Authorization;
 global using Microsoft.AspNetCore.Components.Authorization;
 global using Microsoft.AspNetCore.Components.Routing;
 global using System;
 global using System.Collections.Generic;
+global using System.Globalization;
 global using System.Security.Claims;
 global using System.Text;
 global using System.Text.Json;
@@ -2239,6 +2243,148 @@ public partial class SearchSelect<TItem> : IDisposable
     }
 }
 "@ | Set-Content "src/Presentation/Views/Shared/Components/SearchSelect.razor.cs"
+
+# DecimalConverter in Views/Shared/Helper
+@"
+namespace $ProjectName.Views.Shared.Helper;
+
+public static class DecimalConverter
+{
+    public static string FormatDecimal(decimal value, int decimalPlaces = 2)
+    {
+        return value.ToString($"N{decimalPlaces}", CultureInfo.InvariantCulture);
+    }
+
+    public static bool TryParseDecimal(ChangeEventArgs args, out decimal value)
+    {
+        return TryParseDecimal(args.Value?.ToString(), out value);
+    }
+
+    public static bool TryParseDecimal(string value, out decimal decimalValue)
+    {
+        string capturedValue = value?.Trim() ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(capturedValue))
+        {
+            decimalValue = 0;
+            return true;
+        }
+
+        return decimal.TryParse(capturedValue, NumberStyles.Number, CultureInfo.InvariantCulture, out decimalValue) ||
+                decimal.TryParse(capturedValue, NumberStyles.Number, CultureInfo.CurrentCulture, out decimalValue);
+    }
+}
+"@ | Set-Content "src/Presentation/Views/Shared/Helper/DecimalConverter.cs"
+
+# InputDecimal.razor in Views/Shared/Components
+@"
+@namespace $ProjectName.Views.Shared.Components
+
+<input @key="RenderKey"
+       type="text"
+       class="@ResolvedCssClass"
+       value="@DisplayText"
+       @onchange="HandleChange"
+       inputmode="@InputMode"
+       placeholder="@Placeholder"
+       readonly="@ReadOnly"
+       disabled="@Disabled"
+       @attributes="AdditionalAttributes" />
+"@ | Set-Content "src/Presentation/Views/Shared/Components/InputDecimal.razor"
+
+# InputDecimal.razor.cs code-behind
+@"
+namespace $ProjectName.Views.Shared.Components;
+
+public partial class InputDecimal
+{
+    [Parameter] public decimal Value { get; set; }
+    [Parameter] public EventCallback<decimal> ValueChanged { get; set; }
+    [Parameter] public string CssClass { get; set; } = string.Empty;
+    [Parameter] public string TextAlignment { get; set; } = "text-end";
+    [Parameter] public string InputMode { get; set; } = "decimal";
+    [Parameter] public string Placeholder { get; set; } = "0.00";
+    [Parameter] public int Decimals { get; set; } = 2;
+    [Parameter] public bool ReadOnly { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public double? Min { get; set; }
+    [Parameter] public double? Max { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object> AdditionalAttributes { get; set; } = null!;
+
+    private string DisplayText = string.Empty;
+    private decimal LastSyncedValue;
+    private Guid RenderKey = Guid.NewGuid();
+
+    private string ResolvedCssClass => HasTextAlignmentClass(CssClass)
+        ? CssClass
+        : string.IsNullOrWhiteSpace(CssClass)
+            ? TextAlignment
+            : string.IsNullOrWhiteSpace(TextAlignment)
+                ? CssClass
+                : $"{CssClass} {TextAlignment}";
+
+    protected override void OnParametersSet()
+    {
+        if (DisplayText.Length == 0 || Value != LastSyncedValue)
+        {
+            DisplayText = DecimalConverter.FormatDecimal(Value, Decimals);
+            LastSyncedValue = Value;
+        }
+    }
+
+    private async Task HandleChange(ChangeEventArgs args)
+    {
+        if (ReadOnly || Disabled)
+            return;
+
+        decimal finalValue;
+
+        if (DecimalConverter.TryParseDecimal(args.Value?.ToString(), out decimal parsedValue))
+        {
+            finalValue = Clamp(parsedValue);
+        }
+        else
+        {
+            finalValue = Max.HasValue ? (decimal)Max.Value : Value;
+        }
+
+        DisplayText = DecimalConverter.FormatDecimal(finalValue, Decimals);
+        LastSyncedValue = finalValue;
+        RenderKey = Guid.NewGuid();
+
+        if (finalValue != Value)
+        {
+            await ValueChanged.InvokeAsync(finalValue);
+        }
+        else
+        {
+            StateHasChanged();
+        }
+    }
+
+    private decimal Clamp(decimal value)
+    {
+        if (Min.HasValue && value < (decimal)Min.Value)
+            return (decimal)Min.Value;
+
+        if (Max.HasValue && value > (decimal)Max.Value)
+            return (decimal)Max.Value;
+
+        return value;
+    }
+
+    private static bool HasTextAlignmentClass(string cssClass)
+    {
+        if (string.IsNullOrWhiteSpace(cssClass))
+            return false;
+
+        string[] classes = cssClass.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return classes.Contains("text-start") || classes.Contains("text-center") || classes.Contains("text-end");
+    }
+}
+"@ | Set-Content "src/Presentation/Views/Shared/Components/InputDecimal.razor.cs"
 
 Write-Host "Creating CI/CD files..." -ForegroundColor Yellow
 
