@@ -454,7 +454,7 @@ Remove-Item "src/Presentation/Client/App.razor" -Force -ErrorAction SilentlyCont
 
 <PageTitle>Index</PageTitle>
 
-<div class="container-fluid px-3 px-md-4">
+<div class="container-fluid px-3 px-md-4" style="font-family: 'Segoe UI', sans-serif; font-size: 14px;">
 <div class="card shadow-sm my-4">
     <div class="card-header d-flex align-items-center bg-primary text-white">
         <i class="bi bi-hand-thumbs-up-fill me-2"></i>
@@ -1153,7 +1153,7 @@ namespace $ProjectName.ViewModels.Auth
 
 <PageTitle>Iniciar sesión</PageTitle>
 
-<div class="d-flex flex-column flex-fill justify-content-center align-items-center w-100">
+<div class="d-flex flex-column flex-fill justify-content-center align-items-center w-100" style="font-family: 'Segoe UI', sans-serif; font-size: 14px;">
     <div class="card shadow-sm border-primary" style="max-width: 420px; width: 100%;">
         <div class="card-body p-4">
             <div class="text-center mb-4">
@@ -1259,7 +1259,7 @@ public partial class Login : ComponentBase
 
 <PageTitle>Registro de usuario</PageTitle>
 
-<div class="d-flex flex-column justify-content-center align-items-center w-100 px-3 pt-5 pb-4">
+<div class="d-flex flex-column justify-content-center align-items-center w-100 px-3 pt-5 pb-4" style="font-family: 'Segoe UI', sans-serif; font-size: 14px;">
     <div class="card shadow-sm w-100" style="max-width: 420px; background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%); border: 1px solid #0d6efd;">
         <div class="card-body p-4">
             <div class="text-center mb-4">
@@ -1591,7 +1591,7 @@ namespace $ProjectName.Views.Shared.Auth
 
 # NotFound.razor in Views/Pages
 @"
-<p>Sorry, there's nothing at this address.</p>
+<p style="font-family: 'Segoe UI', sans-serif; font-size: 14px;">Sorry, there's nothing at this address.</p>
 "@ | Set-Content "src/Presentation/Views/Pages/NotFound.razor"
 
 # MainLayout.razor in Views/Layout
@@ -1599,7 +1599,7 @@ namespace $ProjectName.Views.Shared.Auth
 @inherits LayoutComponentBase
 @inject NavMenuStateService NavMenuState
 
-<div class="d-flex min-vh-100">
+<div class="d-flex min-vh-100" style="font-family: 'Segoe UI', sans-serif; font-size: 14px;">
     <div class="d-none d-lg-flex">
         <NavMenu />
     </div>
@@ -1630,7 +1630,7 @@ namespace $ProjectName.Views.Shared.Auth
 <div class="offcanvas offcanvas-start d-lg-none @(NavMenuState.IsOpen ? "show" : "")"
      tabindex="-1"
      aria-labelledby="mobileNavMenuLabel"
-     style="visibility: @(NavMenuState.IsOpen ? "visible" : "hidden");">
+    style="font-family: 'Segoe UI', sans-serif; font-size: 14px; visibility: @(NavMenuState.IsOpen ? "visible" : "hidden");">
     <div class="offcanvas-header border-bottom">
         <h5 class="offcanvas-title" id="mobileNavMenuLabel">$ProjectName</h5>
         <button type="button"
@@ -1673,7 +1673,7 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
 @inject NavMenuStateService NavMenuState
 
 <nav class="flex-column bg-white text-dark flex-shrink-0"
-     style="min-width: @(NavMenuState.IsCollapsed ? "60px" : "260px");"
+    style="font-family: 'Segoe UI', sans-serif; font-size: 14px; min-width: @(NavMenuState.IsCollapsed ? "60px" : "260px");"
      aria-label="Navegación principal">
     <div class="d-flex align-items-center justify-content-between p-3 border-bottom border-dark border-opacity-10" style="height: 56px;">
         <a class="d-inline-flex align-items-center gap-2 text-dark text-decoration-none fw-semibold text-nowrap overflow-hidden @(NavMenuState.IsCollapsed ? "justify-content-center" : "")"
@@ -1813,7 +1813,7 @@ public class NavMenuStateService
 @inject ILoginViewModel ViewModel
 @inject NavigationManager Navigation
 
-<header class="navbar navbar-expand bg-white px-3 shadow-sm" style="height: 56px;">
+<header class="navbar navbar-expand bg-white px-3 shadow-sm" style="font-family: 'Segoe UI', sans-serif; font-size: 14px; height: 56px;">
     <div class="container-fluid">
         <div class="d-flex align-items-center">
             <button type="button"
@@ -1986,7 +1986,7 @@ public partial class TopBar : ComponentBase, IDisposable
 @"
 @namespace $ProjectName.Views.Shared.Components
 
-<div class="card-footer bg-white border-top py-2">
+<div class="card-footer bg-white border-top py-2" style="font-family: 'Segoe UI', sans-serif; font-size: 14px;">
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-2">
         <div class="text-muted small">
             Mostrando @CurrentItemsCount de @TotalCount
@@ -2085,7 +2085,7 @@ public partial class PaginationComponent
 
 @if (IsLoading)
 {
-    <div class="d-flex justify-content-center align-items-center py-4">
+    <div class="d-flex justify-content-center align-items-center py-4" style="font-family: 'Segoe UI', sans-serif; font-size: 14px;">
         <div class="spinner-border text-primary" role="status" aria-label="Cargando">
             <span class="visually-hidden">Cargando...</span>
         </div>
@@ -2093,14 +2093,14 @@ public partial class PaginationComponent
 }
 else if (Items == null || Items.Any() == false)
 {
-    <div class="text-center text-muted py-4">
+    <div class="text-center text-muted py-4" style="font-family: 'Segoe UI', sans-serif; font-size: 14px;">
         <i class="bi bi-inbox fs-1 d-block mb-2" aria-hidden="true"></i>
         <span>@EmptyMessage</span>
     </div>
 }
 else
 {
-    <div class="list-group">
+    <div class="list-group" style="font-family: 'Segoe UI', sans-serif; font-size: 14px;">
         @foreach (TItem item in Items)
         {
             <div class="list-group-item list-group-item-action @ItemCssClass">
@@ -2133,7 +2133,7 @@ public partial class ListComponent<TItem>
 @implements IDisposable
 @typeparam TItem
 
-<div class="mb-3 position-relative">
+<div class="mb-3 position-relative" style="font-family: 'Segoe UI', sans-serif; font-size: 14px;">
     <label for="@InputId" class="form-label">@Label <span class="text-danger">*</span></label>
     <div class="position-relative">
         <input id="@InputId"
@@ -2285,6 +2285,7 @@ public static class DecimalConverter
 <input @key="RenderKey"
        type="text"
        class="@ResolvedCssClass"
+    style="font-family: 'Segoe UI', sans-serif; font-size: 14px;"
        value="@DisplayText"
        @onchange="HandleChange"
        inputmode="@InputMode"
