@@ -2135,24 +2135,26 @@ public partial class ListComponent<TItem>
 
 <div class="mb-3 position-relative">
     <label for="@InputId" class="form-label">@Label <span class="text-danger">*</span></label>
-    <input id="@InputId"
-           type="search"
-           class="form-control"
-           autocomplete="off"
-           placeholder="@Placeholder"
-           aria-autocomplete="list"
-           aria-controls="@ResultsId"
-           aria-expanded="@(SearchResults.Count > 0)"
-           value="@SearchTerm"
-           @oninput="OnInputAsync"
-           disabled="@Disabled" />
+    <div class="position-relative">
+        <input id="@InputId"
+               type="search"
+               class="form-control @(IsSearching ? "pe-5" : null)"
+               autocomplete="off"
+               placeholder="@Placeholder"
+               aria-autocomplete="list"
+               aria-controls="@ResultsId"
+               aria-expanded="@(SearchResults.Count > 0)"
+               value="@SearchTerm"
+               @oninput="OnInputAsync"
+               disabled="@Disabled" />
 
-    @if (IsSearching)
-    {
-        <div class="position-absolute end-0 top-0 mt-4 me-2">
-            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-        </div>
-    }
+        @if (IsSearching)
+        {
+            <span class="spinner-border spinner-border-sm position-absolute end-0 top-50 translate-middle-y me-2"
+                  role="status"
+                  aria-label="Searching"></span>
+        }
+    </div>
 
     @if (SearchResults.Count > 0)
     {
