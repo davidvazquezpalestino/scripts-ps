@@ -2246,16 +2246,13 @@ public partial class SearchSelect<TItem> : IDisposable
 }
 "@ | Set-Content "src/Presentation/Views/Shared/Components/SearchSelect.razor.cs"
 
-# DecimalConverter in Views/Shared/Helper
+# NumberConverter in Views/Shared/Helper
 @"
 namespace $ProjectName.Views.Shared.Helper;
 
-public static class DecimalConverter
+public static class NumberConverter
 {
-    public static string FormatDecimal(decimal value, int decimalPlaces = 2)
-    {
-        return value.ToString($"N{decimalPlaces}", CultureInfo.InvariantCulture);
-    }
+    public static string FormatNumber(decimal value, int decimals = 2) => value.ToString($"N{decimals}", CultureInfo.GetCultureInfo("es-MX"));
 
     public static bool TryParseDecimal(ChangeEventArgs args, out decimal value)
     {
@@ -2276,7 +2273,7 @@ public static class DecimalConverter
                 decimal.TryParse(capturedValue, NumberStyles.Number, CultureInfo.CurrentCulture, out decimalValue);
     }
 }
-"@ | Set-Content "src/Presentation/Views/Shared/Helper/DecimalConverter.cs"
+"@ | Set-Content "src/Presentation/Views/Shared/Helper/NumberConverter.cs"
 
 # InputDecimal.razor in Views/Shared/Components
 @"
@@ -2331,7 +2328,7 @@ public partial class InputDecimal
     {
         if (DisplayText.Length == 0 || Value != LastSyncedValue)
         {
-            DisplayText = DecimalConverter.FormatDecimal(Value, Decimals);
+            DisplayText = NumberConverter.FormatNumber(Value, Decimals);
             LastSyncedValue = Value;
         }
     }
@@ -2343,7 +2340,7 @@ public partial class InputDecimal
 
         decimal finalValue;
 
-        if (DecimalConverter.TryParseDecimal(args.Value?.ToString(), out decimal parsedValue))
+        if (NumberConverter.TryParseDecimal(args.Value?.ToString(), out decimal parsedValue))
         {
             finalValue = Clamp(parsedValue);
         }
@@ -2352,7 +2349,7 @@ public partial class InputDecimal
             finalValue = Max.HasValue ? (decimal)Max.Value : Value;
         }
 
-        DisplayText = DecimalConverter.FormatDecimal(finalValue, Decimals);
+        DisplayText = NumberConverter.FormatNumber(finalValue, Decimals);
         LastSyncedValue = finalValue;
         RenderKey = Guid.NewGuid();
 
