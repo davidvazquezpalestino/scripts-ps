@@ -335,6 +335,8 @@ if ($USE_SQLSERVER) {
     dotnet add src/Infrastructure/DataBases/SQLServer package Dapper
     dotnet add src/Infrastructure/DataBases/SQLServer package Microsoft.Extensions.DependencyInjection.Abstractions
     dotnet add src/Infrastructure/DataBases/SQLServer package DependencyInjection.ReflectionExtensions
+    dotnet add src/Infrastructure/DataBases/SQLServer package Serilog.AspNetCore
+    dotnet add src/Infrastructure/DataBases/SQLServer package Serilog.Sinks.MSSqlServer
 }
 if ($USE_MYSQL) {
     dotnet add src/Infrastructure/DataBases/MySQL package Microsoft.EntityFrameworkCore
@@ -378,7 +380,6 @@ if ($USE_EXTERNAL_APIS) {
 
 # API
 dotnet add src/Presentation/Api package Scalar.AspNetCore
-dotnet add src/Presentation/Api package Serilog.AspNetCore
 dotnet add src/Presentation/Api package Swashbuckle.AspNetCore
 
 # Tests
@@ -586,6 +587,49 @@ namespace $ProjectName.SqlServer
         public static IServiceCollection AddRepositorySqlServer(this IServiceCollection services)
         {
             services.AddServicesCurrentAssembly();
+            // services.ConfigureSerilog();
+            return services;
+        }
+    }
+}
+"@
+
+$sqlServerSerilogConfiguration = @"
+namespace $ProjectName.SqlServer
+{
+    public static class SerilogConfiguration
+    {
+        public static IServiceCollection ConfigureSerilog(this IServiceCollection services)
+        {
+            ColumnOptions columnOptions = new();
+            columnOptions.AdditionalColumns =
+            [
+                new SqlColumn
+                {
+                    ColumnName = "AdditionalInformation",
+                    DataType = SqlDbType.NVarChar,
+                    DataLength = 512
+                }
+            ];
+
+            services.AddSerilog((serviceProvider, configuration) =>
+            {
+                IConfiguration contextConfiguration = serviceProvider.GetRequiredService<IConfiguration>();
+                configuration
+                    .ReadFrom.Configuration(contextConfiguration)
+                    .Enrich.FromLogContext()
+                    .Enrich.WithProperty("Application", "$ProjectName")
+                    .WriteTo.MSSqlServer(
+                        connectionString: contextConfiguration["DataBaseOptions:SQLServer"] ?? "",
+                        sinkOptions: new MSSqlServerSinkOptions
+                        {
+                            TableName = "Logs",
+                            AutoCreateSqlTable = true
+                        },
+                        columnOptions: columnOptions)
+                    .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {SourceContext} {Message:lj}{NewLine}{Exception}");
+            });
+
             return services;
         }
     }
@@ -657,6 +701,7 @@ global using Microsoft.Extensions.DependencyInjection;
 
 if ($USE_SQLSERVER) {
     $sqlServerDependencyContainer | Set-Content "src/Infrastructure/DataBases/SQLServer/DependencyContainer.cs"
+    $sqlServerSerilogConfiguration | Set-Content "src/Infrastructure/DataBases/SQLServer/SerilogConfiguration.cs"
 }
 if ($USE_MYSQL) {
     $mySqlDependencyContainer | Set-Content "src/Infrastructure/DataBases/MySQL/DependencyContainer.cs"
@@ -772,7 +817,18 @@ global using System;
 "@
 
 if ($USE_SQLSERVER) {
-    $dbGlobalUsings | Set-Content "src/Infrastructure/DataBases/SQLServer/GlobalUsings.cs"
+    $sqlServerGlobalUsings = @"
+global using System.Reflection;
+global using DevKit.Injection.Extensions;
+global using Microsoft.Extensions.Configuration;
+global using Microsoft.Extensions.DependencyInjection;
+global using Serilog;
+global using Serilog.Sinks.MSSqlServer;
+global using System;
+global using System.Data;
+
+"@
+    $sqlServerGlobalUsings | Set-Content "src/Infrastructure/DataBases/SQLServer/GlobalUsings.cs"
 }
 if ($USE_MYSQL) {
     $dbGlobalUsings | Set-Content "src/Infrastructure/DataBases/MySQL/GlobalUsings.cs"
@@ -854,8 +910,8 @@ $apiGlobalUsings = @"
 global using Microsoft.AspNetCore.Builder;
 global using Microsoft.AspNetCore.Http;
 global using Microsoft.Extensions.DependencyInjection;
+global using Microsoft.Extensions.Logging;
 global using System.Text.Json.Serialization;
-global using Serilog;
 global using $ProjectName.IoC;
 global using Microsoft.OpenApi;
 global using Microsoft.AspNetCore.Mvc;
@@ -927,14 +983,6 @@ namespace $ProjectName.WebApi.Configurations
             app.Services.AddHttpClient();
             app.Services.AddAuthorization();
             app.Services.AddHealthChecks();
-            
-            app.Host.UseSerilog((context, configuration) => configuration
-                .ReadFrom.Configuration(context.Configuration)
-                .Enrich.FromLogContext()
-                .Enrich.WithProperty("Application", "$ProjectName")
-                .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {SourceContext} {Message:lj}{NewLine}{Exception}")
-            );
-
             return app.Build();
         }
     }
@@ -944,7 +992,7 @@ namespace $ProjectName.WebApi.Configurations
 @"
 namespace $ProjectName.WebApi.Middleware
 {
-    public class ErrorHandlerMiddleware(RequestDelegate next, Serilog.ILogger logger)
+    public class ErrorHandlerMiddleware(RequestDelegate next, ILogger<ErrorHandlerMiddleware> logger)
     {
         public async Task Invoke(HttpContext context)
         {
@@ -959,7 +1007,7 @@ namespace $ProjectName.WebApi.Middleware
                 // Si la respuesta ya comenz�, no es seguro modificar headers/body
                 if (response.HasStarted)
                 {
-                    logger.Error(exception, "La respuesta ya comenz�. El error no se devuelve al cliente. {TraceId}", context.TraceIdentifier);
+                    logger.LogError(exception, "La respuesta ya comenz�. El error no se devuelve al cliente. {TraceId}", context.TraceIdentifier);
                     throw; // Permitir que el servidor termine la conexi�n seg�n corresponda
                 }
 
@@ -991,7 +1039,7 @@ namespace $ProjectName.WebApi.Middleware
                     Instance = $"{context.Request.Path} {context.Request.Method} "
                 };
                 // Registrar la excepci�n completa con contexto estructurado; NO incluir configuraci�n sensible en la respuesta
-                logger.Error(exception, "Error occurred with details {@ProblemDetails}", problemDetails);
+                logger.LogError(exception, "Error occurred with details {@ProblemDetails}", problemDetails);
 
                 response.StatusCode = statusCode;
                 await context.Response.WriteAsJsonAsync(problemDetails, CancellationToken.None);
