@@ -450,6 +450,7 @@ if ($USE_SQLSERVER) { $dataBaseOptionsDevList += '        "SQLServer": "Server=[
 if ($USE_MYSQL) { $dataBaseOptionsDevList += '        "MySql": "Server=[Server];Database=[Database];User Id=[User];Password=[Password];"' }
 if ($USE_POSTGRES) { $dataBaseOptionsDevList += '        "PostgreSql": "Host=[Server];Database=[Database];Username=[User];Password=[Password];"' }
 if ($USE_ORACLE) { $dataBaseOptionsDevList += '        "Oracle": "Data Source=(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=[Server])(PORT=1521))(CONNECT_DATA=(SERVICE_NAME=[Service])));User Id=[User];Password=[Password];"' }
+if ($USE_MONGO) { $dataBaseOptionsDevList += '        "MongoDb": "mongodb://[User]:[Password]@[Server]:27017/[Database]"' }
 $dataBaseOptionsDev = $dataBaseOptionsDevList -join ",`r`n"
 
 $devAppSettings = @"
@@ -484,6 +485,7 @@ if ($USE_SQLSERVER) { $dataBaseOptionsProdList += '        "SQLServer": "Server=
 if ($USE_MYSQL) { $dataBaseOptionsProdList += '        "MySql": "Server=[Server];Database=[Database];User Id=[User];Password=[Password];"' }
 if ($USE_POSTGRES) { $dataBaseOptionsProdList += '        "PostgreSql": "Host=[Server];Database=[Database];Username=[User];Password=[Password];"' }
 if ($USE_ORACLE) { $dataBaseOptionsProdList += '        "Oracle": "Data Source=(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=[Server])(PORT=1521))(CONNECT_DATA=(SERVICE_NAME=[Service])));User Id=[User];Password=[Password];"' }
+if ($USE_MONGO) { $dataBaseOptionsProdList += '        "MongoDb": "mongodb://[User]:[Password]@[Server]:27017/[Database]"' }
 $dataBaseOptionsProd = $dataBaseOptionsProdList -join ",`r`n"
 
 $prodAppSettings = @"
@@ -887,6 +889,7 @@ $(if($USE_SQLSERVER){"        public string SQLServer { get; set; }"})
 $(if($USE_MYSQL){"        public string MySql { get; set; }"})
 $(if($USE_POSTGRES){"        public string PostgreSql { get; set; }"})
 $(if($USE_ORACLE){"        public string Oracle { get; set; }"})
+$(if($USE_MONGO){"        public string MongoDb { get; set; }"})
     }
 }
 "@
