@@ -1153,7 +1153,7 @@ namespace $ProjectName.ViewModels.Auth
 
 <PageTitle>Iniciar sesión</PageTitle>
 
-<div class="d-flex flex-column flex-fill justify-content-center align-items-center w-100">
+<div class="d-flex flex-column flex-fill justify-content-center align-items-center w-100 pt-5 pb-4">
     <div class="card shadow-sm border-primary" style="max-width: 420px; width: 100%;">
         <div class="card-body p-4">
             <div class="text-center mb-4">
