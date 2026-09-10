@@ -247,8 +247,7 @@ dotnet add src/Application/Models reference src/Domain
 dotnet add src/Application/Queries reference src/Domain
 dotnet add src/Application/Validators reference src/Domain
 
-# Controllers depend on Application layer projects
-dotnet add src/Presentation/Controllers reference src/Domain
+# Controllers depend only on Application layer projects
 dotnet add src/Presentation/Controllers reference src/Application/Commands
 dotnet add src/Presentation/Controllers reference src/Application/Queries
 dotnet add src/Presentation/Controllers reference src/Application/Models
@@ -285,6 +284,10 @@ dotnet add src/Presentation/Api reference src/Presentation/IoC
 
 # Tests
 dotnet add tests/UnitTests reference src/Domain
+dotnet add tests/UnitTests reference src/Application/Commands
+dotnet add tests/UnitTests reference src/Application/Queries
+dotnet add tests/UnitTests reference src/Application/Models
+dotnet add tests/UnitTests reference src/Application/Validators
 
 # =========================
 # ADD PACKAGES
@@ -573,8 +576,8 @@ namespace $ProjectName.Validators
     {
         public static IServiceCollection AddValidators(this IServiceCollection services)
         {  
-            services.AddServicesCurrentAssembly();
-            return services;
+             services.AddServicesCurrentAssembly(onlyClass: true);
+             return services;
         }
     }
 }
@@ -1387,6 +1390,52 @@ La interfaz pertenece a la capa interna; la implementación, a la externa.
 Así las dependencias apuntan hacia adentro, aunque el flujo de control
 vaya hacia la base de datos.
 
+### 3.2 Constructores e inyección de dependencias
+
+> **Regla de Uncle Bob:** los constructores de las clases de aplicación
+> solo deben solicitar **abstracciones (interfaces)**; nunca clases
+> concretas de infraestructura, ORM, clientes HTTP, utilerías, etc.
+
+✅ Correcto:
+
+```csharp
+public class OrdersController : ControllerBase
+{
+    private readonly ICreateOrderUseCase _createOrder;
+    private readonly IGetOrderByIdUseCase _getOrder;
+
+    public OrdersController(
+        ICreateOrderUseCase createOrder,
+        IGetOrderByIdUseCase getOrder)
+    {
+        _createOrder = createOrder;
+        _getOrder = getOrder;
+    }
+}
+```
+
+❌ Incorrecto:
+
+```csharp
+public class OrdersController : ControllerBase
+{
+    private readonly AppDbContext _dbContext;      // Clase concreta de infraestructura
+    private readonly IHttpClientFactory _httpFactory;
+
+    public OrdersController(AppDbContext dbContext, IHttpClientFactory httpFactory)
+    {
+        _dbContext = dbContext;
+        _httpFactory = httpFactory;
+    }
+}
+```
+
+Esto aplica a **todos** los constructores de la aplicación: controladores,
+handlers, use cases, servicios de aplicación y adaptadores. La única
+excepción son tipos de valor, DTOs, opciones de configuración inmutables
+y, en algunos casos, `ILogger<T>` o `IHttpContextAccessor` cuando son
+abstracciones del framework ya establecidas.
+
 ---
 
 ## 4. Organización por features (Vertical Slice)
@@ -1532,8 +1581,10 @@ Domain/Entities                 (reglas de negocio)
 
 Reglas prácticas:
 
-- Los **Controllers** no llaman directamente a `DataBase`; solo invocan
-  un `Command` o `Query`.
+- Los **Controllers** no llaman directamente a `DataBase`; invocan un
+  **Handler / Use Case** (representado por un `Command` o `Query`).
+- Los constructores de los **Controllers** y **Use Cases** solo reciben
+  **interfaces**; nunca clases concretas de infraestructura.
 - Los **Commands** mutan estado (`Create`, `Update`, `Delete`) y
   devuelven el resultado mínimo necesario.
 - Los **Queries** solo leen; nunca mutan estado.
@@ -1589,6 +1640,9 @@ Sigue estos pasos para mantener el orden de capas y Vertical Slice:
   `Helpers/` fuera de una feature.
 - ❌ Repositorios genéricos (`IRepository<T>`): cada agregado expone su
   propio puerto (`IOrderRepository`) e implementación (`OrderRepository`).
+- ❌ Constructores que reciban clases concretas de infraestructura,
+  ORM, clientes HTTP o utilerías; los constructores deben inyectar
+  **únicamente interfaces**.
 - ❌ Clases concretas sin interfaz (excepto validadores): cada servicio,
   repositorio o adaptador debe declarar su interfaz en la capa interna.
 
