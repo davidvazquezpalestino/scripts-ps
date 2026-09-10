@@ -1325,6 +1325,26 @@ Implementa los puertos de Domain y Application.
 Es la única capa que conoce conexiones de base de datos, ORM y APIs
 externas.
 
+### 2.3.1 Consumo de APIs externas con `IHttpClientFactory`
+
+Cuando la aplicación consuma APIs externas o servicios web, usa
+`IHttpClientFactory` en lugar de crear instancias de `HttpClient` a mano.
+Registra el factory en la composición raíz con `services.AddHttpClient()`
+y utilízalo únicamente dentro de adaptadores de Infrastructure
+(`src/Infrastructure/WebApis`).
+
+Ventajas:
+
+- Evita el agotamiento de sockets por reutilización inadecuada de
+  conexiones.
+- Centraliza la configuración de clientes mediante clientes nombrados o
+  tipados (`AddHttpClient<TClient, TImplementation>`).
+- Facilita el registro, resiliencia y tests de los adaptadores HTTP.
+
+> **Regla:** los Controllers, Handlers y Use Cases no deben inyectar
+> `IHttpClientFactory` directamente. Solicitan un puerto definido en
+> Domain/Application y lo implementa un adaptador HTTP en Infrastructure.
+
 > **Estrategia de persistencia:** por convención, los **Commands**
 > (escritura) usan **Entity Framework Core** para aprovechar el
 > seguimiento de cambios, validaciones y migraciones. Los **Queries**
@@ -1495,6 +1515,9 @@ los archivos de una feature, la organización está mal.
 - **Interfaces en Domain**: siempre definen los puertos (`IOrderRepository`).
 - **UseCases en Application**: orquestan lógica de negocio usando puertos.
 - **Adaptadores en Infrastructure**: implementan los puertos (`OrderRepository`).
+- **APIs externas con `IHttpClientFactory`**: los adaptadores HTTP deben
+  usar `IHttpClientFactory` registrado mediante `AddHttpClient()`; nunca
+  crees instancias de `HttpClient` manualmente.
 - **Controllers en Presentation**: exponen los casos de uso hacia el exterior.
 - **Tests alineados**: cada feature tiene sus pruebas en la misma estructura.
 
@@ -1633,7 +1656,9 @@ Sigue estos pasos para mantener el orden de capas y Vertical Slice:
 ## 8. Antipatrones a evitar
 
 - ❌ Lógica de negocio en controladores o endpoints.
-- ❌ Usar `DbContext`, `SqlConnection` o `HttpClient` dentro de handlers.
+- ❌ Usar `DbContext`, `SqlConnection` o instanciar `HttpClient`
+  directamente dentro de handlers; usa `IHttpClientFactory` desde
+  adaptadores de Infrastructure.
 - ❌ Definir interfaces de repositorios en Infrastructure.
 - ❌ Exponer entidades de dominio directamente como respuesta HTTP.
 - ❌ Crear carpetas genéricas grandes como `Services/`, `Models/`,
