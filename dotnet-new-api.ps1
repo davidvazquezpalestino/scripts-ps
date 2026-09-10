@@ -1275,7 +1275,7 @@ cambia; las capas de afuera son detalles técnicos que puedes sustituir.
 │  EF Core, repositorios, APIs externas, colas...         │  ← detalles técnicos
 ├─────────────────────────────────────────────────────────┤
 │  Application (casos de uso)                             │
-│  Commands, queries, handlers, validaciones, DTOs...     │  ← orquestación
+│  Commands, queries, use cases, validaciones, DTOs...    │  ← orquestación
 ├─────────────────────────────────────────────────────────┤
 │  Domain (reglas de negocio)                             │
 │  Entidades, value objects, interfaces de puertos...     │  ← centro
@@ -1341,7 +1341,7 @@ Ventajas:
   tipados (`AddHttpClient<TClient, TImplementation>`).
 - Facilita el registro, resiliencia y tests de los adaptadores HTTP.
 
-> **Regla:** los Controllers, Handlers y Use Cases no deben inyectar
+> **Regla:** los Controllers y Use Cases no deben inyectar
 > `IHttpClientFactory` directamente. Solicitan un puerto definido en
 > Domain/Application y lo implementa un adaptador HTTP en Infrastructure.
 
@@ -1451,7 +1451,7 @@ public class OrdersController : ControllerBase
 ```
 
 Esto aplica a **todos** los constructores de la aplicación: controladores,
-handlers, use cases, servicios de aplicación y adaptadores. La única
+use cases, servicios de aplicación y adaptadores. La única
 excepción son tipos de valor, DTOs, opciones de configuración inmutables
 y, en algunos casos, `ILogger<T>` o `IHttpContextAccessor` cuando son
 abstracciones del framework ya establecidas.
@@ -1504,10 +1504,10 @@ los archivos de una feature, la organización está mal.
 ## 🔑 Cómo encaja en Hexagonal
 
 - **Domain** → el núcleo: entidades y contratos (puertos).
-- **Application** → casos de uso (commands, queries, handlers, DTOs, validadores).
+- **Application** → casos de uso (commands, queries, use cases, DTOs, validadores).
 - **Infrastructure** → adaptadores concretos (repositorios, persistencia, mensajería).
 - **Presentation** → capa externa (controllers, endpoints).
-- **Tests** → organizados también por feature, validando handlers y reglas.
+- **Tests** → organizados también por feature, validando use cases y reglas.
 
 ## ✅ Buenas prácticas
 
@@ -1605,7 +1605,7 @@ Domain/Entities                 (reglas de negocio)
 Reglas prácticas:
 
 - Los **Controllers** no llaman directamente a `DataBase`; invocan un
-  **Handler / Use Case** (representado por un `Command` o `Query`).
+  **Use Case** (representado por un `Command` o `Query`).
 - Los constructores de los **Controllers** y **Use Cases** solo reciben
   **interfaces**; nunca clases concretas de infraestructura.
 - Los **Commands** mutan estado (`Create`, `Update`, `Delete`) y
@@ -1645,7 +1645,7 @@ Sigue estos pasos para mantener el orden de capas y Vertical Slice:
 5. **IoC:** registra la implementación si la inyección automática no la
    encuentra.
 
-6. **Tests:** prueba el handler y el validator sin levantar la API ni la
+6. **Tests:** prueba el use case y el validator sin levantar la API ni la
    base de datos real.
 
 > **Tip:** si una feature es muy pequeña, puedes agruparla en una sola
@@ -1657,7 +1657,7 @@ Sigue estos pasos para mantener el orden de capas y Vertical Slice:
 
 - ❌ Lógica de negocio en controladores o endpoints.
 - ❌ Usar `DbContext`, `SqlConnection` o instanciar `HttpClient`
-  directamente dentro de handlers; usa `IHttpClientFactory` desde
+  directamente dentro de use cases; usa `IHttpClientFactory` desde
   adaptadores de Infrastructure.
 - ❌ Definir interfaces de repositorios en Infrastructure.
 - ❌ Exponer entidades de dominio directamente como respuesta HTTP.
