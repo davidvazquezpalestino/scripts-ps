@@ -1608,7 +1608,7 @@ namespace $ProjectName.Views.Shared.Auth
         <TopBar />
 
         <main id="main-content" class="flex-fill bg-light">
-            <article class="p-3">
+            <article class="p-2 p-md-3">
                 @Body
             </article>
         </main>
@@ -1643,6 +1643,14 @@ namespace $ProjectName.Views.Shared.Auth
         <NavMenu />
     </div>
 </div>
+
+@if (NavMenuState.IsOpen)
+{
+    <div class="offcanvas-backdrop show d-lg-none"
+         @onclick="NavMenuState.CloseOpen"
+         style="z-index: 1035;">
+    </div>
+}
 "@ | Set-Content "src/Presentation/Views/Layout/MainLayout.razor"
 
 # MainLayout.razor.cs code-behind
@@ -1853,7 +1861,7 @@ public class NavMenuStateService
                     @if (IsUserMenuOpen)
                     {
                         <div class="dropdown-menu dropdown-menu-end shadow-sm border rounded-3 p-2 show"
-                             style="min-width: 240px; position: absolute; z-index: 1050; right: 0;"
+                             style="min-width: 240px; max-width: calc(100vw - 1rem); position: absolute; z-index: 1050; right: 0;"
                              tabindex="-1"
                              @onfocusout="OnUserMenuFocusOut">
                             <div class="px-3 py-2">
@@ -1982,6 +1990,17 @@ public partial class TopBar : ComponentBase, IDisposable
 # Login.razor.css (no custom CSS — using Bootstrap utility classes in Login.razor)
 "" | Set-Content "src/Presentation/Views/Pages/Login.razor.css"
 
+# ListComponent.razor.css (scoped styles for table/mobile behavior)
+@"
+.table-scroll {
+    -webkit-overflow-scrolling: touch;
+}
+
+.table-scroll table {
+    min-width: 640px;
+}
+"@ | Set-Content "src/Presentation/Views/Shared/Components/ListComponent.razor.css"
+
 # PaginationComponent.razor in Views/Shared/Components
 @"
 @namespace $ProjectName.Views.Shared.Components
@@ -2083,12 +2102,16 @@ public partial class PaginationComponent
 @namespace $ProjectName.Views.Shared.Components
 @typeparam TItem
 
-@if (IsLoading)
+@if (IsLoading && UseAbsoluteOverlay == false)
 {
     <div class="d-flex justify-content-center align-items-center py-4">
         <div class="spinner-border text-primary" role="status" aria-label="Cargando">
             <span class="visually-hidden">Cargando...</span>
         </div>
+        @if (string.IsNullOrEmpty(LoadingMessage) == false)
+        {
+            <span class="ms-2 text-muted">@LoadingMessage</span>
+        }
     </div>
 }
 else if (Items == null || Items.Any() == false)
@@ -2098,14 +2121,64 @@ else if (Items == null || Items.Any() == false)
         <span>@EmptyMessage</span>
     </div>
 }
+else if (IsTableMode)
+{
+    <div class="table-responsive table-scroll @TableContainerCssClass">
+        <table class="table table-hover align-middle mb-0 @TableCssClass">
+            @if (TableColumns != null)
+            {
+                <colgroup>
+                    @TableColumns
+                </colgroup>
+            }
+            <thead class="table-light">
+                <tr class="small text-uppercase text-muted">
+                    @TableHeader
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (TItem item in Items)
+                {
+                    <tr>
+                        @TableRow(item)
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @if (HasMobileView)
+    {
+        <ul class="list-group d-md-none p-2 gap-2 @ListGroupCssClass">
+            @foreach (TItem item in Items)
+            {
+                <li class="list-group-item border rounded-3 shadow-sm py-3 @ItemCssClass">
+                    @MobileItem(item)
+                </li>
+            }
+        </ul>
+    }
+}
 else
 {
-    <div class="list-group">
+    <div class="list-group @ListGroupCssClass">
         @foreach (TItem item in Items)
         {
             <div class="list-group-item list-group-item-action @ItemCssClass">
                 @ItemTemplate(item)
             </div>
+        }
+    </div>
+}
+
+@if (IsLoading && UseAbsoluteOverlay)
+{
+    <div class="position-absolute top-0 start-0 end-0 bottom-0 d-flex flex-column align-items-center justify-content-center gap-2 text-muted"
+         style="background-color: rgba(255, 255, 255, 0.85); z-index: 10;">
+        <div class="spinner-border" role="status" aria-hidden="true"></div>
+        @if (string.IsNullOrEmpty(LoadingMessage) == false)
+        {
+            <span>@LoadingMessage</span>
         }
     </div>
 }
@@ -2118,12 +2191,24 @@ namespace $ProjectName.Views.Shared.Components;
 public partial class ListComponent<TItem>
 {
     [Parameter] public IEnumerable<TItem> Items { get; set; } = Array.Empty<TItem>();
-    [Parameter] public RenderFragment<TItem> ItemTemplate { get; set; } = _ => new RenderFragment(builder => { });
+    [Parameter] public RenderFragment<TItem>? ItemTemplate { get; set; }
+    [Parameter] public RenderFragment? TableHeader { get; set; }
+    [Parameter] public RenderFragment<TItem>? TableRow { get; set; }
+    [Parameter] public RenderFragment? TableColumns { get; set; }
+    [Parameter] public RenderFragment<TItem>? MobileItem { get; set; }
     [Parameter] public string Title { get; set; } = string.Empty;
     [Parameter] public string EmptyMessage { get; set; } = "No hay elementos para mostrar.";
+    [Parameter] public string? LoadingMessage { get; set; }
     [Parameter] public bool IsLoading { get; set; }
     [Parameter] public string ItemCssClass { get; set; } = string.Empty;
-    [Parameter] public RenderFragment Actions { get; set; }
+    [Parameter] public string TableCssClass { get; set; } = string.Empty;
+    [Parameter] public string TableContainerCssClass { get; set; } = string.Empty;
+    [Parameter] public string ListGroupCssClass { get; set; } = string.Empty;
+    [Parameter] public RenderFragment? Actions { get; set; }
+    [Parameter] public bool UseAbsoluteOverlay { get; set; }
+
+    private bool IsTableMode => TableHeader != null && TableRow != null;
+    private bool HasMobileView => MobileItem != null;
 }
 "@ | Set-Content "src/Presentation/Views/Shared/Components/ListComponent.razor.cs"
 
@@ -2133,7 +2218,7 @@ public partial class ListComponent<TItem>
 @implements IDisposable
 @typeparam TItem
 
-<div class="mb-3 position-relative">
+<div class="mb-3 position-relative search-select-wrapper" style="min-width: 0;">
     <label for="@InputId" class="form-label">@Label <span class="text-danger">*</span></label>
     <div class="position-relative">
         <input id="@InputId"
@@ -2158,14 +2243,15 @@ public partial class ListComponent<TItem>
 
     @if (SearchResults.Count > 0)
     {
-        <ul id="@ResultsId" class="list-group position-absolute w-100 shadow-sm mt-1" style="z-index: 1000; max-height: 260px; overflow-y: auto;">
+        <ul id="@ResultsId" class="list-group position-absolute w-100 shadow-sm mt-1"
+            style="z-index: 1050; max-height: min(260px, 50vh); overflow-y: auto; left: 0; right: 0;">
             @foreach (TItem item in SearchResults)
             {
                 <li class="list-group-item list-group-item-action"
                     style="cursor: pointer;"
                     @onclick="() => SelectServiceAsync(item)"
                     @onclick:stopPropagation="true">
-                    <div class="fw-semibold">@ItemText(item)</div>
+                    <div class="fw-semibold text-break">@ItemText(item)</div>
                 </li>
             }
         </ul>
