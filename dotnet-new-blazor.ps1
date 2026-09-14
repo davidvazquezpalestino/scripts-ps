@@ -3401,27 +3401,9 @@ La aplicación estará disponible en http://localhost:$HttpPort
 dotnet test
 ```
 
-## Git - Subir al repositorio
+## Contribuir
 
-```bash
-# Inicializar repositorio (si no existe)
-git init
-
-# Agregar todos los archivos
-git add .
-
-# Hacer commit inicial
-git commit -m "Initial commit - Clean Architecture Blazor setup"
-
-# Agregar repositorio remoto (reemplaza con tu URL)
-git remote add origin https://github.com/tu-usuario/tu-repositorio.git
-
-# Subir al repositorio (primera vez)
-git push -u origin main
-
-# O si usas master como rama principal
-git push -u origin master
-```
+Para conocer el flujo de trabajo con Git, convenciones de commits y el checklist antes de hacer push, consulta [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ---
 Powered by David Vázquez Palestino
@@ -3429,6 +3411,121 @@ Powered by David Vázquez Palestino
 $readmeContent = $readme -replace '\$ProjectName', $ProjectName
 $readmeContent = $readmeContent -replace '\$HttpPort', $HttpPort
 $readmeContent | Set-Content "documentation/README.md"
+
+# CONTRIBUTING.md
+Write-Host "Writing documentation/CONTRIBUTING.md..." -ForegroundColor Yellow
+$contributing = @'
+# Guía de contribución — $ProjectName
+
+Este documento describe el flujo de trabajo con Git, las convenciones de commits y el checklist que seguimos antes de subir cambios.
+
+## Configuración inicial de Git
+
+```bash
+# Configurar identidad
+git config --global user.name "Tu Nombre"
+git config --global user.email "tu@email.com"
+
+# Ver configuración
+git config --list
+```
+
+## Flujo de ramas (GitHub Flow)
+
+Usamos un modelo simple basado en ramas de corta duración:
+
+1. `main` siempre debe estar en estado desplegable.
+2. Cada cambio nace en una rama `feature/`, `fix/` o `docs/`.
+3. Se abre un Pull Request antes de fusionar.
+4. Se mergea solo después de revisión y checks exitosos.
+
+```bash
+# Actualizar la rama principal
+git checkout main
+git pull origin main
+
+# Crear una rama de trabajo
+git checkout -b feature/nombre-descriptivo
+
+# Hacer cambios y commits
+git add .
+git commit -m "feat: descripción clara del cambio"
+
+# Subir la rama
+git push -u origin feature/nombre-descriptivo
+```
+
+## Convención de commits
+
+Seguimos [Conventional Commits](https://www.conventionalcommits.org/) para mantener un historial legible y facilitar la generación de changelogs.
+
+| Tipo      | Uso                                                   |
+|-----------|-------------------------------------------------------|
+| `feat`    | Nueva funcionalidad                                   |
+| `fix`     | Corrección de un bug                                  |
+| `docs`    | Cambios en documentación                              |
+| `style`   | Formato, espacios, punto y coma                       |
+| `refactor`| Reestructuración de código sin cambiar comportamiento |
+| `test`    | Agregar o corregir tests                              |
+| `chore`   | Tareas de mantenimiento, dependencias, etc.           |
+
+Ejemplos:
+
+```bash
+git commit -m "feat(auth): agregar login con JWT"
+git commit -m "fix(api): corregir manejo de timeouts"
+git commit -m "docs(readme): actualizar instrucciones de ejecución"
+```
+
+## Comandos útiles
+
+```bash
+# Ver estado
+git status
+
+# Ver cambios antes de commitear
+git diff
+
+# Ver historial
+git log --oneline --graph --decorate
+
+# Descartar cambios locales no deseados
+git checkout -- nombre-del-archivo
+
+# Actualizar la rama actual con lo último de main
+git pull origin main
+
+# Resolver conflictos durante un merge
+git status
+# editar archivos en conflicto
+git add .
+git commit -m "merge: resolver conflictos con main"
+```
+
+## Checklist antes de hacer push
+
+- [ ] El proyecto compila (`dotnet build`).
+- [ ] Los tests pasan (`dotnet test`).
+- [ ] No hay warnings que introduzcan deuda técnica.
+- [ ] El mensaje de commit sigue la convención.
+- [ ] La rama está actualizada con `main`.
+- [ ] Se actualizó la documentación si el cambio lo requiere.
+- [ ] Se revisó el diff antes de subir.
+
+## Estilo de código
+
+El repositorio incluye un archivo `.editorconfig`. Asegúrate de que tu editor lo respete para mantener la consistencia en:
+
+- Indentación con 4 espacios en C# y Razor.
+- Indentación con 2 espacios en JSON, YAML y similares.
+- UTF-8 como codificación.
+- Líneas finales normalizadas según el tipo de archivo.
+
+---
+Powered by David Vázquez Palestino
+'@
+$contributingContent = $contributing -replace '\$ProjectName', $ProjectName
+$contributingContent | Set-Content "documentation/CONTRIBUTING.md"
 
 # Register documentation folder as a Solution Folder in the .slnx file
 $slnxFile = "$ProjectName.slnx"
@@ -3441,7 +3538,7 @@ if (Test-Path $slnxFile) {
         $folder.SetAttribute('Name', '/documentation/')
         [void]$root.AppendChild($folder)
     }
-    foreach ($docPath in @('documentation/README.md', 'documentation/architecture-guide.md', 'documentation/WCAG.md')) {
+    foreach ($docPath in @('documentation/README.md', 'documentation/architecture-guide.md', 'documentation/WCAG.md', 'documentation/CONTRIBUTING.md')) {
         $hasFile = @($folder.File) | Where-Object { $_ -and $_.Path -eq $docPath } | Select-Object -First 1
         if (-not $hasFile) {
             $file = $slnx.CreateElement('File')
@@ -3454,6 +3551,56 @@ if (Test-Path $slnxFile) {
 
 # Git ignore
 dotnet new gitignore
+
+# .gitattributes
+Write-Host "Writing .gitattributes..." -ForegroundColor Yellow
+@'
+* text=auto
+*.cs text eol=crlf
+*.razor text eol=crlf
+*.cshtml text eol=crlf
+*.css text eol=crlf
+*.scss text eol=crlf
+*.js text eol=crlf
+*.ts text eol=crlf
+*.json text eol=crlf
+*.xml text eol=crlf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.sh text eol=lf
+*.dockerfile text eol=lf
+Dockerfile text eol=lf
+'@ | Set-Content ".gitattributes"
+
+# .editorconfig
+Write-Host "Writing .editorconfig..." -ForegroundColor Yellow
+@'
+root = true
+
+[*]
+charset = utf-8
+end_of_line = crlf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.cs]
+indent_style = space
+indent_size = 4
+
+[*.razor]
+indent_style = space
+indent_size = 4
+
+[*.{json,yml,yaml}]
+indent_style = space
+indent_size = 2
+
+[*.md]
+trim_trailing_whitespace = false
+
+[*.{sh,bash}]
+end_of_line = lf
+'@ | Set-Content ".editorconfig"
 
 Write-Host "Restoring packages..." -ForegroundColor Yellow
 dotnet restore
