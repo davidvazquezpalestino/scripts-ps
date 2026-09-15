@@ -589,7 +589,7 @@ namespace $ProjectName.SqlServer
 {
     public static class DependencyContainer
     {
-        public static IServiceCollection AddRepositorySqlServer(this IServiceCollection services)
+        public static IServiceCollection AddSqlServerInfrastructure(this IServiceCollection services)
         {
             services.AddServicesCurrentAssembly();
             // services.ConfigureSerilog();
@@ -646,7 +646,7 @@ namespace $ProjectName.MySql
 {
     public static class DependencyContainer
     {
-        public static IServiceCollection AddRepositoryMySql(this IServiceCollection services)
+        public static IServiceCollection AddMySqlInfrastructure(this IServiceCollection services)
         {
             services.AddServicesCurrentAssembly();
             return services;
@@ -660,7 +660,7 @@ namespace $ProjectName.PostgreSql
 {
     public static class DependencyContainer
     {
-        public static IServiceCollection AddRepositoryPostgreSql(this IServiceCollection services)
+        public static IServiceCollection AddPostgreSqlInfrastructure(this IServiceCollection services)
         {
             services.AddServicesCurrentAssembly();
             return services;
@@ -674,7 +674,7 @@ namespace $ProjectName.Oracle
 {
     public static class DependencyContainer
     {
-        public static IServiceCollection AddRepositoryOracle(this IServiceCollection services)
+        public static IServiceCollection AddOracleInfrastructure(this IServiceCollection services)
         {
             services.AddServicesCurrentAssembly();
             return services;
@@ -688,7 +688,7 @@ namespace $ProjectName.MongoDb
 {
     public static class DependencyContainer
     {
-        public static IServiceCollection AddRepositoryMongo(this IServiceCollection services)
+        public static IServiceCollection AddMongoInfrastructure(this IServiceCollection services)
         {
             services.AddServicesCurrentAssembly();
             return services;
@@ -792,7 +792,7 @@ namespace $ProjectName.IoC
 
             services.AddCommands()
                         .AddQueries()
-                        .AddValidators()$(if($USE_SQLSERVER){".AddRepositorySqlServer()"})$(if($USE_MYSQL){".AddRepositoryMySql()"})$(if($USE_POSTGRES){".AddRepositoryPostgreSql()"})$(if($USE_ORACLE){".AddRepositoryOracle()"})$(if($USE_MONGO){".AddRepositoryMongo()"})$(if($USE_RABBITMQ){".AddRabbitMq()"})$(if($USE_EXTERNAL_APIS){".AddWebApis()"});
+                        .AddValidators()$(if($USE_SQLSERVER){".AddSqlServerInfrastructure()"})$(if($USE_MYSQL){".AddMySqlInfrastructure()"})$(if($USE_POSTGRES){".AddPostgreSqlInfrastructure()"})$(if($USE_ORACLE){".AddOracleInfrastructure()"})$(if($USE_MONGO){".AddMongoInfrastructure()"})$(if($USE_RABBITMQ){".AddRabbitMq()"})$(if($USE_EXTERNAL_APIS){".AddWebApis()"});
             return services;
         }
     }
