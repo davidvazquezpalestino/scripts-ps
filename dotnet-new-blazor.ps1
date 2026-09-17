@@ -174,6 +174,7 @@ Remove-Item "tests/UnitTests/UnitTest1.cs" -Force -ErrorAction SilentlyContinue
 
 Remove-Item -Path "src/Presentation/Client/Layout" -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item -Path "src/Presentation/Client/Pages" -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item -Path "src/Presentation/Client/wwwroot/lib/bootstrap" -Recurse -Force -ErrorAction SilentlyContinue
 
 # Remove <Nullable>enable</Nullable> from every generated .csproj
 Get-ChildItem -Path 'src','tests' -Recurse -Filter *.csproj | ForEach-Object {
@@ -1434,23 +1435,89 @@ $content = $content -replace "<link href=`"$ProjectName.Web.styles.css`" rel=`"s
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
 "@
 
-# Remove the local Bootstrap CSS file shipped by the Blazor template.
-$content = $content -replace '\s*<link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap\.min\.css" />\s*', "`r`n"
-
 $content | Set-Content "src/Presentation/Client/wwwroot/index.html"
 
-# Update default app.css font stack
+# Replace default app.css with a Tailwind-only version.
 $appCssPath = "src/Presentation/Client/wwwroot/css/app.css"
-if (Test-Path $appCssPath) {
-    $appCssContent = Get-Content -Raw -Path $appCssPath
-    $appCssContent = $appCssContent -replace "(?m)^html,\s*body\s*\{\s*[\r\n]+\s*font-family:\s*'Helvetica Neue',\s*Helvetica,\s*Arial,\s*sans-serif;\s*[\r\n]+\s*\}", "html, body {
+@"
+html, body {
     font-family: 'Segoe UI', sans-serif;
     font-size: 14px;
-}"
-    if ($appCssContent -ne (Get-Content -Raw -Path $appCssPath)) {
-        $appCssContent | Set-Content -Path $appCssPath -NoNewline
-    }
 }
+
+h1:focus {
+    outline: none;
+}
+
+code {
+    color: #c02d76;
+}
+
+#blazor-error-ui {
+    color-scheme: light only;
+    background: lightyellow;
+    bottom: 0;
+    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.2);
+    box-sizing: border-box;
+    display: none;
+    left: 0;
+    padding: 0.6rem 1.25rem 0.7rem 1.25rem;
+    position: fixed;
+    width: 100%;
+    z-index: 1000;
+}
+
+    #blazor-error-ui .dismiss {
+        cursor: pointer;
+        position: absolute;
+        right: 0.75rem;
+        top: 0.5rem;
+    }
+
+.blazor-error-boundary {
+    background: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTYiIGhlaWdodD0iNDkiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIG92ZXJmbG93PSJoaWRkZW4iPjxkZWZzPjxjbGlwUGF0aCBpZD0iY2xpcDAiPjxyZWN0IHg9IjIzNSIgeT0iNTEiIHdpZHRoPSI1NiIgaGVpZ2h0PSI0OSIvPjwvY2xpcFBhdGg+PC9kZWZzPjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMCkiIHRyYW5zZm9ybT0idHJhbnNsYXRlKC0yMzUgLTUxKSI+PHBhdGggZD0iTTI2My41MDYgNTFDMjY0LjcxNyA1MSAyNjUuODEzIDUxLjQ4MzcgMjY2LjYwNiA1Mi4yNjU4TDI2Ny4wNTIgNTIuNzk4NyAyNjcuNTM5IDUzLjYyODMgMjkwLjE4NSA5Mi4xODMxIDI5MC41NDUgOTIuNzk1IDI5MC42NTYgOTIuOTk2QzI5MC44NzcgOTMuNTEzIDI5MSA5NC4wODE1IDI5MSA5NC42NzgyIDI5MSA5Ny4wNjUxIDI4OS4wMzggOTkgMjg2LjYxNyA5OUwyNDAuMzgzIDk5QzIzNy45NjMgOTkgMjM2IDk3LjA2NTEgMjM2IDk0LjY3ODIgMjM2IDk0LjM3OTkgMjM2LjAzMSA5NC4wODg2IDIzNi4wODkgOTMuODA3MkwyMzYuMzM4IDkzLjAxNjIgMjM2Ljg1OCA5Mi4xMzE0IDI1OS40NzMgNTMuNjI5NCAyNTkuOTYxIDUyLjc5ODUgMjYwLjQwNyA1Mi4yNjU4QzI2MS4yIDUxLjQ4MzcgMjYyLjI5NiA1MSAyNjMuNTA2IDUxWk0yNjMuNTg2IDY2LjAxODNDMjYwLjczNyA2Ni4wMTgzIDI1OS4zMTMgNjcuMTI0NSAyNTkuMzEzIDY5LjMzNyAyNTkuMzEzIDY5LjYxMDIgMjU5LjMzMiA2OS44NjA4IDI1OS4zNzEgNzAuMDg4N0wyNjEuNzk1IDg0LjAxNjEgMjY1LjM4IDg0LjAxNjEgMjY3LjgyMSA2OS43NDc1QzI2Ny44NiA2OS43MzA5IDI2Ny44NzkgNjkuNTg3NyAyNjcuODc5IDY5LjMxNzkgMjY3Ljg3OSA2Ny4xMTgyIDI2Ni40NDggNjYuMDE4MyAyNjMuNTg2IDY2LjAxODNaTTI2My41NzYgODYuMDU0N0MyNjEuMDQ5IDg2LjA1NDcgMjU5Ljc4NiA4Ny4zMDA1IDI1OS43ODYgODkuNzkyMSAyNTkuNzg2IDkyLjI4MzcgMjYxLjA0OSA5My41Mjk1IDI2My41NzYgOTMuNTI5NSAyNjYuMTE2IDkzLjUyOTUgMjY3LjM4NyA5Mi4yODM3IDI2Ny4zODcgODkuNzkyMSAyNjcuMzg3IDg3LjMwMDUgMjY2LjExNiA4Ni4wNTQ3IDI2My41NzYgODYuMDU0N1oiIGZpbGw9IiNGRkU1MDAiIGZpbGwtcnVsZT0iZXZlbm9kZCIvPjwvZz48L3N2Zz4=) no-repeat 1rem/1.8rem, #b32121;
+    padding: 1rem 1rem 1rem 3.7rem;
+    color: white;
+}
+
+    .blazor-error-boundary::after {
+        content: "An error has occurred."
+    }
+
+.loading-progress {
+    position: absolute;
+    display: block;
+    width: 8rem;
+    height: 8rem;
+    inset: 20vh 0 auto 0;
+    margin: 0 auto 0 auto;
+}
+
+    .loading-progress circle {
+        fill: none;
+        stroke: #e0e0e0;
+        stroke-width: 0.6rem;
+        transform-origin: 50% 50%;
+        transform: rotate(-90deg);
+    }
+
+        .loading-progress circle:last-child {
+            stroke: #2563eb;
+            stroke-dasharray: calc(3.141 * var(--blazor-load-percentage, 0%) * 0.8), 500%;
+            transition: stroke-dasharray 0.05s ease-in-out;
+        }
+
+.loading-progress-text {
+    position: absolute;
+    text-align: center;
+    font-weight: bold;
+    inset: calc(20vh + 3.25rem) 0 auto 0.2rem;
+}
+
+    .loading-progress-text:after {
+        content: var(--blazor-load-percentage-text, "Loading");
+    }
+"@ | Set-Content -Path $appCssPath -NoNewline
 
 # Views _Imports.razor
 @"
@@ -3308,7 +3375,7 @@ Recomendaciones para esta solución (Blazor WebAssembly + Tailwind CSS):
 - **Modales/diálogos**: si haces uno custom, gestiona el foco (atrápalo
   dentro mientras esté abierto, devuélvelo al abrir/cerrar), usa
   `role="dialog"` y `aria-modal="true"`.
-- **Iconos Bootstrap Icons**: si el icono es decorativo, ponle
+- **Iconos**: si el icono es decorativo, ponle
   `aria-hidden="true"`. Si transmite significado, dale texto alternativo
   (`<span class="sr-only">Guardar</span>` o `aria-label`).
 - **Contraste**: revisa los colores del tema Tailwind CSS con herramientas
