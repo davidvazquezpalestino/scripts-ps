@@ -1170,26 +1170,34 @@ namespace $ProjectName.ViewModels.Auth
 
         <EditForm Model="@ViewModel.Request" OnValidSubmit="@SubmitAsync" FormName="loginForm">
             <div class="mb-4">
-                <label for="loginEmail" class="block text-sm font-medium text-gray-700">User Email</label>
-                <InputText id="loginEmail"
-                           type="email"
-                           class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                           placeholder="nombre@empresa.com"
-                           @bind-Value="ViewModel.Request.UserEmail"
-                           disabled="@ViewModel.IsLoading" />
+                <label for="loginEmail" class="block text-sm font-semibold text-gray-700 mb-1.5">User Email</label>
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i class="bi bi-envelope text-gray-400" aria-hidden="true"></i>
+                    </div>
+                    <InputText id="loginEmail"
+                               type="email"
+                               class="block w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 text-sm transition duration-200 ease-in-out focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed"
+                               placeholder="nombre@empresa.com"
+                               @bind-Value="ViewModel.Request.UserEmail"
+                               disabled="@ViewModel.IsLoading" />
+                </div>
             </div>
 
             <div class="mb-4">
-                <label for="loginPassword" class="block text-sm font-medium text-gray-700">Password</label>
-                <div class="flex">
+                <label for="loginPassword" class="block text-sm font-semibold text-gray-700 mb-1.5">Password</label>
+                <div class="relative flex">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i class="bi bi-lock text-gray-400" aria-hidden="true"></i>
+                    </div>
                     <InputText id="loginPassword"
                                type="@LoginPasswordType"
-                               class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                               class="block w-full pl-10 pr-12 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 text-sm transition duration-200 ease-in-out focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed"
                                placeholder="••••••••"
                                @bind-Value="ViewModel.Request.Password"
                                disabled="@ViewModel.IsLoading" />
                     <button type="button"
-                            class="inline-flex items-center justify-center px-3 border border-l-0 border-gray-300 bg-gray-50 text-gray-500 sm:text-sm rounded-r-md"
+                            class="absolute inset-y-0 right-0 px-3 flex items-center justify-center text-gray-500 hover:text-blue-600 transition duration-200 rounded-r-lg"
                             @onclick="ToggleLoginPasswordVisibility"
                             tabindex="-1"
                             title="@(IsLoginPasswordVisible ? "Ocultar contraseña" : "Mostrar contraseña")"
@@ -1274,36 +1282,49 @@ public partial class Login : ComponentBase
 
         <EditForm Model="@RegisterRequest" OnValidSubmit="@SubmitAsync" FormName="registerForm">
             <div class="mb-4">
-                <label for="registerName" class="block text-sm font-medium text-gray-700">Nombre</label>
-                <InputText id="registerName"
-                           type="text"
-                           class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                           placeholder="Tu nombre"
-                           @bind-Value="RegisterRequest.UserName"
-                           disabled="@IsLoading" />
+                <label for="registerName" class="block text-sm font-semibold text-gray-700 mb-1.5">Nombre</label>
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i class="bi bi-person text-gray-400" aria-hidden="true"></i>
+                    </div>
+                    <InputText id="registerName"
+                               type="text"
+                               class="block w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 text-sm transition duration-200 ease-in-out focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed"
+                               placeholder="Tu nombre"
+                               @bind-Value="RegisterRequest.UserName"
+                               disabled="@IsLoading" />
+                </div>
             </div>
 
             <div class="mb-4">
-                <label for="registerEmail" class="block text-sm font-medium text-gray-700">Correo electrónico</label>
-                <InputText id="registerEmail"
-                           type="email"
-                           class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                           placeholder="nombre@empresa.com"
-                           @bind-Value="RegisterRequest.UserEmail"
-                           disabled="@IsLoading" />
+                <label for="registerEmail" class="block text-sm font-semibold text-gray-700 mb-1.5">Correo electrónico</label>
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i class="bi bi-envelope text-gray-400" aria-hidden="true"></i>
+                    </div>
+                    <InputText id="registerEmail"
+                               type="email"
+                               class="block w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 text-sm transition duration-200 ease-in-out focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed"
+                               placeholder="nombre@empresa.com"
+                               @bind-Value="RegisterRequest.UserEmail"
+                               disabled="@IsLoading" />
+                </div>
             </div>
 
             <div class="mb-4">
-                <label for="registerPassword" class="block text-sm font-medium text-gray-700">Contraseña</label>
-                <div class="flex">
+                <label for="registerPassword" class="block text-sm font-semibold text-gray-700 mb-1.5">Contraseña</label>
+                <div class="relative flex">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i class="bi bi-lock text-gray-400" aria-hidden="true"></i>
+                    </div>
                     <InputText id="registerPassword"
                                type="@RegisterPasswordType"
-                               class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                               class="block w-full pl-10 pr-12 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 text-sm transition duration-200 ease-in-out focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed"
                                placeholder="••••••••"
                                @bind-Value="RegisterRequest.Password"
                                disabled="@IsLoading" />
                     <button type="button"
-                            class="inline-flex items-center justify-center px-3 border border-l-0 border-gray-300 bg-gray-50 text-gray-500 sm:text-sm rounded-r-md"
+                            class="absolute inset-y-0 right-0 px-3 flex items-center justify-center text-gray-500 hover:text-blue-600 transition duration-200 rounded-r-lg"
                             @onclick="ToggleRegisterPasswordVisibility"
                             tabindex="-1"
                             title="@(IsRegisterPasswordVisible ? "Ocultar contraseña" : "Mostrar contraseña")"
@@ -1314,16 +1335,19 @@ public partial class Login : ComponentBase
             </div>
 
             <div class="mb-4">
-                <label for="registerConfirmPassword" class="block text-sm font-medium text-gray-700">Confirmar contraseña</label>
-                <div class="flex">
+                <label for="registerConfirmPassword" class="block text-sm font-semibold text-gray-700 mb-1.5">Confirmar contraseña</label>
+                <div class="relative flex">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i class="bi bi-lock text-gray-400" aria-hidden="true"></i>
+                    </div>
                     <InputText id="registerConfirmPassword"
                                type="@ConfirmPasswordType"
-                               class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                               class="block w-full pl-10 pr-12 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 text-sm transition duration-200 ease-in-out focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed"
                                placeholder="••••••••"
                                @bind-Value="ConfirmPassword"
                                disabled="@IsLoading" />
                     <button type="button"
-                            class="inline-flex items-center justify-center px-3 border border-l-0 border-gray-300 bg-gray-50 text-gray-500 sm:text-sm rounded-r-md"
+                            class="absolute inset-y-0 right-0 px-3 flex items-center justify-center text-gray-500 hover:text-blue-600 transition duration-200 rounded-r-lg"
                             @onclick="ToggleConfirmPasswordVisibility"
                             tabindex="-1"
                             title="@(IsConfirmPasswordVisible ? "Ocultar contraseña" : "Mostrar contraseña")"
@@ -2078,8 +2102,8 @@ public partial class TopBar : ComponentBase, IDisposable
         </div>
         <div class="flex items-center gap-2">
             <div class="flex text-sm" style="width: auto;">
-                <label class="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 sm:text-sm bg-white" for="pageSizeSelect">Tamaño</label>
-                <select class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm text-sm rounded-l-none" id="pageSizeSelect"
+                <label class="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm" for="pageSizeSelect">Tamaño</label>
+                <select class="block w-full rounded-r-lg border-gray-300 bg-gray-50 border text-gray-900 text-sm py-2.5 px-3 transition duration-200 ease-in-out focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed rounded-l-none" id="pageSizeSelect"
                         value="@PageSize"
                         @onchange="OnPageSizeChange"
                         disabled="@IsLoading"
@@ -2280,11 +2304,14 @@ public partial class ListComponent<TItem>
 @typeparam TItem
 
 <div class="mb-4 relative" style="min-width: 0;">
-    <label for="@InputId" class="block text-sm font-medium text-gray-700">@Label <span class="text-red-600">*</span></label>
+    <label for="@InputId" class="block text-sm font-semibold text-gray-700 mb-1.5">@Label <span class="text-red-600">*</span></label>
     <div class="relative">
+        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <i class="bi bi-search text-gray-400" aria-hidden="true"></i>
+        </div>
         <input id="@InputId"
                type="search"
-               class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm @(IsSearching ? "pr-8" : null)"
+               class="block w-full pl-10 @(IsSearching ? "pr-10" : "pr-4") py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 text-sm transition duration-200 ease-in-out focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed"
                autocomplete="off"
                placeholder="@Placeholder"
                aria-autocomplete="list"
@@ -2296,7 +2323,7 @@ public partial class ListComponent<TItem>
 
         @if (IsSearching)
         {
-            <span class="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full absolute right-2 top-1/2 -translate-y-1/2"
+            <span class="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full absolute right-3 top-1/2 -translate-y-1/2"
                   role="status"
                   aria-label="Searching"></span>
         }
