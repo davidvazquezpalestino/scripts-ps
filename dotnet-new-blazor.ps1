@@ -44,6 +44,9 @@ $DockerPort2 = $DockerBasePort + 1
 $DockerPort3 = $DockerBasePort + 2
 $DockerPort4 = $DockerBasePort + 3
 
+if ($OutputPath -ne "." -and -not (Test-Path $OutputPath)) {
+    New-Item -ItemType Directory -Path $OutputPath -Force | Out-Null
+}
 if ($OutputPath -ne ".") {
     Set-Location $OutputPath
 }
@@ -454,37 +457,37 @@ Remove-Item "src/Presentation/Client/App.razor" -Force -ErrorAction SilentlyCont
 
 <PageTitle>Index</PageTitle>
 
-<div class="container-fluid px-3 px-md-4">
-<div class="card shadow-sm my-4">
-    <div class="card-header d-flex align-items-center bg-primary text-white">
-        <i class="bi bi-hand-thumbs-up-fill me-2"></i>
-        <h5 class="mb-0">¡Hola, mundo!</h5>
-    </div>
-    <div class="card-body">
-        <p class="lead">
-            Bienvenido a <strong>$ProjectName</strong>, una app Blazor recién salida del horno
-            y con la Regla de la Dependencia apuntando religiosamente hacia adentro.
-            <i class="bi bi-bullseye text-danger"></i>
-        </p>
+<div class="w-full px-4 md:px-6">
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 my-6">
+        <div class="px-4 py-3 border-b border-gray-200 bg-blue-600 text-white rounded-t-lg flex items-center">
+            <i class="bi bi-hand-thumbs-up-fill mr-2"></i>
+            <h5 class="mb-0 text-lg font-medium">¡Hola, mundo!</h5>
+        </div>
+        <div class="p-6">
+            <p class="text-lg text-gray-700">
+                Bienvenido a <strong>$ProjectName</strong>, una app Blazor recién salida del horno
+                y con la Regla de la Dependencia apuntando religiosamente hacia adentro.
+                <i class="bi bi-bullseye text-red-600"></i>
+            </p>
 
-        <ul class="list-unstyled mb-3">
-            <li><i class="bi bi-cup-hot-fill text-warning"></i> Café: <em>opcional pero recomendado</em>.</li>
-            <li><i class="bi bi-layers-fill text-success"></i> Capas: como una cebolla, pero sin llorar (Onion Architecture approved).</li>
-            <li><i class="bi bi-shield-lock-fill text-secondary"></i> Domain no sabe que existe la base de datos. Y así queremos que siga.</li>
-            <li><i class="bi bi-bug-fill text-danger"></i> Si compila a la primera, revisa que no estés soñando.</li>
-        </ul>
+            <ul class="list-none mb-4 space-y-1 text-gray-700">
+                <li><i class="bi bi-cup-hot-fill text-yellow-500"></i> Café: <em>opcional pero recomendado</em>.</li>
+                <li><i class="bi bi-layers-fill text-green-600"></i> Capas: como una cebolla, pero sin llorar (Onion Architecture approved).</li>
+                <li><i class="bi bi-shield-lock-fill text-gray-600"></i> Domain no sabe que existe la base de datos. Y así queremos que siga.</li>
+                <li><i class="bi bi-bug-fill text-red-600"></i> Si compila a la primera, revisa que no estés soñando.</li>
+            </ul>
 
-        <div class="alert alert-info d-flex align-items-center mb-0" role="alert">
-            <i class="bi bi-info-circle-fill me-2"></i>
-            <small>Borra esta página cuando decidas escribir código de verdad.
-            Mientras tanto, disfruta del silencio productivo.</small>
+            <div class="p-4 rounded-md bg-cyan-50 text-cyan-700 flex items-center mb-0" role="alert">
+                <i class="bi bi-info-circle-fill mr-2"></i>
+                <span class="text-sm">Borra esta página cuando decidas escribir código de verdad.
+                Mientras tanto, disfruta del silencio productivo.</span>
+            </div>
+        </div>
+        <div class="px-6 py-3 bg-gray-50 border-t border-gray-200 rounded-b-lg text-gray-500 flex items-center">
+            <i class="bi bi-tools mr-2"></i>
+            <span class="text-sm">Generado con <code>new-clean-arch-blazor.ps1</code> · Clean Architecture · Tío Bob approved</span>
         </div>
     </div>
-    <div class="card-footer text-muted d-flex align-items-center">
-        <i class="bi bi-tools me-2"></i>
-        <small>Generado con <code>new-clean-arch-blazor.ps1</code> · Clean Architecture · Tío Bob approved</small>
-    </div>
-</div>
 </div>
 
 "@ | Set-Content "src/Presentation/Views/Pages/Index.razor"
@@ -1153,75 +1156,73 @@ namespace $ProjectName.ViewModels.Auth
 
 <PageTitle>Iniciar sesión</PageTitle>
 
-<div class="d-flex flex-column flex-fill justify-content-center align-items-center w-100 pt-5 pb-4">
-    <div class="card shadow-sm border-primary" style="max-width: 420px; width: 100%;">
-        <div class="card-body p-4">
-            <div class="text-center mb-4">
-                <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-primary bg-opacity-10 text-primary mb-2"
-                      style="width: 56px; height: 56px;">
-                    <i class="bi bi-person-lock fs-3" aria-hidden="true"></i>
-                </span>
-                <h1 class="h4 mb-0">Iniciar sesión</h1>
-                <p class="text-muted small mb-0">$ProjectName</p>
+<div class="flex flex-col flex-1 justify-center items-center w-full pt-8 pb-6">
+    <div class="bg-white rounded-lg shadow-sm border border-blue-600 p-6" style="max-width: 420px; width: 100%;">
+        <div class="text-center mb-4">
+            <span class="inline-flex items-center justify-center rounded-full bg-blue-600 bg-opacity-10 text-blue-600 mb-2"
+                  style="width: 56px; height: 56px;">
+                <i class="bi bi-person-lock text-2xl" aria-hidden="true"></i>
+            </span>
+            <h1 class="text-xl font-semibold mb-0">Iniciar sesión</h1>
+            <p class="text-gray-500 text-sm mb-0">$ProjectName</p>
+        </div>
+
+        <EditForm Model="@ViewModel.Request" OnValidSubmit="@SubmitAsync" FormName="loginForm">
+            <div class="mb-4">
+                <label for="loginEmail" class="block text-sm font-medium text-gray-700">User Email</label>
+                <InputText id="loginEmail"
+                           type="email"
+                           class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                           placeholder="nombre@empresa.com"
+                           @bind-Value="ViewModel.Request.UserEmail"
+                           disabled="@ViewModel.IsLoading" />
             </div>
 
-            <EditForm Model="@ViewModel.Request" OnValidSubmit="@SubmitAsync" FormName="loginForm">
-                <div class="mb-3">
-                    <label for="loginEmail" class="form-label">User Email</label>
-                    <InputText id="loginEmail"
-                               type="email"
-                               class="form-control"
-                               placeholder="nombre@empresa.com"
-                               @bind-Value="ViewModel.Request.UserEmail"
+            <div class="mb-4">
+                <label for="loginPassword" class="block text-sm font-medium text-gray-700">Password</label>
+                <div class="flex">
+                    <InputText id="loginPassword"
+                               type="@LoginPasswordType"
+                               class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                               placeholder="••••••••"
+                               @bind-Value="ViewModel.Request.Password"
                                disabled="@ViewModel.IsLoading" />
+                    <button type="button"
+                            class="inline-flex items-center justify-center px-3 border border-l-0 border-gray-300 bg-gray-50 text-gray-500 sm:text-sm rounded-r-md"
+                            @onclick="ToggleLoginPasswordVisibility"
+                            tabindex="-1"
+                            title="@(IsLoginPasswordVisible ? "Ocultar contraseña" : "Mostrar contraseña")"
+                            aria-label="@(IsLoginPasswordVisible ? "Ocultar contraseña" : "Mostrar contraseña")">
+                        <i class="bi @(IsLoginPasswordVisible ? "bi-eye-slash" : "bi-eye")" aria-hidden="true"></i>
+                    </button>
                 </div>
-
-                <div class="mb-3">
-                    <label for="loginPassword" class="form-label">Password</label>
-                    <div class="input-group">
-                        <InputText id="loginPassword"
-                                   type="@LoginPasswordType"
-                                   class="form-control"
-                                   placeholder="••••••••"
-                                   @bind-Value="ViewModel.Request.Password"
-                                   disabled="@ViewModel.IsLoading" />
-                        <button type="button"
-                                class="btn btn-outline-secondary"
-                                @onclick="ToggleLoginPasswordVisibility"
-                                tabindex="-1"
-                                title="@(IsLoginPasswordVisible ? "Ocultar contraseña" : "Mostrar contraseña")"
-                                aria-label="@(IsLoginPasswordVisible ? "Ocultar contraseña" : "Mostrar contraseña")">
-                            <i class="bi @(IsLoginPasswordVisible ? "bi-eye-slash" : "bi-eye")" aria-hidden="true"></i>
-                        </button>
-                    </div>
-                </div>
-
-                @if (!string.IsNullOrEmpty(ViewModel.ErrorMessage))
-                {
-                    <div class="alert alert-danger d-flex align-items-start gap-2 py-2" role="alert">
-                        <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
-                        <span class="small">@ViewModel.ErrorMessage</span>
-                    </div>
-                }
-
-                <button type="submit"
-                        class="btn btn-primary w-100 d-flex justify-content-center align-items-center gap-2"
-                        disabled="@ViewModel.IsLoading">
-                    @if (ViewModel.IsLoading)
-                    {
-                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                        <span>Iniciando sesión...</span>
-                    }
-                    else
-                    {
-                        <span>Iniciar sesión</span>
-                    }
-                </button>
-            </EditForm>
-
-            <div class="mt-3 text-center">
-                <a href="registro" class="text-decoration-none small">¿No tienes cuenta? Regístrate</a>
             </div>
+
+            @if (!string.IsNullOrEmpty(ViewModel.ErrorMessage))
+            {
+                <div class="bg-red-50 text-red-700 p-4 rounded-md flex items-start gap-2 py-2" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
+                    <span class="text-sm">@ViewModel.ErrorMessage</span>
+                </div>
+            }
+
+            <button type="submit"
+                    class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 text-white bg-blue-600 hover:bg-blue-700 focus:ring-blue-500 w-full flex justify-center items-center gap-2"
+                    disabled="@ViewModel.IsLoading">
+                @if (ViewModel.IsLoading)
+                {
+                    <span class="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full" role="status" aria-hidden="true"></span>
+                    <span>Iniciando sesión...</span>
+                }
+                else
+                {
+                    <span>Iniciar sesión</span>
+                }
+            </button>
+        </EditForm>
+
+        <div class="mt-3 text-center">
+            <a href="registro" class="text-blue-600 hover:text-blue-800 underline text-sm">¿No tienes cuenta? Regístrate</a>
         </div>
     </div>
 </div>
@@ -1259,105 +1260,103 @@ public partial class Login : ComponentBase
 
 <PageTitle>Registro de usuario</PageTitle>
 
-<div class="d-flex flex-column justify-content-center align-items-center w-100 px-3 pt-5 pb-4">
-    <div class="card shadow-sm w-100" style="max-width: 420px; background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%); border: 1px solid #0d6efd;">
-        <div class="card-body p-4">
-            <div class="text-center mb-4">
-                <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-success bg-opacity-10 text-success mb-2"
-                      style="width: 56px; height: 56px;">
-                    <i class="bi bi-person-plus fs-3" aria-hidden="true"></i>
-                </span>
-                <h1 class="h4 mb-0">Crear cuenta</h1>
-                <p class="text-muted small mb-0">$ProjectName</p>
+<div class="flex flex-col justify-center items-center w-full px-4 pt-8 pb-6">
+    <div class="bg-white rounded-lg shadow-sm w-full p-6" style="max-width: 420px; background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%); border: 1px solid #0d6efd;">
+        <div class="text-center mb-4">
+            <span class="inline-flex items-center justify-center rounded-full bg-green-600 bg-opacity-10 text-green-600 mb-2"
+                  style="width: 56px; height: 56px;">
+                <i class="bi bi-person-plus text-2xl" aria-hidden="true"></i>
+            </span>
+            <h1 class="text-xl font-semibold mb-0">Crear cuenta</h1>
+            <p class="text-gray-500 text-sm mb-0">$ProjectName</p>
+        </div>
+
+        <EditForm Model="@RegisterRequest" OnValidSubmit="@SubmitAsync" FormName="registerForm">
+            <div class="mb-4">
+                <label for="registerName" class="block text-sm font-medium text-gray-700">Nombre</label>
+                <InputText id="registerName"
+                           type="text"
+                           class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                           placeholder="Tu nombre"
+                           @bind-Value="RegisterRequest.UserName"
+                           disabled="@IsLoading" />
             </div>
 
-            <EditForm Model="@RegisterRequest" OnValidSubmit="@SubmitAsync" FormName="registerForm">
-                <div class="mb-3">
-                    <label for="registerName" class="form-label">Nombre</label>
-                    <InputText id="registerName"
-                               type="text"
-                               class="form-control"
-                               placeholder="Tu nombre"
-                               @bind-Value="RegisterRequest.UserName"
+            <div class="mb-4">
+                <label for="registerEmail" class="block text-sm font-medium text-gray-700">Correo electrónico</label>
+                <InputText id="registerEmail"
+                           type="email"
+                           class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                           placeholder="nombre@empresa.com"
+                           @bind-Value="RegisterRequest.UserEmail"
+                           disabled="@IsLoading" />
+            </div>
+
+            <div class="mb-4">
+                <label for="registerPassword" class="block text-sm font-medium text-gray-700">Contraseña</label>
+                <div class="flex">
+                    <InputText id="registerPassword"
+                               type="@RegisterPasswordType"
+                               class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                               placeholder="••••••••"
+                               @bind-Value="RegisterRequest.Password"
                                disabled="@IsLoading" />
+                    <button type="button"
+                            class="inline-flex items-center justify-center px-3 border border-l-0 border-gray-300 bg-gray-50 text-gray-500 sm:text-sm rounded-r-md"
+                            @onclick="ToggleRegisterPasswordVisibility"
+                            tabindex="-1"
+                            title="@(IsRegisterPasswordVisible ? "Ocultar contraseña" : "Mostrar contraseña")"
+                            aria-label="@(IsRegisterPasswordVisible ? "Ocultar contraseña" : "Mostrar contraseña")">
+                        <i class="bi @(IsRegisterPasswordVisible ? "bi-eye-slash" : "bi-eye")" aria-hidden="true"></i>
+                    </button>
                 </div>
+            </div>
 
-                <div class="mb-3">
-                    <label for="registerEmail" class="form-label">Correo electrónico</label>
-                    <InputText id="registerEmail"
-                               type="email"
-                               class="form-control"
-                               placeholder="nombre@empresa.com"
-                               @bind-Value="RegisterRequest.UserEmail"
+            <div class="mb-4">
+                <label for="registerConfirmPassword" class="block text-sm font-medium text-gray-700">Confirmar contraseña</label>
+                <div class="flex">
+                    <InputText id="registerConfirmPassword"
+                               type="@ConfirmPasswordType"
+                               class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                               placeholder="••••••••"
+                               @bind-Value="ConfirmPassword"
                                disabled="@IsLoading" />
+                    <button type="button"
+                            class="inline-flex items-center justify-center px-3 border border-l-0 border-gray-300 bg-gray-50 text-gray-500 sm:text-sm rounded-r-md"
+                            @onclick="ToggleConfirmPasswordVisibility"
+                            tabindex="-1"
+                            title="@(IsConfirmPasswordVisible ? "Ocultar contraseña" : "Mostrar contraseña")"
+                            aria-label="@(IsConfirmPasswordVisible ? "Ocultar contraseña" : "Mostrar contraseña")">
+                        <i class="bi @(IsConfirmPasswordVisible ? "bi-eye-slash" : "bi-eye")" aria-hidden="true"></i>
+                    </button>
                 </div>
+            </div>
 
-                <div class="mb-3">
-                    <label for="registerPassword" class="form-label">Contraseña</label>
-                    <div class="input-group">
-                        <InputText id="registerPassword"
-                                   type="@RegisterPasswordType"
-                                   class="form-control"
-                                   placeholder="••••••••"
-                                   @bind-Value="RegisterRequest.Password"
-                                   disabled="@IsLoading" />
-                        <button type="button"
-                                class="btn btn-outline-secondary"
-                                @onclick="ToggleRegisterPasswordVisibility"
-                                tabindex="-1"
-                                title="@(IsRegisterPasswordVisible ? "Ocultar contraseña" : "Mostrar contraseña")"
-                                aria-label="@(IsRegisterPasswordVisible ? "Ocultar contraseña" : "Mostrar contraseña")">
-                            <i class="bi @(IsRegisterPasswordVisible ? "bi-eye-slash" : "bi-eye")" aria-hidden="true"></i>
-                        </button>
-                    </div>
+            @if (!string.IsNullOrEmpty(Message))
+            {
+                <div class="@(IsSuccess ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700") p-4 rounded-md flex items-start gap-2 py-2" role="alert">
+                    <i class="bi @(IsSuccess ? "bi-check-circle-fill" : "bi-exclamation-triangle-fill")" aria-hidden="true"></i>
+                    <span class="text-sm">@Message</span>
                 </div>
+            }
 
-                <div class="mb-3">
-                    <label for="registerConfirmPassword" class="form-label">Confirmar contraseña</label>
-                    <div class="input-group">
-                        <InputText id="registerConfirmPassword"
-                                   type="@ConfirmPasswordType"
-                                   class="form-control"
-                                   placeholder="••••••••"
-                                   @bind-Value="ConfirmPassword"
-                                   disabled="@IsLoading" />
-                        <button type="button"
-                                class="btn btn-outline-secondary"
-                                @onclick="ToggleConfirmPasswordVisibility"
-                                tabindex="-1"
-                                title="@(IsConfirmPasswordVisible ? "Ocultar contraseña" : "Mostrar contraseña")"
-                                aria-label="@(IsConfirmPasswordVisible ? "Ocultar contraseña" : "Mostrar contraseña")">
-                            <i class="bi @(IsConfirmPasswordVisible ? "bi-eye-slash" : "bi-eye")" aria-hidden="true"></i>
-                        </button>
-                    </div>
-                </div>
-
-                @if (!string.IsNullOrEmpty(Message))
+            <button type="submit"
+                    class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 text-white bg-green-600 hover:bg-green-700 focus:ring-green-500 w-full flex justify-center items-center gap-2"
+                    disabled="@IsLoading">
+                @if (IsLoading)
                 {
-                    <div class="alert @(IsSuccess ? "alert-success" : "alert-danger") d-flex align-items-start gap-2 py-2" role="alert">
-                        <i class="bi @(IsSuccess ? "bi-check-circle-fill" : "bi-exclamation-triangle-fill")" aria-hidden="true"></i>
-                        <span class="small">@Message</span>
-                    </div>
+                    <span class="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full" role="status" aria-hidden="true"></span>
+                    <span>Registrando...</span>
                 }
+                else
+                {
+                    <span>Registrarse</span>
+                }
+            </button>
+        </EditForm>
 
-                <button type="submit"
-                        class="btn btn-success w-100 d-flex justify-content-center align-items-center gap-2"
-                        disabled="@IsLoading">
-                    @if (IsLoading)
-                    {
-                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                        <span>Registrando...</span>
-                    }
-                    else
-                    {
-                        <span>Registrarse</span>
-                    }
-                </button>
-            </EditForm>
-
-            <div class="mt-3 text-center">
-                <a href="login" class="text-decoration-none small">¿Ya tienes cuenta? Inicia sesión</a>
-            </div>
+        <div class="mt-3 text-center">
+            <a href="login" class="text-blue-600 hover:text-blue-800 underline text-sm">¿Ya tienes cuenta? Inicia sesión</a>
         </div>
     </div>
 </div>
@@ -1431,17 +1430,12 @@ public partial class Register : ComponentBase
 # Client index.html update
 $content = Get-Content "src/Presentation/Client/wwwroot/index.html" -Raw
 $content = $content -replace "<link href=`"$ProjectName.Web.styles.css`" rel=`"stylesheet`" />", @"
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+<script src="https://cdn.tailwindcss.com"></script>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
 "@
 
-# Inject Bootstrap JS bundle before </body> (idempotent)
-if ($content -notmatch 'bootstrap\.bundle\.min\.js') {
-    $content = $content -replace '</body>', @'
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-'@
-}
+# Remove the local Bootstrap CSS file shipped by the Blazor template.
+$content = $content -replace '\s*<link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap\.min\.css" />\s*', "`r`n"
 
 $content | Set-Content "src/Presentation/Client/wwwroot/index.html"
 
@@ -1509,8 +1503,8 @@ global using System.Text.Json;
                     }
                     else
                     {
-                        <div class="container-fluid px-3 px-md-4">
-                            <div class="alert alert-warning d-flex align-items-center gap-2 my-4" role="alert">
+                        <div class="w-full px-4 md:px-6">
+                            <div class="bg-yellow-50 text-yellow-700 p-4 rounded-md flex items-center gap-2 my-4" role="alert">
                                 <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
                                 <span>No tienes permisos para ver este contenido.</span>
                             </div>
@@ -1599,56 +1593,56 @@ namespace $ProjectName.Views.Shared.Auth
 @inherits LayoutComponentBase
 @inject NavMenuStateService NavMenuState
 
-<div class="d-flex min-vh-100">
-    <div class="d-none d-lg-flex">
+<div class="flex min-h-screen">
+    <div class="hidden lg:flex">
         <NavMenu />
     </div>
 
-    <div class="d-flex flex-column flex-fill min-vw-0">
+    <div class="flex flex-col flex-1 min-w-0">
         <TopBar />
 
-        <main id="main-content" class="flex-fill bg-light">
-            <article class="p-2 p-md-3">
+        <main id="main-content" class="flex-1 bg-gray-100">
+            <article class="p-2 md:p-3">
                 @Body
             </article>
         </main>
 
-        <footer class="px-3 px-md-4 py-2 d-flex flex-wrap align-items-center gap-2 border-top bg-white">
-            <span class="text-muted small">
-                <i class="bi bi-c-circle me-1" aria-hidden="true"></i>
+        <footer class="px-4 md:px-6 py-2 flex flex-wrap items-center gap-2 border-t border-gray-200 bg-white">
+            <span class="text-gray-500 text-sm">
+                <i class="bi bi-c-circle mr-1" aria-hidden="true"></i>
                 @DateTime.Now.Year $ProjectName
             </span>
-            <span class="ms-auto d-inline-flex align-items-center gap-3">
-                <span class="badge rounded-pill text-bg-light border">
-                    <i class="bi bi-tag me-1" aria-hidden="true"></i>v1.0
+            <span class="ml-auto inline-flex items-center gap-3">
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 border border-gray-200">
+                    <i class="bi bi-tag mr-1" aria-hidden="true"></i>v1.0
                 </span>
             </span>
         </footer>
     </div>
 </div>
 
-<div class="offcanvas offcanvas-start d-lg-none @(NavMenuState.IsOpen ? "show" : "")"
+<div class="fixed inset-y-0 left-0 z-40 w-64 bg-white shadow-xl transform transition-transform @(NavMenuState.IsOpen ? "translate-x-0" : "-translate-x-full") lg:hidden"
      tabindex="-1"
      aria-labelledby="mobileNavMenuLabel"
-        style="visibility: @(NavMenuState.IsOpen ? "visible" : "hidden");">
-    <div class="offcanvas-header border-bottom">
-        <h5 class="offcanvas-title" id="mobileNavMenuLabel">$ProjectName</h5>
+     style="visibility: @(NavMenuState.IsOpen ? "visible" : "hidden");">
+    <div class="flex items-center justify-between p-4 border-b border-gray-200">
+        <h5 class="text-lg font-medium" id="mobileNavMenuLabel">$ProjectName</h5>
         <button type="button"
-                class="btn-close text-reset"
+                class="text-gray-400 hover:text-gray-500"
                 @onclick="NavMenuState.CloseOpen"
                 aria-label="Cerrar menú">
+            <i class="bi bi-x-lg" aria-hidden="true"></i>
         </button>
     </div>
-    <div class="offcanvas-body p-0">
+    <div class="p-0">
         <NavMenu />
     </div>
 </div>
 
 @if (NavMenuState.IsOpen)
 {
-    <div class="offcanvas-backdrop show d-lg-none"
-         @onclick="NavMenuState.CloseOpen"
-         style="z-index: 1035;">
+    <div class="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden"
+         @onclick="NavMenuState.CloseOpen">
     </div>
 }
 "@ | Set-Content "src/Presentation/Views/Layout/MainLayout.razor"
@@ -1680,40 +1674,40 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
 @"
 @inject NavMenuStateService NavMenuState
 
-<nav class="flex-column bg-white text-dark flex-shrink-0"
+<nav class="flex-col bg-white text-gray-900 flex-shrink-0"
         style="min-width: @(NavMenuState.IsCollapsed ? "60px" : "260px");"
      aria-label="Navegación principal">
-    <div class="d-flex align-items-center justify-content-between p-3 border-bottom border-dark border-opacity-10" style="height: 56px;">
-        <a class="d-inline-flex align-items-center gap-2 text-dark text-decoration-none fw-semibold text-nowrap overflow-hidden @(NavMenuState.IsCollapsed ? "justify-content-center" : "")"
+    <div class="flex items-center justify-between p-3 border-b border-gray-200" style="height: 56px;">
+        <a class="inline-flex items-center gap-2 text-gray-900 no-underline font-semibold whitespace-nowrap overflow-hidden @(NavMenuState.IsCollapsed ? "justify-center" : "justify-start")"
            href="" title="$ProjectName">
-            <i class="bi bi-box-seam fs-4" aria-hidden="true"></i>
-            <span class="@(NavMenuState.IsCollapsed ? "d-none" : "")">$ProjectName</span>
+            <i class="bi bi-box-seam text-2xl" aria-hidden="true"></i>
+            <span class="@(NavMenuState.IsCollapsed ? "hidden" : "")">$ProjectName</span>
         </a>
     </div>
 
-    <div class="flex-fill overflow-auto py-2 px-3">
-        <ul class="list-unstyled ps-0 mb-0">
+    <div class="flex-1 overflow-auto py-2 px-3">
+        <ul class="list-none pl-0 mb-0">
             <li class="mb-1">
                 <a href="/"
-                   class="btn btn-toggle d-inline-flex align-items-center @(NavMenuState.IsCollapsed ? "justify-content-center" : "justify-content-start") rounded px-0 text-secondary w-100 text-decoration-none"
+                   class="inline-flex items-center @(NavMenuState.IsCollapsed ? "justify-center" : "justify-start") rounded px-0 text-gray-600 w-full no-underline py-2"
                    @onclick="OnLinkClicked">
-                    <i class="bi bi-house-door fs-5" aria-hidden="true"></i>
-                    <span class="@(NavMenuState.IsCollapsed ? "d-none" : "") ms-2">Home</span>
+                    <i class="bi bi-house-door text-xl" aria-hidden="true"></i>
+                    <span class="@(NavMenuState.IsCollapsed ? "hidden" : "") ml-2">Home</span>
                 </a>
             </li>
             <li class="mb-1">
                 <a href="/"
-                   class="btn btn-toggle d-inline-flex align-items-center justify-content-start rounded px-0 text-secondary w-100 text-decoration-none"
+                   class="inline-flex items-center justify-start rounded px-0 text-gray-600 w-full no-underline py-2"
                    @onclick="OnDashboardClick">
-                    <i class="bi bi-speedometer2 fs-5" aria-hidden="true"></i>
-                    <span class="@(NavMenuState.IsCollapsed ? "d-none" : "") ms-2">Dashboard</span>
+                    <i class="bi bi-speedometer2 text-xl" aria-hidden="true"></i>
+                    <span class="@(NavMenuState.IsCollapsed ? "hidden" : "") ml-2">Dashboard</span>
                 </a>
-                <ul class="list-unstyled ps-3 mb-0 @(NavMenuState.IsCollapsed ? "d-none" : "") @(_isDashboardExpanded ? "" : "d-none")">
+                <ul class="list-none pl-3 mb-0 @(NavMenuState.IsCollapsed ? "hidden" : "") @(_isDashboardExpanded ? "" : "hidden")">
                     <li>
                         <a href="/"
-                           class="btn btn-toggle d-inline-flex align-items-center justify-content-start rounded px-0 text-secondary w-100 text-decoration-none"
+                           class="inline-flex items-center justify-start rounded px-0 text-gray-600 w-full no-underline py-2"
                            @onclick="OnLinkClicked">
-                            <span class="ms-2">Resumen</span>
+                            <span class="ml-2">Resumen</span>
                         </a>
                     </li>
                 </ul>
@@ -1821,56 +1815,56 @@ public class NavMenuStateService
 @inject ILoginViewModel ViewModel
 @inject NavigationManager Navigation
 
-<header class="navbar navbar-expand bg-white px-3 shadow-sm" style="height: 56px;">
-    <div class="container-fluid">
-        <div class="d-flex align-items-center">
+<header class="flex items-center bg-white px-4 shadow-sm" style="height: 56px;">
+    <div class="w-full flex items-center justify-between">
+        <div class="flex items-center">
             <button type="button"
-                    class="btn btn-link nav-link text-dark p-0 me-3 d-lg-none"
+                    class="text-gray-900 p-0 mr-3 lg:hidden"
                     @onclick="NavMenuStateService.ToggleOpen"
                     aria-label="Abrir menú"
                     aria-expanded="@NavMenuStateService.IsOpen">
-                <i class="bi bi-list fs-4" aria-hidden="true"></i>
+                <i class="bi bi-list text-2xl" aria-hidden="true"></i>
             </button>
 
             <button type="button"
-                    class="btn btn-link nav-link text-dark p-0 me-3 d-none d-lg-inline-flex"
+                    class="text-gray-900 p-0 mr-3 hidden lg:inline-flex"
                     @onclick="NavMenuStateService.ToggleCollapsed"
                     aria-label="Contraer menú"
                     aria-expanded="@(!NavMenuStateService.IsCollapsed)">
-                <i class="bi bi-list fs-4" aria-hidden="true"></i>
+                <i class="bi bi-list text-2xl" aria-hidden="true"></i>
             </button>
         </div>
 
-        <div class="ms-auto navbar-nav">
+        <div class="flex items-center space-x-4">
             @if (IsAuthenticated)
             {
-                <div class="nav-item dropdown">
-                    <button class="btn btn-link nav-link dropdown-toggle d-inline-flex align-items-center gap-2 text-dark"
+                <div class="relative">
+                    <button class="inline-flex items-center gap-2 text-gray-900"
                             type="button"
                             @onclick="ToggleUserMenu"
                             @onfocusout="OnUserMenuFocusOut"
                             aria-expanded="@IsUserMenuOpen"
                             aria-label="Menú de usuario">
-                        <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-dark bg-opacity-10 text-dark"
+                        <span class="inline-flex items-center justify-center rounded-full bg-gray-800 bg-opacity-10 text-gray-900"
                               style="width: 30px; height: 30px;">
-                            <i class="bi bi-person fs-6" aria-hidden="true"></i>
+                            <i class="bi bi-person text-base" aria-hidden="true"></i>
                         </span>
-                        <span class="text-truncate d-none d-sm-inline" style="max-width: 140px;">@UserDisplayName</span>
+                        <span class="truncate hidden sm:inline" style="max-width: 140px;">@UserDisplayName</span>
                     </button>
 
                     @if (IsUserMenuOpen)
                     {
-                        <div class="dropdown-menu dropdown-menu-end shadow-sm border rounded-3 p-2 show"
-                             style="min-width: 240px; max-width: calc(100vw - 1rem); position: absolute; z-index: 1050; right: 0;"
+                        <div class="absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 border rounded-lg p-2"
+                             style="min-width: 240px; max-width: calc(100vw - 1rem); z-index: 1050;"
                              tabindex="-1"
                              @onfocusout="OnUserMenuFocusOut">
                             <div class="px-3 py-2">
-                                <div class="fw-semibold">@UserDisplayName</div>
-                                <div class="text-muted small text-break">@UserEmail</div>
+                                <div class="font-semibold">@UserDisplayName</div>
+                                <div class="text-gray-500 text-sm break-all">@UserEmail</div>
                             </div>
-                            <div class="dropdown-divider"></div>
+                            <div class="border-t border-gray-100"></div>
                             <button type="button"
-                                    class="dropdown-item btn btn-light d-inline-flex align-items-center gap-2 rounded-2 w-100 text-start"
+                                    class="inline-flex items-center gap-2 rounded-md w-full text-left px-3 py-2 text-gray-800 bg-gray-100 hover:bg-gray-200"
                                     @onclick="SignOutAsync">
                                 <i class="bi bi-power" aria-hidden="true"></i>
                                 Cerrar sesión
@@ -1881,10 +1875,10 @@ public class NavMenuStateService
             }
             else
             {
-                <div class="nav-item d-inline-flex align-items-center gap-2">
-                    <a href="login" class="nav-link text-dark py-0">Iniciar sesión</a>
-                    <span class="text-muted">|</span>
-                    <a href="registro" class="nav-link text-dark py-0">Registrarse</a>
+                <div class="inline-flex items-center gap-2">
+                    <a href="login" class="text-gray-900 py-0">Iniciar sesión</a>
+                    <span class="text-gray-500">|</span>
+                    <a href="registro" class="text-gray-900 py-0">Registrarse</a>
                 </div>
             }
         </div>
@@ -1967,7 +1961,7 @@ public partial class TopBar : ComponentBase, IDisposable
 }
 "@ | Set-Content "src/Presentation/Views/Layout/TopBar.razor.cs"
 
-# NavMenu.razor.css (no custom CSS — using Bootstrap utility classes in NavMenu.razor and MainLayout.razor)
+# NavMenu.razor.css (no custom CSS — using Tailwind utility classes in NavMenu.razor and MainLayout.razor)
 "" | Set-Content "src/Presentation/Views/Layout/NavMenu.razor.css"
 
 # TopBar.razor.css
@@ -1984,10 +1978,10 @@ public partial class TopBar : ComponentBase, IDisposable
 
 # MainLayout.razor.css
 @"
-/* Empty: layout uses Bootstrap utility classes. Keep file if you need component-scoped overrides later. */
+/* Empty: layout uses Tailwind utility classes. Keep file if you need component-scoped overrides later. */
 "@ | Set-Content "src/Presentation/Views/Layout/MainLayout.razor.css"
 
-# Login.razor.css (no custom CSS — using Bootstrap utility classes in Login.razor)
+# Login.razor.css (no custom CSS — using Tailwind utility classes in Login.razor)
 "" | Set-Content "src/Presentation/Views/Pages/Login.razor.css"
 
 # ListComponent.razor.css (scoped styles for table/mobile behavior)
@@ -2005,9 +1999,9 @@ public partial class TopBar : ComponentBase, IDisposable
 @"
 @namespace $ProjectName.Views.Shared.Components
 
-<div class="card-footer bg-white border-top py-2">
-    <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-2">
-        <div class="text-muted small">
+<div class="bg-white border-t border-gray-200 py-2">
+    <div class="flex flex-col md:flex-row justify-between items-center gap-2">
+        <div class="text-gray-500 text-sm">
             Mostrando @CurrentItemsCount de @TotalCount
             @(TotalCount == 1 ? ItemName : ItemPluralName)
             @if (HasActiveFilters)
@@ -2015,10 +2009,10 @@ public partial class TopBar : ComponentBase, IDisposable
                 <span>(filtradas)</span>
             }
         </div>
-        <div class="d-flex align-items-center gap-2">
-            <div class="input-group input-group-sm" style="width: auto;">
-                <label class="input-group-text bg-white" for="pageSizeSelect">Tamaño</label>
-                <select class="form-select form-select-sm" id="pageSizeSelect"
+        <div class="flex items-center gap-2">
+            <div class="flex text-sm" style="width: auto;">
+                <label class="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 sm:text-sm bg-white" for="pageSizeSelect">Tamaño</label>
+                <select class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm text-sm rounded-l-none" id="pageSizeSelect"
                         value="@PageSize"
                         @onchange="OnPageSizeChange"
                         disabled="@IsLoading"
@@ -2032,27 +2026,27 @@ public partial class TopBar : ComponentBase, IDisposable
                 </select>
             </div>
             <nav aria-label="Navegación de páginas">
-                <ul class="pagination pagination-sm mb-0">
-                    <li class="page-item @(CurrentPage == 1 ? "disabled" : "")">
-                        <button class="page-link" @onclick="FirstPage" disabled="@(CurrentPage == 1)" aria-label="Primera página">
+                <ul class="flex -space-x-px text-sm mb-0">
+                    <li class="@(CurrentPage == 1 ? "opacity-50 pointer-events-none" : "")">
+                        <button class="relative inline-flex items-center px-3 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50" @onclick="FirstPage" disabled="@(CurrentPage == 1)" aria-label="Primera página">
                             <i class="bi bi-chevron-double-left" aria-hidden="true"></i>
                         </button>
                     </li>
-                    <li class="page-item @(CurrentPage == 1 ? "disabled" : "")">
-                        <button class="page-link" @onclick="PreviousPage" disabled="@(CurrentPage == 1)" aria-label="Página anterior">
+                    <li class="@(CurrentPage == 1 ? "opacity-50 pointer-events-none" : "")">
+                        <button class="relative inline-flex items-center px-3 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50" @onclick="PreviousPage" disabled="@(CurrentPage == 1)" aria-label="Página anterior">
                             <i class="bi bi-chevron-left" aria-hidden="true"></i>
                         </button>
                     </li>
-                    <li class="page-item disabled">
-                        <span class="page-link" aria-current="page">Página @CurrentPage de @(Math.Max(1, TotalPages))</span>
+                    <li class="opacity-50 pointer-events-none">
+                        <span class="relative inline-flex items-center px-3 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700" aria-current="page">Página @CurrentPage de @(Math.Max(1, TotalPages))</span>
                     </li>
-                    <li class="page-item @(CurrentPage == TotalPages || TotalPages == 0 ? "disabled" : "")">
-                        <button class="page-link" @onclick="NextPage" disabled="@(CurrentPage == TotalPages || TotalPages == 0)" aria-label="Página siguiente">
+                    <li class="@(CurrentPage == TotalPages || TotalPages == 0 ? "opacity-50 pointer-events-none" : "")">
+                        <button class="relative inline-flex items-center px-3 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50" @onclick="NextPage" disabled="@(CurrentPage == TotalPages || TotalPages == 0)" aria-label="Página siguiente">
                             <i class="bi bi-chevron-right" aria-hidden="true"></i>
                         </button>
                     </li>
-                    <li class="page-item @(CurrentPage == TotalPages || TotalPages == 0 ? "disabled" : "")">
-                        <button class="page-link" @onclick="LastPage" disabled="@(CurrentPage == TotalPages || TotalPages == 0)" aria-label="Última página">
+                    <li class="@(CurrentPage == TotalPages || TotalPages == 0 ? "opacity-50 pointer-events-none" : "")">
+                        <button class="relative inline-flex items-center px-3 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50" @onclick="LastPage" disabled="@(CurrentPage == TotalPages || TotalPages == 0)" aria-label="Última página">
                             <i class="bi bi-chevron-double-right" aria-hidden="true"></i>
                         </button>
                     </li>
@@ -2104,35 +2098,35 @@ public partial class PaginationComponent
 
 @if (IsLoading && UseAbsoluteOverlay == false)
 {
-    <div class="d-flex justify-content-center align-items-center py-4">
-        <div class="spinner-border text-primary" role="status" aria-label="Cargando">
-            <span class="visually-hidden">Cargando...</span>
+    <div class="flex justify-center items-center py-4">
+        <div class="animate-spin h-5 w-5 border-2 border-current border-t-transparent rounded-full text-blue-600" role="status" aria-label="Cargando">
+            <span class="sr-only">Cargando...</span>
         </div>
         @if (string.IsNullOrEmpty(LoadingMessage) == false)
         {
-            <span class="ms-2 text-muted">@LoadingMessage</span>
+            <span class="ml-2 text-gray-500">@LoadingMessage</span>
         }
     </div>
 }
 else if (Items == null || Items.Any() == false)
 {
-    <div class="text-center text-muted py-4">
-        <i class="bi bi-inbox fs-1 d-block mb-2" aria-hidden="true"></i>
+    <div class="text-center text-gray-500 py-4">
+        <i class="bi bi-inbox text-4xl block mb-2" aria-hidden="true"></i>
         <span>@EmptyMessage</span>
     </div>
 }
 else if (IsTableMode)
 {
-    <div class="table-responsive table-scroll @TableContainerCssClass">
-        <table class="table table-hover align-middle mb-0 @TableCssClass">
+    <div class="overflow-x-auto table-scroll @TableContainerCssClass">
+        <table class="min-w-full divide-y divide-gray-200 align-middle mb-0 @TableCssClass">
             @if (TableColumns != null)
             {
                 <colgroup>
                     @TableColumns
                 </colgroup>
             }
-            <thead class="table-light">
-                <tr class="small text-uppercase text-muted">
+            <thead class="bg-gray-50">
+                <tr class="text-sm uppercase text-gray-500">
                     @TableHeader
                 </tr>
             </thead>
@@ -2149,10 +2143,10 @@ else if (IsTableMode)
 
     @if (HasMobileView)
     {
-        <ul class="list-group d-md-none p-2 gap-2 @ListGroupCssClass">
+        <ul class="divide-y divide-gray-200 border border-gray-200 rounded-md md:hidden p-2 gap-2 @ListGroupCssClass">
             @foreach (TItem item in Items)
             {
-                <li class="list-group-item border rounded-3 shadow-sm py-3 @ItemCssClass">
+                <li class="px-4 py-3 border rounded-lg shadow-sm @ItemCssClass">
                     @MobileItem(item)
                 </li>
             }
@@ -2161,10 +2155,10 @@ else if (IsTableMode)
 }
 else
 {
-    <div class="list-group @ListGroupCssClass">
+    <div class="divide-y divide-gray-200 border border-gray-200 rounded-md @ListGroupCssClass">
         @foreach (TItem item in Items)
         {
-            <div class="list-group-item list-group-item-action @ItemCssClass">
+            <div class="px-4 py-3 hover:bg-gray-50 cursor-pointer @ItemCssClass">
                 @ItemTemplate(item)
             </div>
         }
@@ -2173,9 +2167,9 @@ else
 
 @if (IsLoading && UseAbsoluteOverlay)
 {
-    <div class="position-absolute top-0 start-0 end-0 bottom-0 d-flex flex-column align-items-center justify-content-center gap-2 text-muted"
+    <div class="absolute top-0 left-0 right-0 bottom-0 flex flex-col items-center justify-center gap-2 text-gray-500"
          style="background-color: rgba(255, 255, 255, 0.85); z-index: 10;">
-        <div class="spinner-border" role="status" aria-hidden="true"></div>
+        <div class="animate-spin h-5 w-5 border-2 border-current border-t-transparent rounded-full" role="status" aria-hidden="true"></div>
         @if (string.IsNullOrEmpty(LoadingMessage) == false)
         {
             <span>@LoadingMessage</span>
@@ -2218,12 +2212,12 @@ public partial class ListComponent<TItem>
 @implements IDisposable
 @typeparam TItem
 
-<div class="mb-3 position-relative search-select-wrapper" style="min-width: 0;">
-    <label for="@InputId" class="form-label">@Label <span class="text-danger">*</span></label>
-    <div class="position-relative">
+<div class="mb-4 relative" style="min-width: 0;">
+    <label for="@InputId" class="block text-sm font-medium text-gray-700">@Label <span class="text-red-600">*</span></label>
+    <div class="relative">
         <input id="@InputId"
                type="search"
-               class="form-control @(IsSearching ? "pe-5" : null)"
+               class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm @(IsSearching ? "pr-8" : null)"
                autocomplete="off"
                placeholder="@Placeholder"
                aria-autocomplete="list"
@@ -2235,7 +2229,7 @@ public partial class ListComponent<TItem>
 
         @if (IsSearching)
         {
-            <span class="spinner-border spinner-border-sm position-absolute end-0 top-50 translate-middle-y me-2"
+            <span class="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full absolute right-2 top-1/2 -translate-y-1/2"
                   role="status"
                   aria-label="Searching"></span>
         }
@@ -2243,15 +2237,15 @@ public partial class ListComponent<TItem>
 
     @if (SearchResults.Count > 0)
     {
-        <ul id="@ResultsId" class="list-group position-absolute w-100 shadow-sm mt-1"
+        <ul id="@ResultsId" class="divide-y divide-gray-200 border border-gray-200 rounded-md absolute w-full shadow-sm mt-1"
             style="z-index: 1050; max-height: min(260px, 50vh); overflow-y: auto; left: 0; right: 0;">
             @foreach (TItem item in SearchResults)
             {
-                <li class="list-group-item list-group-item-action"
+                <li class="px-4 py-3 hover:bg-gray-50 cursor-pointer"
                     style="cursor: pointer;"
                     @onclick="() => SelectServiceAsync(item)"
                     @onclick:stopPropagation="true">
-                    <div class="fw-semibold text-break">@ItemText(item)</div>
+                    <div class="font-semibold break-all">@ItemText(item)</div>
                 </li>
             }
         </ul>
@@ -2670,7 +2664,7 @@ cambia; las capas de afuera son detalles técnicos que puedes sustituir.
 ```
 ┌─────────────────────────────────────────────────────────┐
 │  Presentation (UI)                                      │
-│  Componentes .razor, layouts, Blazor, bootstrap...      │  ← capa externa
+│  Componentes .razor, layouts, Blazor, Tailwind CSS...   │  ← capa externa
 ├─────────────────────────────────────────────────────────┤
 │  Infrastructure (adaptadores)                           │
 │  HttpClient, localStorage, tokens, opciones...          │  ← detalles técnicos
@@ -3061,7 +3055,7 @@ Sigue estos pasos para mantener el orden de capas y Vertical Slice:
 
 - **Cambios localizados:** una feature vive junta; tocarla no rompe otras.
 - **Testabilidad:** Domain, Validators y ViewModels se prueban sin Blazor.
-- **Sustituibilidad:** cambiar REST por gRPC, Bootstrap por MudBlazor o
+- **Sustituibilidad:** cambiar REST por gRPC, Tailwind CSS por MudBlazor o
   WebAssembly por MAUI es un cambio en una capa externa.
 - **Escalabilidad cognitiva:** un desarrollador solo necesita entender la
   feature que está tocando.
@@ -3296,7 +3290,7 @@ Eliminado: **4.1.1 Parsing**.
 
 ## 8. Traducción a Blazor (aplicación práctica)
 
-Recomendaciones para esta solución (Blazor WebAssembly + Bootstrap):
+Recomendaciones para esta solución (Blazor WebAssembly + Tailwind CSS):
 
 - **HTML semántico**: prefiere `<button>` frente a `<div @onclick>`. Los
   `NavLink`, `EditForm`, `InputText`, etc., ya emiten HTML correcto —
@@ -3316,8 +3310,8 @@ Recomendaciones para esta solución (Blazor WebAssembly + Bootstrap):
   `role="dialog"` y `aria-modal="true"`.
 - **Iconos Bootstrap Icons**: si el icono es decorativo, ponle
   `aria-hidden="true"`. Si transmite significado, dale texto alternativo
-  (`<span class="visually-hidden">Guardar</span>` o `aria-label`).
-- **Contraste**: revisa los colores del tema Bootstrap con herramientas
+  (`<span class="sr-only">Guardar</span>` o `aria-label`).
+- **Contraste**: revisa los colores del tema Tailwind CSS con herramientas
   como *WebAIM Contrast Checker* o el panel *Accessibility* de DevTools.
 - **Zoom / reflow**: prueba la app al 200% de zoom y a 320px de ancho.
 - **Teclado**: navega toda la app **sin ratón**. Si te atascas, algo
