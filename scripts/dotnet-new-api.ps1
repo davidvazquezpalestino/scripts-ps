@@ -73,6 +73,14 @@ if ([string]::IsNullOrWhiteSpace($externalApisInput)) {
 }
 $USE_EXTERNAL_APIS = $externalApisInput -eq 'S'
 
+# Pregunta si se usara Azure Key Vault
+Write-Host ""
+$keyVaultInput = (Read-Host "Se usara Azure Key Vault? (S/N) [S]").Trim().ToUpper()
+if ([string]::IsNullOrWhiteSpace($keyVaultInput)) {
+    $keyVaultInput = "S"
+}
+$USE_KEYVAULT = $keyVaultInput -eq 'S'
+
 # =========================
 # COMPUTE PORTS (deterministic per project name)
 # =========================
@@ -174,6 +182,11 @@ if ($USE_EXTERNAL_APIS) {
     dotnet new classlib -n "$ProjectName.WebApis" -o "src/Infrastructure/WebApis"
 }
 
+# Azure Key Vault (opcional)
+if ($USE_KEYVAULT) {
+    dotnet new classlib -n "$ProjectName.AzureKeyVault" -o "src/Infrastructure/AzureKeyVault"
+}
+
 # Tests (xUnit.net v3)
 # Asegurar que la plantilla xunit3 est� disponible (paquete xunit.v3.templates)
 $templateList = dotnet new list xunit3 2>&1 | Out-String
@@ -206,6 +219,7 @@ if ($USE_ORACLE) { Remove-Item "src/Infrastructure/DataBases/Oracle/Class1.cs" -
 if ($USE_MONGO) { Remove-Item "src/Infrastructure/DataBases/MongoDB/Class1.cs" -Force -ErrorAction SilentlyContinue }
 if ($USE_RABBITMQ) { Remove-Item "src/Infrastructure/Messaging/RabbitMQ/Class1.cs" -Force -ErrorAction SilentlyContinue }
 if ($USE_EXTERNAL_APIS) { Remove-Item "src/Infrastructure/WebApis/Class1.cs" -Force -ErrorAction SilentlyContinue }
+if ($USE_KEYVAULT) { Remove-Item "src/Infrastructure/AzureKeyVault/Class1.cs" -Force -ErrorAction SilentlyContinue }
 Remove-Item "tests/UnitTests/Class1.cs" -Force -ErrorAction SilentlyContinue
 Remove-Item "tests/UnitTests/UnitTest1.cs" -Force -ErrorAction SilentlyContinue
 
@@ -235,6 +249,7 @@ if ($USE_ORACLE) { dotnet sln add src/Infrastructure/DataBases/Oracle }
 if ($USE_MONGO) { dotnet sln add src/Infrastructure/DataBases/MongoDB }
 if ($USE_RABBITMQ) { dotnet sln add src/Infrastructure/Messaging/RabbitMQ }
 if ($USE_EXTERNAL_APIS) { dotnet sln add src/Infrastructure/WebApis }
+if ($USE_KEYVAULT) { dotnet sln add src/Infrastructure/AzureKeyVault }
 dotnet sln add tests/UnitTests
 
 # =========================
@@ -263,6 +278,7 @@ if ($USE_POSTGRES) { dotnet add src/Presentation/IoC reference src/Infrastructur
 if ($USE_ORACLE) { dotnet add src/Presentation/IoC reference src/Infrastructure/DataBases/Oracle }
 if ($USE_MONGO) { dotnet add src/Presentation/IoC reference src/Infrastructure/DataBases/MongoDB }
 if ($USE_EXTERNAL_APIS) { dotnet add src/Presentation/IoC reference src/Infrastructure/WebApis }
+if ($USE_KEYVAULT) { dotnet add src/Presentation/IoC reference src/Infrastructure/AzureKeyVault }
 dotnet add src/Presentation/IoC reference src/Domain
 
 # Infrastructure depends only on Domain (implements interfaces defined there)
@@ -277,6 +293,12 @@ if ($USE_RABBITMQ) {
 }
 if ($USE_EXTERNAL_APIS) {
     dotnet add src/Infrastructure/WebApis reference src/Domain
+}
+if ($USE_KEYVAULT) {
+    dotnet add src/Infrastructure/AzureKeyVault reference src/Domain
+}
+if ($USE_SQLSERVER -and $USE_KEYVAULT) {
+    dotnet add src/Infrastructure/DataBases/SQLServer reference src/Infrastructure/AzureKeyVault
 }
 
 # API depends on IoC
@@ -381,6 +403,15 @@ if ($USE_EXTERNAL_APIS) {
     dotnet add src/Infrastructure/WebApis package DependencyInjection.ReflectionExtensions
 }
 
+# Azure Key Vault
+if ($USE_KEYVAULT) {
+    dotnet add src/Infrastructure/AzureKeyVault package Azure.Identity
+    dotnet add src/Infrastructure/AzureKeyVault package Azure.Security.KeyVault.Secrets
+    dotnet add src/Infrastructure/AzureKeyVault package Microsoft.Extensions.Options
+    dotnet add src/Infrastructure/AzureKeyVault package Microsoft.Extensions.DependencyInjection.Abstractions
+    dotnet add src/Infrastructure/AzureKeyVault package DependencyInjection.ReflectionExtensions
+}
+
 # API
 dotnet add src/Presentation/Api package Scalar.AspNetCore
 dotnet add src/Presentation/Api package Swashbuckle.AspNetCore
@@ -466,7 +497,7 @@ $dataBaseOptionsDev
         "ValidIssuer": "empresa",
         "ValidAudience": "empresa",
         "ExpireInMinutes": 1440
-    }$(if($USE_REDIS){",`n    `"RedisOptions`": {`n        `"ConnectionRedis`": `"[Server],password=[Password]`",`n        `"Environment`": `"Development`",`n        `"DiasCache`": 1`n    }"}),
+    }$(if($USE_REDIS){",`n    `"RedisOptions`": {`n        `"ConnectionRedis`": `"[Server],password=[Password]`",`n        `"Environment`": `"Development`",`n        `"DiasCache`": 1`n    }"})$(if($USE_KEYVAULT){",`n    `"KeyVaultOptions`": {`n        `"ClientID`": `"`",`n        `"KeyVaultName`": `"`",`n        `"SecretName`": `"`"`n    }"}),
     "AllowedHosts": "*",
     "Serilog": {
         "MinimumLevel": {
@@ -501,7 +532,7 @@ $dataBaseOptionsProd
         "ValidIssuer": "empresa",
         "ValidAudience": "empresa",
         "ExpireInMinutes": 1440
-    }$(if($USE_REDIS){",`n    `"RedisOptions`": {`n        `"ConnectionRedis`": `"[Server],password=[Password]`",`n        `"Environment`": `"Production`",`n        `"DiasCache`": 1`n    }"}),
+    }$(if($USE_REDIS){",`n    `"RedisOptions`": {`n        `"ConnectionRedis`": `"[Server],password=[Password]`",`n        `"Environment`": `"Production`",`n        `"DiasCache`": 1`n    }"})$(if($USE_KEYVAULT){",`n    `"KeyVaultOptions`": {`n        `"ClientID`": `"`",`n        `"KeyVaultName`": `"`",`n        `"SecretName`": `"`"`n    }"}),
     "AllowedHosts": "*",
     "Serilog": {
         "MinimumLevel": {
@@ -592,7 +623,7 @@ namespace $ProjectName.SqlServer
         public static IServiceCollection AddSqlServerInfrastructure(this IServiceCollection services)
         {
             services.AddServicesCurrentAssembly();
-            // services.ConfigureSerilog();
+            services.ConfigureSerilog();
             return services;
         }
     }
@@ -606,33 +637,12 @@ namespace $ProjectName.SqlServer
     {
         public static IServiceCollection ConfigureSerilog(this IServiceCollection services)
         {
-            ColumnOptions columnOptions = new();
-            columnOptions.AdditionalColumns =
-            [
-                new SqlColumn
-                {
-                    ColumnName = "AdditionalInformation",
-                    DataType = SqlDbType.NVarChar,
-                    DataLength = 512
-                }
-            ];
-
             services.AddSerilog((serviceProvider, configuration) =>
-            {
-                IConfiguration contextConfiguration = serviceProvider.GetRequiredService<IConfiguration>();
-                configuration
-                    .ReadFrom.Configuration(contextConfiguration)
-                    .Enrich.FromLogContext()
-                    .Enrich.WithProperty("Application", "$ProjectName")
-                    .WriteTo.MSSqlServer(
-                        connectionString: contextConfiguration["DataBaseOptions:SQLServer"] ?? "",
-                        sinkOptions: new MSSqlServerSinkOptions
-                        {
-                            TableName = "Logs",
-                            AutoCreateSqlTable = true
-                        },
-                        columnOptions: columnOptions)
-                    .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {SourceContext} {Message:lj}{NewLine}{Exception}");
+            {             
+                configuration.ReadFrom.Configuration(serviceProvider.GetRequiredService<IConfiguration>())
+                             .Enrich.FromLogContext()
+                             .Enrich.WithProperty("Application", "$ProjectName")                   
+                             .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {SourceContext} {Message:lj}{NewLine}{Exception}");
             });
 
             return services;
@@ -707,19 +717,99 @@ global using Microsoft.Extensions.DependencyInjection;
 if ($USE_SQLSERVER) {
     $sqlServerDependencyContainer | Set-Content "src/Infrastructure/DataBases/SQLServer/DependencyContainer.cs"
     $sqlServerSerilogConfiguration | Set-Content "src/Infrastructure/DataBases/SQLServer/SerilogConfiguration.cs"
+    New-Item -ItemType Directory -Path "src/Infrastructure/DataBases/SQLServer/Models" -Force | Out-Null
+    @"
+namespace $ProjectName.SqlServer.Models
+{
+    public sealed class DatabaseConnection
+    {
+        public string User { get; set; }
+        public string Password { get; set; }
+        public int Port { get; set; } = 1433;
+        public string Host { get; set; }
+        public string Database { get; set; }
+
+        public string ConnectionString => `$"Server={Host},{Port};Database={Database};User Id={User};Password={Password};MultipleActiveResultSets=true;encrypt=false;";
+    }
+}
+"@ | Set-Content "src/Infrastructure/DataBases/SQLServer/Models/DatabaseConnection.cs"
 }
 if ($USE_MYSQL) {
     $mySqlDependencyContainer | Set-Content "src/Infrastructure/DataBases/MySQL/DependencyContainer.cs"
+    New-Item -ItemType Directory -Path "src/Infrastructure/DataBases/MySQL/Models" -Force | Out-Null
+    @"
+namespace $ProjectName.MySql.Models
+{
+    public sealed class DatabaseConnection
+    {
+        public string User { get; set; }
+        public string Password { get; set; }
+        public int Port { get; set; } = 3306;
+        public string Host { get; set; }
+        public string Database { get; set; }
+
+        public string ConnectionString => `$"Server={Host};Port={Port};Database={Database};User Id={User};Password={Password};";
+    }
+}
+"@ | Set-Content "src/Infrastructure/DataBases/MySQL/Models/DatabaseConnection.cs"
 }
 if ($USE_POSTGRES) {
     $postgreSqlDependencyContainer | Set-Content "src/Infrastructure/DataBases/PostgreSQL/DependencyContainer.cs"
+    New-Item -ItemType Directory -Path "src/Infrastructure/DataBases/PostgreSQL/Models" -Force | Out-Null
+    @"
+namespace $ProjectName.PostgreSql.Models
+{
+    public sealed class DatabaseConnection
+    {
+        public string User { get; set; }
+        public string Password { get; set; }
+        public int Port { get; set; } = 5432;
+        public string Host { get; set; }
+        public string Database { get; set; }
+
+        public string ConnectionString => `$"Host={Host};Port={Port};Database={Database};Username={User};Password={Password};";
+    }
+}
+"@ | Set-Content "src/Infrastructure/DataBases/PostgreSQL/Models/DatabaseConnection.cs"
 }
 if ($USE_ORACLE) {
     $oracleDependencyContainer | Set-Content "src/Infrastructure/DataBases/Oracle/DependencyContainer.cs"
+    New-Item -ItemType Directory -Path "src/Infrastructure/DataBases/Oracle/Models" -Force | Out-Null
+    @"
+namespace $ProjectName.Oracle.Models
+{
+    public sealed class DatabaseConnection
+    {
+        public string User { get; set; }
+        public string Password { get; set; }
+        public int Port { get; set; } = 1521;
+        public string Host { get; set; }
+        public string Database { get; set; }
+
+        public string ConnectionString => `$"Data Source=(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST={Host})(PORT={Port}))(CONNECT_DATA=(SERVICE_NAME={Database})));User Id={User};Password={Password};";
+    }
+}
+"@ | Set-Content "src/Infrastructure/DataBases/Oracle/Models/DatabaseConnection.cs"
 }
 if ($USE_MONGO) {
     $mongoDbDependencyContainer | Set-Content "src/Infrastructure/DataBases/MongoDB/DependencyContainer.cs"
     $mongoDbGlobalUsings | Set-Content "src/Infrastructure/DataBases/MongoDB/GlobalUsings.cs"
+    New-Item -ItemType Directory -Path "src/Infrastructure/DataBases/MongoDB/Models" -Force | Out-Null
+    @"
+namespace $ProjectName.MongoDb.Models
+{
+    public sealed class DatabaseConnection
+    {
+        public string User { get; set; }
+        public string Password { get; set; }
+        public int Port { get; set; } = 27017;
+        public string Host { get; set; }
+        public string Database { get; set; }
+
+        public string ConnectionString => `$"mongodb://{User}:{Password}@{Host}:{Port}/{Database}";
+    }
+}
+"@ | Set-Content "src/Infrastructure/DataBases/MongoDB/Models/DatabaseConnection.cs"
 }
 
 # DependencyContainer class in RabbitMQ Project (opcional)
@@ -776,6 +866,155 @@ if ($USE_EXTERNAL_APIS) {
     $webApisGlobalUsings | Set-Content "src/Infrastructure/WebApis/GlobalUsings.cs"
 }
 
+# Azure Key Vault project (opcional)
+$azureKeyVaultDependencyContainer = @"
+namespace $ProjectName.AzureKeyVault
+{
+    public static class DependencyContainer
+    {
+        public static IServiceCollection AddAzureKeyVault(this IServiceCollection services)
+        {
+            services.AddServicesCurrentAssembly();
+            services.AddSingleton<IKeyVaultSecretProvider, KeyVaultSecretProvider>();
+            return services;
+        }
+    }
+}
+"@
+
+$azureKeyVaultGlobalUsings = @"
+global using System;
+global using System.Collections.Concurrent;
+global using System.Reflection;
+global using System.Text.Json;
+global using System.Threading;
+global using System.Threading.Tasks;
+global using Azure.Core;
+global using Azure.Identity;
+global using Azure.Security.KeyVault.Secrets;
+global using DevKit.Injection.Extensions;
+global using Microsoft.Extensions.DependencyInjection;
+global using Microsoft.Extensions.Options;
+global using $ProjectName.AzureKeyVault.Options;
+global using $ProjectName.AzureKeyVault.Providers;
+
+"@
+
+$azureKeyVaultOptions = @"
+namespace $ProjectName.AzureKeyVault.Options
+{
+    public class KeyVaultOptions
+    {
+        public const string SectionKey = nameof(KeyVaultOptions);
+        public string ClientID { get; set; }
+        public string KeyVaultName { get; set; }
+        public string SecretName { get; set; }
+    }
+}
+"@
+
+$azureKeyVaultSecretProviderInterface = @"
+namespace $ProjectName.AzureKeyVault.Providers
+{
+    public interface IKeyVaultSecretProvider
+    {
+        /// <summary>
+        /// Obtiene el valor en texto del secreto configurado en KeyVaultOptions.
+        /// </summary>
+        /// <param name="cancellationToken">Token de cancelación.</param>
+        /// <returns>Valor del secreto.</returns>
+        Task<string> GetSecretAsync(CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Obtiene el valor en texto del secreto indicado.
+        /// </summary>
+        /// <param name="keyVaultName">Nombre del Key Vault (sin .vault.azure.net).</param>
+        /// <param name="secretName">Nombre del secreto.</param>
+        /// <param name="cancellationToken">Token de cancelación.</param>
+        /// <returns>Valor del secreto.</returns>
+        Task<string> GetSecretAsync(string keyVaultName, string secretName, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Obtiene un secreto del Key Vault indicado y lo deserializa.
+        /// </summary>
+        /// <typeparam name="T">Tipo esperado del JSON del secreto.</typeparam>
+        /// <param name="keyVaultName">Nombre del Key Vault (sin .vault.azure.net).</param>
+        /// <param name="secretName">Nombre del secreto.</param>
+        /// <param name="cancellationToken">Token de cancelación.</param>
+        /// <returns>Instancia deserializada o null si no se pudo obtener.</returns>
+        Task<T> GetSecretAsync<T>(string keyVaultName, string secretName, CancellationToken cancellationToken = default) where T : class;
+    }
+}
+"@
+
+$azureKeyVaultSecretProvider = @"
+namespace $ProjectName.AzureKeyVault.Providers
+{
+    public sealed class KeyVaultSecretProvider : IKeyVaultSecretProvider
+    {
+        private static readonly JsonSerializerOptions SerializerOptions = new()
+        {
+            PropertyNameCaseInsensitive = true
+        };
+
+        private readonly ConcurrentDictionary<string, SecretClient> Clients = new();
+        private readonly TokenCredential Credential;
+        private readonly KeyVaultOptions Options;
+
+        /// <summary>
+        /// Inicializa el proveedor con la configuración de Key Vault especificada.
+        /// </summary>
+        public KeyVaultSecretProvider(IOptions<KeyVaultOptions> options)
+        {
+            ArgumentNullException.ThrowIfNull(options);
+            ArgumentNullException.ThrowIfNull(options.Value);
+            Options = options.Value;
+            Credential = new DefaultAzureCredential(new DefaultAzureCredentialOptions
+            {
+                ManagedIdentityClientId = Options.ClientID
+            });
+        }
+
+        /// <inheritdoc />
+        public Task<string> GetSecretAsync(CancellationToken cancellationToken = default)
+        {
+            return GetSecretAsync(Options.KeyVaultName, Options.SecretName, cancellationToken);
+        }
+
+        /// <inheritdoc />
+        public async Task<string> GetSecretAsync(string keyVaultName, string secretName, CancellationToken cancellationToken = default)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(keyVaultName);
+            ArgumentException.ThrowIfNullOrWhiteSpace(secretName);
+
+            SecretClient client = Clients.GetOrAdd(keyVaultName, name => new SecretClient(new Uri(`$"https://{name}.vault.azure.net/"), Credential));
+
+            Azure.Response<KeyVaultSecret> response = await client.GetSecretAsync(secretName, cancellationToken: cancellationToken).ConfigureAwait(false);
+            return response.Value.Value;
+        }
+
+        /// <inheritdoc />
+        public async Task<T> GetSecretAsync<T>(string keyVaultName, string secretName, CancellationToken cancellationToken = default) where T : class
+        {
+            string json = await GetSecretAsync(keyVaultName, secretName, cancellationToken).ConfigureAwait(false);
+            return JsonSerializer.Deserialize<T>(json, SerializerOptions);
+        }
+    }
+}
+"@
+
+if ($USE_KEYVAULT) {
+    New-Item -ItemType Directory -Path "src/Infrastructure/AzureKeyVault/Models" -Force | Out-Null
+    New-Item -ItemType Directory -Path "src/Infrastructure/AzureKeyVault/Options" -Force | Out-Null
+    New-Item -ItemType Directory -Path "src/Infrastructure/AzureKeyVault/Providers" -Force | Out-Null
+    "" | Set-Content "src/Infrastructure/AzureKeyVault/Models/.gitkeep"
+    $azureKeyVaultDependencyContainer | Set-Content "src/Infrastructure/AzureKeyVault/DependencyContainer.cs"
+    $azureKeyVaultGlobalUsings | Set-Content "src/Infrastructure/AzureKeyVault/GlobalUsings.cs"
+    $azureKeyVaultOptions | Set-Content "src/Infrastructure/AzureKeyVault/Options/KeyVaultOptions.cs"
+    $azureKeyVaultSecretProviderInterface | Set-Content "src/Infrastructure/AzureKeyVault/Providers/IKeyVaultSecretProvider.cs"
+    $azureKeyVaultSecretProvider | Set-Content "src/Infrastructure/AzureKeyVault/Providers/KeyVaultSecretProvider.cs"
+}
+
 # DependencyContainer class in IoC Project
 @"
 namespace $ProjectName.IoC
@@ -787,12 +1026,13 @@ namespace $ProjectName.IoC
             services.Configure<EnvironmentOptions>(configuration.GetSection(EnvironmentOptions.SectionKey));
             services.Configure<DataBaseOptions>(configuration.GetSection(DataBaseOptions.SectionKey));
             $(if($USE_REDIS){"services.Configure<RedisOptions>(configuration.GetSection(RedisOptions.SectionKey));"})
+            $(if($USE_KEYVAULT){"services.Configure<KeyVaultOptions>(configuration.GetSection(KeyVaultOptions.SectionKey));"})
             services.AddJwtServices(options => configuration.GetSection(JwtOptions.SectionKey).Bind(options));
             $(if($USE_REDIS){"services.AddRedisCache();"})
 
             services.AddCommands()
-                        .AddQueries()
-                        .AddValidators()$(if($USE_SQLSERVER){".AddSqlServerInfrastructure()"})$(if($USE_MYSQL){".AddMySqlInfrastructure()"})$(if($USE_POSTGRES){".AddPostgreSqlInfrastructure()"})$(if($USE_ORACLE){".AddOracleInfrastructure()"})$(if($USE_MONGO){".AddMongoInfrastructure()"})$(if($USE_RABBITMQ){".AddRabbitMq()"})$(if($USE_EXTERNAL_APIS){".AddWebApis()"});
+                    .AddQueries()
+                    .AddValidators()$(if($USE_SQLSERVER){"`n                    .AddSqlServerInfrastructure()"})$(if($USE_MYSQL){"`n                    .AddMySqlInfrastructure()"})$(if($USE_POSTGRES){"`n                    .AddPostgreSqlInfrastructure()"})$(if($USE_ORACLE){"`n                    .AddOracleInfrastructure()"})$(if($USE_MONGO){"`n                    .AddMongoInfrastructure()"})$(if($USE_RABBITMQ){"`n                    .AddRabbitMq()"})$(if($USE_EXTERNAL_APIS){"`n                    .AddWebApis()"})$(if($USE_KEYVAULT){"`n                    .AddAzureKeyVault()"});
             return services;
         }
     }
@@ -831,6 +1071,7 @@ global using Serilog;
 global using Serilog.Sinks.MSSqlServer;
 global using System;
 global using System.Data;
+$(if($USE_KEYVAULT){"global using $ProjectName.AzureKeyVault.Providers;"})
 
 "@
     $sqlServerGlobalUsings | Set-Content "src/Infrastructure/DataBases/SQLServer/GlobalUsings.cs"
@@ -857,6 +1098,8 @@ global using $ProjectName.Queries;
 global using $ProjectName.Validators;
 $(if($USE_RABBITMQ){"global using $ProjectName.RabbitMQ;"})
 $(if($USE_EXTERNAL_APIS){"global using $ProjectName.WebApis;"})
+$(if($USE_KEYVAULT){"global using $ProjectName.AzureKeyVault;"})
+$(if($USE_KEYVAULT){"global using $ProjectName.AzureKeyVault.Options;"})
 global using $ProjectName.IoC.Options;
 global using Microsoft.Extensions.Configuration;
 global using Microsoft.Extensions.DependencyInjection;
@@ -1091,6 +1334,7 @@ COPY src/Application/Queries/$ProjectName.Queries.csproj src/Application/Queries
 COPY src/Application/Validators/$ProjectName.Validators.csproj src/Application/Validators/
 $(if($USE_RABBITMQ){"COPY src/Infrastructure/Messaging/RabbitMQ/$ProjectName.RabbitMQ.csproj src/Infrastructure/Messaging/RabbitMQ/"})
 $(if($USE_EXTERNAL_APIS){"COPY src/Infrastructure/WebApis/$ProjectName.WebApis.csproj src/Infrastructure/WebApis/"})
+$(if($USE_KEYVAULT){"COPY src/Infrastructure/AzureKeyVault/$ProjectName.AzureKeyVault.csproj src/Infrastructure/AzureKeyVault/"})
 
 # Restore dependencies
 RUN dotnet restore src/Presentation/Api/$ProjectName.WebApi.csproj
