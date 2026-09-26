@@ -245,6 +245,8 @@ dotnet add src/Presentation/IoC package FluentValidation
 dotnet add src/Presentation/IoC package Microsoft.Extensions.Configuration.Abstractions
 dotnet add src/Presentation/IoC package Microsoft.Extensions.Http
 dotnet add src/Presentation/Views package Microsoft.AspNetCore.Components.Authorization
+dotnet add src/Presentation/Views package LeaderAnalytics.LeaderPivot.Blazor
+dotnet add src/Presentation/Client package LeaderAnalytics.LeaderPivot.Blazor
 dotnet add src/Infrastructure/WebApi package Microsoft.JSInterop
 dotnet add tests/UnitTests package FluentAssertions
 
@@ -1457,6 +1459,7 @@ $content = Get-Content "src/Presentation/Client/wwwroot/index.html" -Raw
 $content = $content -replace "<link href=`"$ProjectName.Web.styles.css`" rel=`"stylesheet`" />", @"
 <script src="https://cdn.tailwindcss.com"></script>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
+<link href="_content/LeaderAnalytics.LeaderPivot.Blazor/leader-pivot.css" rel="stylesheet" />
 "@
 
 $content | Set-Content "src/Presentation/Client/wwwroot/index.html"
@@ -1558,6 +1561,7 @@ code {
 @using $ProjectName.ViewModels.Auth
 @using $ProjectName.Domain.Interfaces.Auth
 @using $ProjectName.Views.Shared.Auth
+@using LeaderAnalytics.LeaderPivot.Blazor
 
 "@ | Set-Content "src/Presentation/Views/_Imports.razor"
 
@@ -2558,6 +2562,688 @@ public partial class InputDecimal
     }
 }
 "@ | Set-Content "src/Presentation/Views/Shared/Components/InputDecimal.razor.cs"
+
+# PivotComponent.razor in Views/Shared/Components
+@"
+@namespace $ProjectName.Views.Shared.Components
+@typeparam T where T : class
+
+<div class="space-y-4">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-3">
+            <div class="flex items-center gap-2 mb-3">
+                <i class="bi bi-grid-3x3-gap text-gray-400" aria-hidden="true"></i>
+                <span class="text-sm font-semibold text-gray-700">Dimensiones disponibles</span>
+                <span class="ml-auto text-xs text-gray-400">Arrastra a Filas o Columnas</span>
+            </div>
+            <div class="flex flex-wrap gap-2 p-3 rounded-lg bg-gray-50 border border-dashed border-gray-200 min-h-[56px]"
+                 @ondrop="SetDimensionAsHidden"
+                 @ondragover:preventDefault
+                 @ondragenter:preventDefault>
+                @foreach (var dim in Dimensions.Where(d => d.IsEnabled == false))
+                {
+                    <div draggable="true"
+                         class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-white text-gray-700 border border-gray-200 shadow-sm hover:border-blue-400 hover:text-blue-600 hover:shadow-md transition-all"
+                         style="cursor: grab;"
+                         title="Oculto - click para columna"
+                         @ondragstart="() => _draggedDimension = dim"
+                         @ondrop="SetDimensionAsHidden"
+                         @ondragover:preventDefault
+                         @onclick="() => ToggleDimension(dim)">
+                        <i class="bi bi-grip-vertical text-gray-300" aria-hidden="true"></i>
+                        @dim.DisplayValue
+                    </div>
+                }
+                @if (!Dimensions.Any(d => d.IsEnabled == false))
+                {
+                    <span class="text-xs text-gray-400 italic">Todas las dimensiones están en uso</span>
+                }
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-3">
+            <div class="flex items-center gap-2 mb-3">
+                <i class="bi bi-calculator text-gray-400" aria-hidden="true"></i>
+                <span class="text-sm font-semibold text-gray-700">Medidas disponibles</span>
+                <span class="ml-auto text-xs text-gray-400">Arrastra a Valores</span>
+            </div>
+            <div class="flex flex-wrap gap-2 p-3 rounded-lg bg-gray-50 border border-dashed border-gray-200 min-h-[56px]"
+                 @ondrop="SetMeasureAsAvailable"
+                 @ondragover:preventDefault
+                 @ondragenter:preventDefault>
+                @foreach (var measure in Measures.Where(m => m.IsEnabled == false))
+                {
+                    <div draggable="true"
+                         class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-white text-gray-700 border border-gray-200 shadow-sm hover:border-cyan-400 hover:text-cyan-600 hover:shadow-md transition-all"
+                         style="cursor: grab;"
+                         title="Click para agregar a Valores"
+                         @ondragstart="() => _draggedMeasure = measure"
+                         @ondrop="SetMeasureAsAvailable"
+                         @ondragover:preventDefault
+                         @onclick="() => ToggleMeasure(measure)">
+                        <i class="bi bi-grip-vertical text-gray-300" aria-hidden="true"></i>
+                        @measure.DisplayValue
+                    </div>
+                }
+                @if (!Measures.Any(m => m.IsEnabled == false))
+                {
+                    <span class="text-xs text-gray-400 italic">Todas las medidas están en uso</span>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-white rounded-xl border-2 border-blue-100 shadow-sm p-3">
+            <div class="flex items-center gap-2 mb-3">
+                <span class="inline-flex items-center justify-center w-6 h-6 rounded-md bg-blue-100 text-blue-600 text-xs">
+                    <i class="bi bi-arrow-down-up" aria-hidden="true"></i>
+                </span>
+                <span class="text-sm font-semibold text-gray-700">Filas</span>
+            </div>
+            <div class="flex flex-wrap gap-2 p-3 rounded-lg bg-blue-50/50 border border-dashed border-blue-200 min-h-[56px]"
+                 @ondrop="SetDimensionAsRow"
+                 @ondragover:preventDefault
+                 @ondragenter:preventDefault>
+                @foreach (var dim in Dimensions.Where(d => d.IsEnabled && d.IsRow).OrderBy(d => d.Sequence))
+                {
+                    <div draggable="true"
+                         class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-blue-600 text-white shadow-sm hover:bg-blue-700 transition-colors"
+                         style="cursor: grab;"
+                         title="Fila - arrastra sobre otra fila para reordenar"
+                         @ondragstart="() => _draggedDimension = dim"
+                         @ondrop="() => OnDimensionDropped(dim)"
+                         @ondrop:stopPropagation
+                         @ondragover:preventDefault
+                         @onclick="() => ToggleDimension(dim)">
+                        <i class="bi bi-grip-vertical text-blue-300" aria-hidden="true"></i>
+                        @dim.DisplayValue
+                    </div>
+                }
+                @if (!Dimensions.Any(d => d.IsEnabled && d.IsRow))
+                {
+                    <span class="text-xs text-blue-400 italic">Arrastra dimensiones aquí</span>
+                }
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl border-2 border-green-100 shadow-sm p-3">
+            <div class="flex items-center gap-2 mb-3">
+                <span class="inline-flex items-center justify-center w-6 h-6 rounded-md bg-green-100 text-green-600 text-xs">
+                    <i class="bi bi-arrow-left-right" aria-hidden="true"></i>
+                </span>
+                <span class="text-sm font-semibold text-gray-700">Columnas</span>
+            </div>
+            <div class="flex flex-wrap gap-2 p-3 rounded-lg bg-green-50/50 border border-dashed border-green-200 min-h-[56px]"
+                 @ondrop="SetDimensionAsColumn"
+                 @ondragover:preventDefault
+                 @ondragenter:preventDefault>
+                @foreach (var dim in Dimensions.Where(d => d.IsEnabled && d.IsRow == false).OrderBy(d => d.Sequence))
+                {
+                    <div draggable="true"
+                         class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-emerald-500 text-white shadow-sm hover:bg-emerald-600 transition-colors"
+                         style="cursor: grab;"
+                         title="Columna - arrastra sobre otra columna para reordenar"
+                         @ondragstart="() => _draggedDimension = dim"
+                         @ondrop="() => OnDimensionDropped(dim)"
+                         @ondrop:stopPropagation
+                         @ondragover:preventDefault
+                         @onclick="() => ToggleDimension(dim)">
+                        <i class="bi bi-grip-vertical text-emerald-200" aria-hidden="true"></i>
+                        @dim.DisplayValue
+                    </div>
+                }
+                @if (!Dimensions.Any(d => d.IsEnabled && d.IsRow == false))
+                {
+                    <span class="text-xs text-emerald-500 italic">Arrastra dimensiones aquí</span>
+                }
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl border-2 border-cyan-100 shadow-sm p-3">
+            <div class="flex items-center gap-2 mb-3">
+                <span class="inline-flex items-center justify-center w-6 h-6 rounded-md bg-cyan-100 text-cyan-600 text-xs">
+                    <i class="bi bi-123" aria-hidden="true"></i>
+                </span>
+                <span class="text-sm font-semibold text-gray-700">Valores</span>
+            </div>
+            <div class="flex flex-wrap gap-2 p-3 rounded-lg bg-cyan-50/50 border border-dashed border-cyan-200 min-h-[56px]"
+                 @ondrop="SetMeasureAsValue"
+                 @ondragover:preventDefault
+                 @ondragenter:preventDefault>
+                @foreach (var measure in Measures.Where(m => m.IsEnabled).OrderBy(m => m.Sequence))
+                {
+                    <div draggable="true"
+                         class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-cyan-500 text-white shadow-sm hover:bg-cyan-600 transition-colors"
+                         style="cursor: grab;"
+                         title="Valor - arrastra sobre otro valor para reordenar"
+                         @ondragstart="() => _draggedMeasure = measure"
+                         @ondrop="() => OnMeasureDropped(measure)"
+                         @ondrop:stopPropagation
+                         @ondragover:preventDefault
+                         @onclick="() => ToggleMeasure(measure)">
+                        <i class="bi bi-grip-vertical text-cyan-200" aria-hidden="true"></i>
+                        @measure.DisplayValue
+                    </div>
+                }
+                @if (!Measures.Any(m => m.IsEnabled))
+                {
+                    <span class="text-xs text-cyan-500 italic">Arrastra medidas aquí</span>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (ShowValidationMessage && IsConfigurationValid == false)
+{
+    <div class="alert alert-info" role="status">
+        <i class="bi bi-info-circle mr-2" aria-hidden="true"></i>
+        Agrega al menos una dimensión en <strong>Filas</strong> y una en <strong>Columnas</strong> para ver la tabla pivote.
+    </div>
+}
+"@ | Set-Content "src/Presentation/Views/Shared/Components/PivotComponent.razor"
+
+# PivotComponent.razor.cs code-behind
+@"
+using LeaderAnalytics.LeaderPivot;
+
+namespace $ProjectName.Views.Shared.Components;
+
+public partial class PivotComponent<T> where T : class
+{
+    [Parameter]
+    public List<Dimension<T>> Dimensions { get; set; } = [];
+
+    [Parameter]
+    public List<Measure<T>> Measures { get; set; } = [];
+
+    [Parameter]
+    public EventCallback OnChanged { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> OnConfigurationValidChanged { get; set; }
+
+    [Parameter]
+    public bool ShowValidationMessage { get; set; } = true;
+
+    private Dimension<T> _draggedDimension = null;
+    private Measure<T> _draggedMeasure = null;
+
+    private bool HasColumnDimension => Dimensions.Any(d => d.IsEnabled && d.IsRow == false);
+    private bool HasRowDimension => Dimensions.Any(d => d.IsEnabled && d.IsRow);
+    private bool IsConfigurationValid => HasRowDimension && HasColumnDimension;
+
+    private async Task OnDimensionDropped(Dimension<T> target)
+    {
+        if (_draggedDimension is null || _draggedDimension == target)
+        {
+            _draggedDimension = null;
+            return;
+        }
+
+        if (_draggedDimension.IsEnabled && target.IsEnabled && _draggedDimension.IsRow == target.IsRow)
+        {
+            ReorderDimensionBefore(_draggedDimension, target);
+            _draggedDimension = null;
+            await NotifyChangeAsync();
+            return;
+        }
+
+        _draggedDimension = null;
+    }
+
+    private async Task OnMeasureDropped(Measure<T> target)
+    {
+        if (_draggedMeasure is null || _draggedMeasure == target)
+        {
+            _draggedMeasure = null;
+            return;
+        }
+
+        if (_draggedMeasure.IsEnabled && target.IsEnabled)
+        {
+            ReorderMeasureBefore(_draggedMeasure, target);
+            _draggedMeasure = null;
+            await NotifyChangeAsync();
+            return;
+        }
+
+        _draggedMeasure = null;
+    }
+
+    private async Task SetDimensionAsRow()
+    {
+        if (_draggedDimension is null)
+        {
+            return;
+        }
+
+        _draggedDimension.IsEnabled = true;
+        _draggedDimension.IsRow = true;
+        NormalizeDimensionSequences();
+        _draggedDimension = null;
+        await NotifyChangeAsync();
+    }
+
+    private async Task SetDimensionAsColumn()
+    {
+        if (_draggedDimension is null)
+        {
+            return;
+        }
+
+        _draggedDimension.IsEnabled = true;
+        _draggedDimension.IsRow = false;
+        NormalizeDimensionSequences();
+        _draggedDimension = null;
+        await NotifyChangeAsync();
+    }
+
+    private async Task SetDimensionAsHidden()
+    {
+        if (_draggedDimension is null)
+        {
+            return;
+        }
+
+        _draggedDimension.IsEnabled = false;
+        NormalizeDimensionSequences();
+        _draggedDimension = null;
+        await NotifyChangeAsync();
+    }
+
+    private async Task SetMeasureAsValue()
+    {
+        if (_draggedMeasure is null)
+        {
+            return;
+        }
+
+        _draggedMeasure.IsEnabled = true;
+        _draggedMeasure = null;
+        await NotifyChangeAsync();
+    }
+
+    private async Task SetMeasureAsAvailable()
+    {
+        if (_draggedMeasure is null || _draggedMeasure.IsEnabled == false)
+        {
+            _draggedMeasure = null;
+            return;
+        }
+
+        if (Measures.Count(m => m.IsEnabled) <= 1)
+        {
+            _draggedMeasure = null;
+            return;
+        }
+
+        _draggedMeasure.IsEnabled = false;
+        _draggedMeasure = null;
+        await NotifyChangeAsync();
+    }
+
+    private async Task ToggleDimension(Dimension<T> dimension)
+    {
+        if (dimension.IsEnabled)
+        {
+            if (dimension.IsRow)
+            {
+                dimension.IsRow = false;
+            }
+            else
+            {
+                dimension.IsEnabled = false;
+            }
+        }
+        else
+        {
+            dimension.IsEnabled = true;
+            dimension.IsRow = false;
+        }
+
+        NormalizeDimensionSequences();
+        await NotifyChangeAsync();
+    }
+
+    private async Task ToggleMeasure(Measure<T> measure)
+    {
+        if (measure.IsEnabled && Measures.Count(m => m.IsEnabled) <= 1)
+        {
+            return;
+        }
+
+        measure.IsEnabled = !measure.IsEnabled;
+        await NotifyChangeAsync();
+    }
+
+    private void NormalizeDimensionSequences()
+    {
+        int rowSequence = 0;
+        foreach (Dimension<T> dim in Dimensions.Where(d => d.IsEnabled && d.IsRow).OrderBy(d => d.Sequence))
+        {
+            dim.Sequence = rowSequence++;
+        }
+
+        int columnSequence = 0;
+        foreach (Dimension<T> dim in Dimensions.Where(d => d.IsEnabled && d.IsRow == false).OrderBy(d => d.Sequence))
+        {
+            dim.Sequence = columnSequence++;
+        }
+    }
+
+    private void ReorderDimensionBefore(Dimension<T> dragged, Dimension<T> target)
+    {
+        var items = Dimensions
+            .Where(d => d.IsEnabled && d.IsRow == dragged.IsRow)
+            .OrderBy(d => d.Sequence)
+            .ToList();
+
+        items.Remove(dragged);
+        var targetIndex = items.IndexOf(target);
+        if (targetIndex < 0)
+        {
+            return;
+        }
+
+        items.Insert(targetIndex, dragged);
+
+        for (int i = 0; i < items.Count; i++)
+        {
+            items[i].Sequence = i;
+        }
+    }
+
+    private void ReorderMeasureBefore(Measure<T> dragged, Measure<T> target)
+    {
+        var items = Measures
+            .Where(m => m.IsEnabled)
+            .OrderBy(m => m.Sequence)
+            .ToList();
+
+        items.Remove(dragged);
+        var targetIndex = items.IndexOf(target);
+        if (targetIndex < 0)
+        {
+            return;
+        }
+
+        items.Insert(targetIndex, dragged);
+
+        for (int i = 0; i < items.Count; i++)
+        {
+            items[i].Sequence = i;
+        }
+    }
+
+    private async Task NotifyChangeAsync()
+    {
+        if (OnConfigurationValidChanged.HasDelegate)
+        {
+            await OnConfigurationValidChanged.InvokeAsync(IsConfigurationValid);
+        }
+
+        if (OnChanged.HasDelegate)
+        {
+            await OnChanged.InvokeAsync();
+        }
+    }
+}
+"@ | Set-Content "src/Presentation/Views/Shared/Components/PivotComponent.razor.cs"
+
+# PivotBuilder.cs in Views/Shared/Components
+@"
+using LeaderAnalytics.LeaderPivot;
+using System.ComponentModel;
+using System.Reflection;
+using System.Text.RegularExpressions;
+
+namespace $ProjectName.Views.Shared.Components;
+
+public partial class PivotBuilder<T>
+{
+    private readonly List<Dimension<T>> _dimensions = [];
+    private readonly List<Measure<T>> _measures = [];
+    private readonly Dictionary<string, string> _labels = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _excludedDimensions = [];
+    private readonly HashSet<string> _excludedMeasures = [];
+    private int _dimensionSequence;
+    private int _measureSequence;
+
+    [GeneratedRegex("(?<!^)(?=[A-Z])", RegexOptions.Compiled)]
+    private static partial Regex CamelCaseSplitterRegex();
+
+    public static PivotBuilder<T> Create() => new();
+
+    public PivotBuilder<T> WithLabel(string propertyName, string label)
+    {
+        _labels[propertyName] = label;
+        return this;
+    }
+
+    public PivotBuilder<T> WithLabels(Dictionary<string, string> labels)
+    {
+        foreach (KeyValuePair<string, string> item in labels)
+        {
+            _labels[item.Key] = item.Value;
+        }
+
+        return this;
+    }
+
+    public PivotBuilder<T> ExcludeDimensions(params string[] propertyNames)
+    {
+        foreach (var name in propertyNames)
+        {
+            _excludedDimensions.Add(name);
+        }
+
+        return this;
+    }
+
+    public PivotBuilder<T> ExcludeMeasures(params string[] propertyNames)
+    {
+        foreach (var name in propertyNames)
+        {
+            _excludedMeasures.Add(name);
+        }
+
+        return this;
+    }
+
+    public PivotBuilder<T> AddStringDimensions()
+    {
+        foreach (PropertyInfo prop in GetProperties(typeof(string)))
+        {
+            AddDimension(GetLabel(prop.Name), x => (prop.GetValue(x) as string) ?? "(vacío)");
+        }
+
+        return this;
+    }
+
+    public PivotBuilder<T> AddDateDimensions(string format = "yyyy-MM")
+    {
+        foreach (PropertyInfo prop in GetProperties(typeof(DateTime?), typeof(DateTime)))
+        {
+            AddDimension(GetLabel(prop.Name), x =>
+            {
+                var value = prop.GetValue(x);
+                return value is DateTime date
+                    ? date.ToString(format)
+                    : "(sin fecha)";
+            });
+        }
+
+        return this;
+    }
+
+    public PivotBuilder<T> AutoDimensions()
+    {
+        AddStringDimensions();
+        AddDateDimensions();
+        return this;
+    }
+
+    public PivotBuilder<T> AddDecimalMeasures(string format = "{0:N2}")
+    {
+        foreach (PropertyInfo prop in GetMeasureProperties(typeof(decimal), typeof(decimal?)))
+        {
+            AddMeasure(GetLabel(prop.Name), x => x.Measure.Sum(item => (decimal)(prop.GetValue(item) ?? 0m)), format);
+        }
+
+        return this;
+    }
+
+    public PivotBuilder<T> AutoMeasures(string format = "{0:N2}")
+    {
+        AddDecimalMeasures(format);
+        return this;
+    }
+
+    public PivotBuilder<T> AddCountMeasure(string label = "Cantidad", bool enabled = true)
+    {
+        _measures.Add(new()
+        {
+            DisplayValue = label,
+            Aggragate = x => x.Measure.Count(),
+            Format = "{0:N0}",
+            Sequence = _measureSequence++,
+            IsEnabled = enabled
+        });
+
+        return this;
+    }
+
+    public PivotBuilder<T> SetAsRow(params string[] propertyNames)
+    {
+        SetAxis(isRow: true, propertyNames);
+        return this;
+    }
+
+    public PivotBuilder<T> SetAsColumn(params string[] propertyNames)
+    {
+        SetAxis(isRow: false, propertyNames);
+        return this;
+    }
+
+    public PivotBuilder<T> EnableMeasure(string propertyName)
+    {
+        var label = GetLabel(propertyName);
+        Measure<T> measure = _measures.FirstOrDefault(m => m.DisplayValue == label)
+            ?? throw new InvalidOperationException(`$"No se encontró la medida para '{propertyName}'.");
+
+        measure.IsEnabled = true;
+        return this;
+    }
+
+    public List<Dimension<T>> BuildDimensions()
+    {
+        NormalizeDimensionSequences();
+        return _dimensions;
+    }
+
+    public List<Measure<T>> BuildMeasures() => _measures;
+
+    private void AddDimension(string displayValue, Func<T, string> accessor)
+    {
+        _dimensions.Add(new()
+        {
+            DisplayValue = displayValue,
+            GroupValue = accessor,
+            HeaderValue = accessor,
+            IsEnabled = false,
+            IsRow = false,
+            IsExpanded = true,
+            Sequence = _dimensionSequence++,
+            IsAscending = true
+        });
+    }
+
+    private void AddMeasure(string displayValue, Func<IMeasureData<T>, decimal> aggregator, string format)
+    {
+        _measures.Add(new()
+        {
+            DisplayValue = displayValue,
+            Aggragate = aggregator,
+            Format = format,
+            Sequence = _measureSequence++,
+            IsEnabled = false
+        });
+    }
+
+    private void SetAxis(bool isRow, params string[] propertyNames)
+    {
+        int sequence = _dimensions
+            .Where(d => d.IsEnabled && d.IsRow == isRow)
+            .Select(d => d.Sequence)
+            .DefaultIfEmpty(-1)
+            .Max() + 1;
+
+        foreach (string propertyName in propertyNames)
+        {
+            Dimension<T> dimension = FindDimension(propertyName);
+            dimension.IsEnabled = true;
+            dimension.IsRow = isRow;
+            dimension.Sequence = sequence++;
+        }
+
+        NormalizeDimensionSequences();
+    }
+
+    private Dimension<T> FindDimension(string propertyName)
+    {
+        var label = GetLabel(propertyName);
+        return _dimensions.FirstOrDefault(d => d.DisplayValue == label)
+            ?? throw new InvalidOperationException(`$"No se encontró la dimensión para '{propertyName}'.");
+    }
+
+    private void NormalizeDimensionSequences()
+    {
+        int rowSequence = 0;
+        foreach (Dimension<T> dim in _dimensions.Where(d => d.IsEnabled && d.IsRow).OrderBy(d => d.Sequence))
+        {
+            dim.Sequence = rowSequence++;
+        }
+
+        int columnSequence = 0;
+        foreach (Dimension<T> dim in _dimensions.Where(d => d.IsEnabled && !d.IsRow).OrderBy(d => d.Sequence))
+        {
+            dim.Sequence = columnSequence++;
+        }
+    }
+
+    private string GetLabel(string propertyName)
+    {
+        if (_labels.TryGetValue(propertyName, out var label))
+        {
+            return label;
+        }
+
+        PropertyInfo property = typeof(T).GetProperty(propertyName, BindingFlags.Public | BindingFlags.Instance);
+        var displayName = property?.GetCustomAttribute<DisplayNameAttribute>()?.DisplayName;
+
+        if (string.IsNullOrWhiteSpace(displayName) == false)
+        {
+            return displayName;
+        }
+
+        return CamelCaseSplitterRegex().Replace(propertyName, " ");
+    }
+
+    private IEnumerable<PropertyInfo> GetProperties(params Type[] types)
+    {
+        return typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance)
+            .Where(p => types.Contains(p.PropertyType) && !_excludedDimensions.Contains(p.Name));
+    }
+
+    private IEnumerable<PropertyInfo> GetMeasureProperties(params Type[] types)
+    {
+        return typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance)
+            .Where(p => types.Contains(p.PropertyType) && !_excludedMeasures.Contains(p.Name));
+    }
+}
+"@ | Set-Content "src/Presentation/Views/Shared/Components/PivotBuilder.cs"
 
 Write-Host "Creating CI/CD files..." -ForegroundColor Yellow
 
