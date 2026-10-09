@@ -174,6 +174,7 @@ Remove-Item "tests/UnitTests/UnitTest1.cs" -Force -ErrorAction SilentlyContinue
 
 Remove-Item -Path "src/Presentation/Client/Layout" -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item -Path "src/Presentation/Client/Pages" -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item -Path "src/Presentation/Client/wwwroot/sample-data" -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item -Path "src/Presentation/Client/wwwroot/lib/bootstrap" -Recurse -Force -ErrorAction SilentlyContinue
 
 # Remove <Nullable>enable</Nullable> from every generated .csproj
@@ -1159,47 +1160,47 @@ namespace $ProjectName.ViewModels.Auth
 
 <PageTitle>Iniciar sesión</PageTitle>
 
-<div class="flex flex-col flex-1 justify-center items-center w-full pt-8 pb-6">
-    <div class="bg-white rounded-lg shadow-sm border border-blue-600 p-6" style="max-width: 420px; width: 100%;">
-        <div class="text-center mb-4">
-            <span class="inline-flex items-center justify-center rounded-full bg-blue-600 bg-opacity-10 text-blue-600 mb-2"
-                  style="width: 56px; height: 56px;">
-                <i class="bi bi-person-lock text-2xl" aria-hidden="true"></i>
-            </span>
-            <h1 class="text-xl font-semibold mb-0">Iniciar sesión</h1>
-            <p class="text-gray-500 text-sm mb-0">$ProjectName</p>
+<div class="flex min-h-full flex-1 items-center justify-center px-4 py-10 sm:px-6">
+    <div class="w-full max-w-md rounded-xl border border-gray-200 bg-white p-6 shadow-lg sm:p-8">
+        <div class="mb-8">
+            <div class="mb-6 inline-flex h-12 w-12 items-center justify-center rounded-lg bg-blue-50 text-blue-700">
+                <i class="bi bi-shield-lock text-2xl" aria-hidden="true"></i>
+            </div>
+            <p class="mb-2 text-xs font-semibold uppercase tracking-wider text-blue-700">$ProjectName</p>
+            <h1 class="text-2xl font-bold text-gray-900">Iniciar sesión</h1>
+            <p class="mt-2 text-sm text-gray-600">Ingresa tus credenciales para continuar.</p>
         </div>
 
         <EditForm Model="@ViewModel.Request" OnValidSubmit="@SubmitAsync" FormName="loginForm">
-            <div class="mb-4">
-                <label for="loginEmail" class="block text-sm font-semibold text-gray-700 mb-1.5">User Email</label>
+            <div class="mb-5">
+                <label for="loginEmail" class="mb-2 block text-sm font-medium text-gray-700">Correo electrónico</label>
                 <div class="relative">
-                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
                         <i class="bi bi-envelope text-gray-400" aria-hidden="true"></i>
                     </div>
                     <InputText id="loginEmail"
                                type="email"
-                               class="block w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 text-sm transition duration-200 ease-in-out focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed"
+                               class="block w-full rounded-lg border border-gray-300 bg-white py-3 pl-10 pr-4 text-sm text-gray-900 placeholder-gray-400 transition duration-200 focus:border-blue-600 focus:outline-none focus:ring-4 focus:ring-blue-600/20 disabled:cursor-not-allowed disabled:opacity-60"
                                placeholder="nombre@empresa.com"
                                @bind-Value="ViewModel.Request.UserEmail"
                                disabled="@ViewModel.IsLoading" />
                 </div>
             </div>
 
-            <div class="mb-4">
-                <label for="loginPassword" class="block text-sm font-semibold text-gray-700 mb-1.5">Password</label>
+            <div class="mb-6">
+                <label for="loginPassword" class="mb-2 block text-sm font-medium text-gray-700">Contraseña</label>
                 <div class="relative flex">
-                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
                         <i class="bi bi-lock text-gray-400" aria-hidden="true"></i>
                     </div>
                     <InputText id="loginPassword"
                                type="@LoginPasswordType"
-                               class="block w-full pl-10 pr-12 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 text-sm transition duration-200 ease-in-out focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed"
+                               class="block w-full rounded-lg border border-gray-300 bg-white py-3 pl-10 pr-12 text-sm text-gray-900 placeholder-gray-400 transition duration-200 focus:border-blue-600 focus:outline-none focus:ring-4 focus:ring-blue-600/20 disabled:cursor-not-allowed disabled:opacity-60"
                                placeholder="••••••••"
                                @bind-Value="ViewModel.Request.Password"
                                disabled="@ViewModel.IsLoading" />
                     <button type="button"
-                            class="absolute inset-y-0 right-0 px-3 flex items-center justify-center text-gray-500 hover:text-blue-600 transition duration-200 rounded-r-lg"
+                            class="absolute inset-y-0 right-0 flex items-center justify-center rounded-r-lg px-3 text-gray-500 transition duration-200 hover:text-blue-700"
                             @onclick="ToggleLoginPasswordVisibility"
                             tabindex="-1"
                             title="@(IsLoginPasswordVisible ? "Ocultar contraseña" : "Mostrar contraseña")"
@@ -1211,14 +1212,14 @@ namespace $ProjectName.ViewModels.Auth
 
             @if (!string.IsNullOrEmpty(ViewModel.ErrorMessage))
             {
-                <div class="bg-red-50 text-red-700 p-4 rounded-md flex items-start gap-2 py-2" role="alert">
+                <div class="mb-5 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-red-700" role="alert">
                     <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
                     <span class="text-sm">@ViewModel.ErrorMessage</span>
                 </div>
             }
 
             <button type="submit"
-                    class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 text-white bg-blue-600 hover:bg-blue-700 focus:ring-blue-500 w-full flex justify-center items-center gap-2"
+                    class="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-transparent bg-blue-700 px-4 py-3 text-sm font-semibold text-white transition duration-200 hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
                     disabled="@ViewModel.IsLoading">
                 @if (ViewModel.IsLoading)
                 {
@@ -1232,8 +1233,9 @@ namespace $ProjectName.ViewModels.Auth
             </button>
         </EditForm>
 
-        <div class="mt-3 text-center">
-            <a href="registro" class="text-blue-600 hover:text-blue-800 underline text-sm">¿No tienes cuenta? Regístrate</a>
+        <div class="mt-6 border-t border-gray-200 pt-5 text-center">
+            <span class="text-sm text-gray-600">¿No tienes cuenta?</span>
+            <a href="registro" class="ml-1 text-sm font-semibold text-blue-700 hover:text-blue-800">Regístrate</a>
         </div>
     </div>
 </div>
@@ -1271,62 +1273,62 @@ public partial class Login : ComponentBase
 
 <PageTitle>Registro de usuario</PageTitle>
 
-<div class="flex flex-col justify-center items-center w-full px-4 pt-8 pb-6">
-    <div class="bg-white rounded-lg shadow-sm w-full p-6" style="max-width: 420px; background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%); border: 1px solid #0d6efd;">
-        <div class="text-center mb-4">
-            <span class="inline-flex items-center justify-center rounded-full bg-green-600 bg-opacity-10 text-green-600 mb-2"
-                  style="width: 56px; height: 56px;">
+<div class="flex flex-1 items-center justify-center px-4 py-10 sm:px-6">
+    <div class="w-full max-w-md rounded-xl border border-gray-200 bg-white p-6 shadow-lg sm:p-8">
+        <div class="mb-8">
+            <div class="mb-6 inline-flex h-12 w-12 items-center justify-center rounded-lg bg-blue-50 text-blue-700">
                 <i class="bi bi-person-plus text-2xl" aria-hidden="true"></i>
-            </span>
-            <h1 class="text-xl font-semibold mb-0">Crear cuenta</h1>
-            <p class="text-gray-500 text-sm mb-0">$ProjectName</p>
+            </div>
+            <p class="mb-2 text-xs font-semibold uppercase tracking-wider text-blue-700">$ProjectName</p>
+            <h1 class="text-2xl font-bold text-gray-900">Crear cuenta</h1>
+            <p class="mt-2 text-sm text-gray-600">Completa tus datos para crear una cuenta.</p>
         </div>
 
         <EditForm Model="@RegisterRequest" OnValidSubmit="@SubmitAsync" FormName="registerForm">
-            <div class="mb-4">
-                <label for="registerName" class="block text-sm font-semibold text-gray-700 mb-1.5">Nombre</label>
+            <div class="mb-5">
+                <label for="registerName" class="mb-2 block text-sm font-medium text-gray-700">Nombre</label>
                 <div class="relative">
-                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
                         <i class="bi bi-person text-gray-400" aria-hidden="true"></i>
                     </div>
                     <InputText id="registerName"
                                type="text"
-                               class="block w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 text-sm transition duration-200 ease-in-out focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed"
+                               class="block w-full rounded-lg border border-gray-300 bg-white py-3 pl-10 pr-4 text-sm text-gray-900 placeholder-gray-400 transition duration-200 focus:border-blue-600 focus:outline-none focus:ring-4 focus:ring-blue-600/20 disabled:cursor-not-allowed disabled:opacity-60"
                                placeholder="Tu nombre"
                                @bind-Value="RegisterRequest.UserName"
                                disabled="@IsLoading" />
                 </div>
             </div>
 
-            <div class="mb-4">
-                <label for="registerEmail" class="block text-sm font-semibold text-gray-700 mb-1.5">Correo electrónico</label>
+            <div class="mb-5">
+                <label for="registerEmail" class="mb-2 block text-sm font-medium text-gray-700">Correo electrónico</label>
                 <div class="relative">
-                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
                         <i class="bi bi-envelope text-gray-400" aria-hidden="true"></i>
                     </div>
                     <InputText id="registerEmail"
                                type="email"
-                               class="block w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 text-sm transition duration-200 ease-in-out focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed"
+                               class="block w-full rounded-lg border border-gray-300 bg-white py-3 pl-10 pr-4 text-sm text-gray-900 placeholder-gray-400 transition duration-200 focus:border-blue-600 focus:outline-none focus:ring-4 focus:ring-blue-600/20 disabled:cursor-not-allowed disabled:opacity-60"
                                placeholder="nombre@empresa.com"
                                @bind-Value="RegisterRequest.UserEmail"
                                disabled="@IsLoading" />
                 </div>
             </div>
 
-            <div class="mb-4">
-                <label for="registerPassword" class="block text-sm font-semibold text-gray-700 mb-1.5">Contraseña</label>
+            <div class="mb-5">
+                <label for="registerPassword" class="mb-2 block text-sm font-medium text-gray-700">Contraseña</label>
                 <div class="relative flex">
-                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
                         <i class="bi bi-lock text-gray-400" aria-hidden="true"></i>
                     </div>
                     <InputText id="registerPassword"
                                type="@RegisterPasswordType"
-                               class="block w-full pl-10 pr-12 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 text-sm transition duration-200 ease-in-out focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed"
+                               class="block w-full rounded-lg border border-gray-300 bg-white py-3 pl-10 pr-12 text-sm text-gray-900 placeholder-gray-400 transition duration-200 focus:border-blue-600 focus:outline-none focus:ring-4 focus:ring-blue-600/20 disabled:cursor-not-allowed disabled:opacity-60"
                                placeholder="••••••••"
                                @bind-Value="RegisterRequest.Password"
                                disabled="@IsLoading" />
                     <button type="button"
-                            class="absolute inset-y-0 right-0 px-3 flex items-center justify-center text-gray-500 hover:text-blue-600 transition duration-200 rounded-r-lg"
+                            class="absolute inset-y-0 right-0 flex items-center justify-center rounded-r-lg px-3 text-gray-500 transition duration-200 hover:text-blue-700"
                             @onclick="ToggleRegisterPasswordVisibility"
                             tabindex="-1"
                             title="@(IsRegisterPasswordVisible ? "Ocultar contraseña" : "Mostrar contraseña")"
@@ -1336,20 +1338,20 @@ public partial class Login : ComponentBase
                 </div>
             </div>
 
-            <div class="mb-4">
-                <label for="registerConfirmPassword" class="block text-sm font-semibold text-gray-700 mb-1.5">Confirmar contraseña</label>
+            <div class="mb-6">
+                <label for="registerConfirmPassword" class="mb-2 block text-sm font-medium text-gray-700">Confirmar contraseña</label>
                 <div class="relative flex">
-                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
                         <i class="bi bi-lock text-gray-400" aria-hidden="true"></i>
                     </div>
                     <InputText id="registerConfirmPassword"
                                type="@ConfirmPasswordType"
-                               class="block w-full pl-10 pr-12 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 text-sm transition duration-200 ease-in-out focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed"
+                               class="block w-full rounded-lg border border-gray-300 bg-white py-3 pl-10 pr-12 text-sm text-gray-900 placeholder-gray-400 transition duration-200 focus:border-blue-600 focus:outline-none focus:ring-4 focus:ring-blue-600/20 disabled:cursor-not-allowed disabled:opacity-60"
                                placeholder="••••••••"
                                @bind-Value="ConfirmPassword"
                                disabled="@IsLoading" />
                     <button type="button"
-                            class="absolute inset-y-0 right-0 px-3 flex items-center justify-center text-gray-500 hover:text-blue-600 transition duration-200 rounded-r-lg"
+                            class="absolute inset-y-0 right-0 flex items-center justify-center rounded-r-lg px-3 text-gray-500 transition duration-200 hover:text-blue-700"
                             @onclick="ToggleConfirmPasswordVisibility"
                             tabindex="-1"
                             title="@(IsConfirmPasswordVisible ? "Ocultar contraseña" : "Mostrar contraseña")"
@@ -1361,14 +1363,14 @@ public partial class Login : ComponentBase
 
             @if (!string.IsNullOrEmpty(Message))
             {
-                <div class="@(IsSuccess ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700") p-4 rounded-md flex items-start gap-2 py-2" role="alert">
+                <div class="@(IsSuccess ? "border-green-200 bg-green-50 text-green-700" : "border-red-200 bg-red-50 text-red-700") mb-5 flex items-start gap-2 rounded-lg border px-3 py-2" role="alert">
                     <i class="bi @(IsSuccess ? "bi-check-circle-fill" : "bi-exclamation-triangle-fill")" aria-hidden="true"></i>
                     <span class="text-sm">@Message</span>
                 </div>
             }
 
-            <button type="submit"
-                    class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 text-white bg-green-600 hover:bg-green-700 focus:ring-green-500 w-full flex justify-center items-center gap-2"
+                <button type="submit"
+                    class="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-transparent bg-blue-700 px-4 py-3 text-sm font-semibold text-white transition duration-200 hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
                     disabled="@IsLoading">
                 @if (IsLoading)
                 {
@@ -1382,8 +1384,9 @@ public partial class Login : ComponentBase
             </button>
         </EditForm>
 
-        <div class="mt-3 text-center">
-            <a href="login" class="text-blue-600 hover:text-blue-800 underline text-sm">¿Ya tienes cuenta? Inicia sesión</a>
+        <div class="mt-6 border-t border-gray-200 pt-5 text-center">
+            <span class="text-sm text-gray-600">¿Ya tienes cuenta?</span>
+            <a href="login" class="ml-1 text-sm font-semibold text-blue-700 hover:text-blue-800">Inicia sesión</a>
         </div>
     </div>
 </div>
