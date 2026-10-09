@@ -114,37 +114,12 @@ Get-ChildItem -Path 'src' -Recurse -Filter *.csproj | ForEach-Object {
 }
 
 # =========================
-# CREATE BASE FOLDERS (Vertical Slice)
-# =========================
-$sampleFeature = "Greeting"
-
-# Domain structure (por feature)
-New-Item -ItemType Directory -Path "src/Domain/Entities/$sampleFeature" -Force | Out-Null
-New-Item -ItemType Directory -Path "src/Domain/Ports/$sampleFeature" -Force | Out-Null
-
-# Application structure (por feature / acción)
-New-Item -ItemType Directory -Path "src/Application/UseCases/UseCases/$sampleFeature" -Force | Out-Null
-New-Item -ItemType Directory -Path "src/Application/UseCases/Options" -Force | Out-Null
-
-# Infrastructure structure (por feature)
-New-Item -ItemType Directory -Path "src/Infrastructure/$sampleFeature" -Force | Out-Null
-
-# Keep feature folders visible in Visual Studio Solution Explorer
-"" | Set-Content "src/Domain/Entities/$sampleFeature/.gitkeep"
-"" | Set-Content "src/Domain/Ports/$sampleFeature/.gitkeep"
-"" | Set-Content "src/Application/UseCases/UseCases/$sampleFeature/.gitkeep"
-"" | Set-Content "src/Infrastructure/$sampleFeature/.gitkeep"
-
-# =========================
 # CREATE BASIC FILES
 # =========================
 
 # appsettings.json
 Out-File -FilePath "src/Presentation/Console/appsettings.json" -InputObject @'
 {
-    "EnvironmentOptions": {
-        "EnvironmentName": "Production"
-    },
     "Logging": {
         "LogLevel": {
             "Default": "Information",
@@ -157,9 +132,6 @@ Out-File -FilePath "src/Presentation/Console/appsettings.json" -InputObject @'
 # appsettings.Development.json
 Out-File -FilePath "src/Presentation/Console/appsettings.Development.json" -InputObject @'
 {
-    "EnvironmentOptions": {
-        "EnvironmentName": "Development"
-    },
     "Logging": {
         "LogLevel": {
             "Default": "Debug"
@@ -183,80 +155,10 @@ foreach ($file in @("appsettings.json", "appsettings.Development.json")) {
 $csprojXml.Project.AppendChild($itemGroup) | Out-Null
 $csprojXml.Save((Resolve-Path $csprojPath))
 
-# Domain port (hexagonal architecture)
-@"
-namespace $ProjectName.Domain.Ports.Greeting
-{
-    public interface IGreetingPort
-    {
-        string GetGreeting(string name);
-    }
-}
-"@ | Set-Content "src/Domain/Ports/Greeting/IGreetingPort.cs"
-
-# Domain GlobalUsings
-@"
-global using $ProjectName.Domain.Ports.Greeting;
-"@ | Set-Content "src/Domain/GlobalUsings.cs"
-
-# Application use case interface
-@"
-namespace $ProjectName.UseCases.UseCases.Greeting
-{
-    public interface IGreetingUseCase
-    {
-        string Execute(string name);
-    }
-}
-"@ | Set-Content "src/Application/UseCases/UseCases/Greeting/IGreetingUseCase.cs"
-
-# Application service / use case (hexagonal architecture)
-@"
-namespace $ProjectName.UseCases.UseCases.Greeting
-{
-    public class GreetingUseCase(IGreetingPort greetingPort, IOptions<EnvironmentOptions> options) : IGreetingUseCase
-    {
-        public string Execute(string name)
-        {
-            string env = options.Value.EnvironmentName;
-            return greetingPort.GetGreeting($"{name} ({env})");
-        }
-    }
-}
-"@ | Set-Content "src/Application/UseCases/UseCases/Greeting/GreetingUseCase.cs"
-
-
-
-# Infrastructure adapter (hexagonal architecture)
-@"
-namespace $ProjectName.Infrastructure.Greeting
-{
-    public class ConsoleGreetingAdapter : IGreetingPort
-    {
-        public string GetGreeting(string name) => $"Hello, {name}! Welcome to the hexagonal console app.";
-    }
-}
-"@ | Set-Content "src/Infrastructure/Greeting/ConsoleGreetingAdapter.cs"
-
-# Application Options
-@"
-namespace $ProjectName.UseCases.Options
-{
-    public class EnvironmentOptions
-    {
-        public const string SectionKey = nameof(EnvironmentOptions);
-        public string EnvironmentName { get; set; } = "Production";
-    }
-}
-"@ | Set-Content "src/Application/UseCases/Options/EnvironmentOptions.cs"
-
 # Application GlobalUsings
 @"
 global using DevKit.Injection.Extensions;
 global using Microsoft.Extensions.DependencyInjection;
-global using Microsoft.Extensions.Options;
-global using $ProjectName.Domain.Ports.Greeting;
-global using $ProjectName.UseCases.Options;
 "@ | Set-Content "src/Application/UseCases/GlobalUsings.cs"
 
 # Infrastructure DependencyContainer
@@ -278,10 +180,6 @@ namespace $ProjectName.Infrastructure
 @"
 global using DevKit.Injection.Extensions;
 global using Microsoft.Extensions.DependencyInjection;
-global using Microsoft.Extensions.Options;
-global using $ProjectName.Domain.Ports.Greeting;
-global using $ProjectName.UseCases.Options;
-global using $ProjectName.UseCases.UseCases.Greeting;
 "@ | Set-Content "src/Infrastructure/GlobalUsings.cs"
 
 # Application DependencyContainer
@@ -305,9 +203,8 @@ namespace $ProjectName.IoC
 {
     public static class DependencyContainer
     {
-        public static IServiceCollection AddIoC(this IServiceCollection services, IConfiguration configuration)
+        public static IServiceCollection AddIoC(this IServiceCollection services)
         {
-            services.Configure<EnvironmentOptions>(configuration.GetSection(EnvironmentOptions.SectionKey));
             services.AddInfrastructure()
                     .AddUseCases();
             return services;
@@ -322,16 +219,12 @@ global using DevKit.Injection.Extensions;
 global using Microsoft.Extensions.Configuration;
 global using Microsoft.Extensions.DependencyInjection;
 global using $ProjectName.Infrastructure;
-global using $ProjectName.Domain.Ports.Greeting;
 global using $ProjectName.UseCases;
-global using $ProjectName.UseCases.Options;
-global using $ProjectName.UseCases.UseCases.Greeting;
 "@ | Set-Content "src/Presentation/IoC/GlobalUsings.cs"
 
 # Console Program.cs (Generic Host + DI + appsettings + Hexagonal Architecture)
 @"
 using $ProjectName.IoC;
-using $ProjectName.UseCases.UseCases.Greeting;
 
 IHostBuilder builder = Host.CreateDefaultBuilder(args)
     .ConfigureAppConfiguration((context, config) =>
@@ -339,16 +232,12 @@ IHostBuilder builder = Host.CreateDefaultBuilder(args)
         config.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
         config.AddEnvironmentVariables();
     })
-    .ConfigureServices((context, services) =>
+    .ConfigureServices((_, services) =>
     {
-        services.AddIoC(context.Configuration);
+        services.AddIoC();
     });
 
 using IHost host = builder.Build();
-
-IGreetingUseCase useCase = host.Services.GetRequiredService<IGreetingUseCase>();
-string name = args.Length > 0 ? args[0] : "World";
-System.Console.WriteLine(useCase.Execute(name));
 "@ | Set-Content "src/Presentation/Console/Program.cs"
 
 # Console GlobalUsings
@@ -357,7 +246,6 @@ global using Microsoft.Extensions.Configuration;
 global using Microsoft.Extensions.DependencyInjection;
 global using Microsoft.Extensions.Hosting;
 global using $ProjectName.IoC;
-global using $ProjectName.UseCases.UseCases.Greeting;
 "@ | Set-Content "src/Presentation/Console/GlobalUsings.cs"
 
 # Git ignore
