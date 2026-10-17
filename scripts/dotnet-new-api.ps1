@@ -137,6 +137,7 @@ New-Item -ItemType Directory -Path "tests"
 dotnet new web -n "$ProjectName.WebApi" -o "src/Presentation/Api"
 
 # Application sub-projects (separate projects)
+dotnet new classlib -n "$ProjectName.Abstractions" -o "src/Application/Abstractions"
 dotnet new classlib -n "$ProjectName.Commands" -o "src/Application/Commands"
 dotnet new classlib -n "$ProjectName.Models" -o "src/Application/Models"
 dotnet new classlib -n "$ProjectName.Queries" -o "src/Application/Queries"
@@ -182,6 +183,10 @@ if ($USE_EXTERNAL_APIS) {
     dotnet new classlib -n "$ProjectName.WebApis" -o "src/Infrastructure/WebApis"
 }
 
+if ($USE_REDIS) {
+    dotnet new classlib -n "$ProjectName.Redis" -o "src/Infrastructure/Redis"
+}
+
 # Azure Key Vault (opcional)
 if ($USE_KEYVAULT) {
     dotnet new classlib -n "$ProjectName.AzureKeyVault" -o "src/Infrastructure/AzureKeyVault"
@@ -205,6 +210,7 @@ if ($LASTEXITCODE -ne 0 -or -not (Test-Path "tests/UnitTests")) {
 }
 
 # Remove default Class1.cs files
+Remove-Item "src/Application/Abstractions/Class1.cs" -Force -ErrorAction SilentlyContinue
 Remove-Item "src/Application/Commands/Class1.cs" -Force -ErrorAction SilentlyContinue
 Remove-Item "src/Application/Models/Class1.cs" -Force -ErrorAction SilentlyContinue
 Remove-Item "src/Application/Queries/Class1.cs" -Force -ErrorAction SilentlyContinue
@@ -219,6 +225,7 @@ if ($USE_ORACLE) { Remove-Item "src/Infrastructure/DataBases/Oracle/Class1.cs" -
 if ($USE_MONGO) { Remove-Item "src/Infrastructure/DataBases/MongoDB/Class1.cs" -Force -ErrorAction SilentlyContinue }
 if ($USE_RABBITMQ) { Remove-Item "src/Infrastructure/Messaging/RabbitMQ/Class1.cs" -Force -ErrorAction SilentlyContinue }
 if ($USE_EXTERNAL_APIS) { Remove-Item "src/Infrastructure/WebApis/Class1.cs" -Force -ErrorAction SilentlyContinue }
+if ($USE_REDIS) { Remove-Item "src/Infrastructure/Redis/Class1.cs" -Force -ErrorAction SilentlyContinue }
 if ($USE_KEYVAULT) { Remove-Item "src/Infrastructure/AzureKeyVault/Class1.cs" -Force -ErrorAction SilentlyContinue }
 Remove-Item "tests/UnitTests/Class1.cs" -Force -ErrorAction SilentlyContinue
 Remove-Item "tests/UnitTests/UnitTest1.cs" -Force -ErrorAction SilentlyContinue
@@ -235,6 +242,7 @@ Get-ChildItem -Path 'src','tests' -Recurse -Filter *.csproj | ForEach-Object {
 # =========================
 
 dotnet sln add src/Presentation/Api
+dotnet sln add src/Application/Abstractions
 dotnet sln add src/Application/Commands
 dotnet sln add src/Application/Models
 dotnet sln add src/Application/Queries
@@ -249,6 +257,7 @@ if ($USE_ORACLE) { dotnet sln add src/Infrastructure/DataBases/Oracle }
 if ($USE_MONGO) { dotnet sln add src/Infrastructure/DataBases/MongoDB }
 if ($USE_RABBITMQ) { dotnet sln add src/Infrastructure/Messaging/RabbitMQ }
 if ($USE_EXTERNAL_APIS) { dotnet sln add src/Infrastructure/WebApis }
+if ($USE_REDIS) { dotnet sln add src/Infrastructure/Redis }
 if ($USE_KEYVAULT) { dotnet sln add src/Infrastructure/AzureKeyVault }
 dotnet sln add tests/UnitTests
 
@@ -262,11 +271,21 @@ dotnet add src/Application/Models reference src/Domain
 dotnet add src/Application/Queries reference src/Domain
 dotnet add src/Application/Validators reference src/Domain
 
+dotnet add src/Application/Abstractions reference src/Domain
+dotnet add src/Application/Abstractions reference src/Application/Models
+dotnet add src/Application/Commands reference src/Application/Abstractions
+dotnet add src/Application/Commands reference src/Application/Models
+dotnet add src/Application/Queries reference src/Application/Abstractions
+dotnet add src/Application/Queries reference src/Application/Models
+dotnet add src/Application/Validators reference src/Application/Commands
+dotnet add src/Application/Validators reference src/Application/Models
+
 # Controllers depend only on Application layer projects
 dotnet add src/Presentation/Controllers reference src/Application/Commands
 dotnet add src/Presentation/Controllers reference src/Application/Queries
 dotnet add src/Presentation/Controllers reference src/Application/Models
 # IoC depends on all Application projects + Infrastructure + Domain
+dotnet add src/Presentation/IoC reference src/Application/Abstractions
 dotnet add src/Presentation/IoC reference src/Application/Commands
 dotnet add src/Presentation/IoC reference src/Application/Models
 dotnet add src/Presentation/IoC reference src/Application/Queries
@@ -278,10 +297,10 @@ if ($USE_POSTGRES) { dotnet add src/Presentation/IoC reference src/Infrastructur
 if ($USE_ORACLE) { dotnet add src/Presentation/IoC reference src/Infrastructure/DataBases/Oracle }
 if ($USE_MONGO) { dotnet add src/Presentation/IoC reference src/Infrastructure/DataBases/MongoDB }
 if ($USE_EXTERNAL_APIS) { dotnet add src/Presentation/IoC reference src/Infrastructure/WebApis }
+if ($USE_REDIS) { dotnet add src/Presentation/IoC reference src/Infrastructure/Redis }
 if ($USE_KEYVAULT) { dotnet add src/Presentation/IoC reference src/Infrastructure/AzureKeyVault }
 dotnet add src/Presentation/IoC reference src/Domain
 
-# Infrastructure depends only on Domain (implements interfaces defined there)
 if ($USE_SQLSERVER) { dotnet add src/Infrastructure/DataBases/SQLServer reference src/Domain }
 if ($USE_MYSQL) { dotnet add src/Infrastructure/DataBases/MySQL reference src/Domain }
 if ($USE_POSTGRES) { dotnet add src/Infrastructure/DataBases/PostgreSQL reference src/Domain }
@@ -301,10 +320,25 @@ if ($USE_SQLSERVER -and $USE_KEYVAULT) {
     dotnet add src/Infrastructure/DataBases/SQLServer reference src/Infrastructure/AzureKeyVault
 }
 
+$applicationPortAdapters = @()
+if ($USE_SQLSERVER) { $applicationPortAdapters += "src/Infrastructure/DataBases/SQLServer" }
+if ($USE_MYSQL) { $applicationPortAdapters += "src/Infrastructure/DataBases/MySQL" }
+if ($USE_POSTGRES) { $applicationPortAdapters += "src/Infrastructure/DataBases/PostgreSQL" }
+if ($USE_ORACLE) { $applicationPortAdapters += "src/Infrastructure/DataBases/Oracle" }
+if ($USE_MONGO) { $applicationPortAdapters += "src/Infrastructure/DataBases/MongoDB" }
+if ($USE_RABBITMQ) { $applicationPortAdapters += "src/Infrastructure/Messaging/RabbitMQ" }
+if ($USE_EXTERNAL_APIS) { $applicationPortAdapters += "src/Infrastructure/WebApis" }
+if ($USE_REDIS) { $applicationPortAdapters += "src/Infrastructure/Redis" }
+if ($USE_KEYVAULT) { $applicationPortAdapters += "src/Infrastructure/AzureKeyVault" }
+foreach ($adapter in $applicationPortAdapters) {
+    dotnet add $adapter reference src/Application/Abstractions
+}
+
 # API depends on IoC
 dotnet add src/Presentation/Api reference src/Presentation/IoC
 
 # Tests
+dotnet add tests/UnitTests reference src/Application/Abstractions
 dotnet add tests/UnitTests reference src/Domain
 dotnet add tests/UnitTests reference src/Application/Commands
 dotnet add tests/UnitTests reference src/Application/Queries
@@ -350,7 +384,9 @@ dotnet add src/Presentation/IoC package FluentValidation
 dotnet add src/Presentation/IoC package DependencyInjection.ReflectionExtensions
 dotnet add src/Presentation/IoC package CoreJsonWebToken
 if ($USE_REDIS) {
-    dotnet add src/Presentation/IoC package DevKit.ExecutionEngine.Redis
+    dotnet add src/Infrastructure/Redis package StackExchange.Redis
+    dotnet add src/Infrastructure/Redis package Microsoft.Extensions.Options
+    dotnet add src/Infrastructure/Redis package Microsoft.Extensions.DependencyInjection.Abstractions
 }
 
 # Infrastructure
@@ -866,6 +902,324 @@ if ($USE_EXTERNAL_APIS) {
     $webApisGlobalUsings | Set-Content "src/Infrastructure/WebApis/GlobalUsings.cs"
 }
 
+if ($USE_REDIS) {
+    New-Item -ItemType Directory -Path "src/Infrastructure/Redis/Options", "src/Application/Abstractions/Caching" -Force | Out-Null
+
+    @"
+global using System.Linq.Expressions;
+global using System.Reflection;
+global using System.Text.Json;
+global using Microsoft.Extensions.DependencyInjection;
+global using Microsoft.Extensions.Options;
+global using StackExchange.Redis;
+global using $ProjectName.Abstractions.Caching;
+global using $ProjectName.Redis.Options;
+"@ | Set-Content "src/Infrastructure/Redis/GlobalUsings.cs"
+
+    @"
+namespace $ProjectName.Redis;
+
+public static class DependencyContainer
+{
+    public static IServiceCollection AddRedisCache(this IServiceCollection services)
+    {
+        services.AddSingleton<IConnectionMultiplexer>(provider =>
+        {
+            RedisOptions options = provider.GetRequiredService<IOptions<RedisOptions>>().Value;
+            ConfigurationOptions configuration = ConfigurationOptions.Parse(options.ConnectionRedis);
+            configuration.ConnectRetry = 3;
+            configuration.SyncTimeout = 10000;
+            configuration.AbortOnConnectFail = true;
+            configuration.KeepAlive = 180;
+            return ConnectionMultiplexer.Connect(configuration);
+        });
+        services.AddSingleton<ICacheService, CacheService>();
+        return services;
+    }
+}
+"@ | Set-Content "src/Infrastructure/Redis/DependencyContainer.cs"
+
+    @"
+namespace $ProjectName.Redis.Options;
+
+public class RedisOptions
+{
+    public const string SectionKey = nameof(RedisOptions);
+    public string ConnectionRedis { get; set; }
+    public string Environment { get; set; }
+    public int DiasCache { get; set; }
+}
+"@ | Set-Content "src/Infrastructure/Redis/Options/RedisOptions.cs"
+
+    @"
+using System.Linq.Expressions;
+
+namespace $ProjectName.Abstractions.Caching;
+
+public interface ICacheService
+{
+    Task<T> GetOrSetAsync<T>(Expression<Func<Task<T>>> expression);
+    Task InvalidateAsync(params Expression[] expressions);
+}
+"@ | Set-Content "src/Application/Abstractions/Caching/ICacheService.cs"
+
+    $redisCacheService = @'
+namespace __PROJECT_NAME__.Redis;
+
+internal class CacheService : ICacheService
+{
+    private readonly IOptions<RedisOptions> RedisOptions;
+    private readonly IDatabase DataBase;
+
+    public CacheService(IOptions<RedisOptions> redisOptions, IConnectionMultiplexer connection)
+    {
+        RedisOptions = redisOptions;
+        DataBase = connection.GetDatabase();
+    }
+
+    public async Task<T> GetOrSetAsync<T>(Expression<Func<Task<T>>> expression)
+    {
+        string fullKey = BuildKey(ExpressionConditionExtractor.BuildRedisKey(expression));
+        RedisValue cached = await DataBase.StringGetAsync(fullKey);
+        if (cached.HasValue)
+        {
+            return JsonSerializer.Deserialize<T>((string)cached);
+        }
+
+        T value = await expression.Compile()();
+        if (IsNullOrEmpty(value))
+        {
+            return value;
+        }
+
+        TimeSpan effectiveTtl = TimeSpan.FromDays(Math.Max(0, RedisOptions.Value.DiasCache));
+        if (effectiveTtl > TimeSpan.Zero)
+        {
+            await DataBase.StringSetAsync(fullKey, JsonSerializer.Serialize(value), effectiveTtl);
+        }
+        return value;
+    }
+
+    public async Task InvalidateAsync(params Expression[] expressions)
+    {
+        if (expressions == null || expressions.Length == 0)
+        {
+            return;
+        }
+
+        IEnumerable<Task<bool>> tasks = expressions.OfType<LambdaExpression>()
+            .Select(lambda => DataBase.KeyDeleteAsync(BuildKey(ExpressionConditionExtractor.BuildRedisKey(lambda))));
+        await Task.WhenAll(tasks);
+    }
+
+    private static bool IsNullOrEmpty<T>(T value) => value switch
+    {
+        null => true,
+        string text => string.IsNullOrWhiteSpace(text),
+        System.Collections.IEnumerable enumerable => !enumerable.Cast<object>().Any(),
+        _ => false
+    };
+
+    private string BuildKey(string key) => $"{RedisOptions.Value.Environment}|{key}";
+}
+'@
+    $redisCacheService.Replace('__PROJECT_NAME__', $ProjectName) | Set-Content "src/Infrastructure/Redis/CacheService.cs"
+
+    $redisExpressionConditionExtractor = @'
+namespace __PROJECT_NAME__.Redis;
+
+public class ExpressionConditionExtractor : ExpressionVisitor
+{
+    public List<(string Property, string Operator, object Value)> Conditions { get; } = new();
+
+    public static string BuildRedisKey(LambdaExpression expression, int pageNumber = 0)
+    {
+        List<string> keyParts = expression.ReturnType == typeof(bool)
+            ? GetPredicateParts(expression)
+            : GetMethodCallParts(expression);
+        if (pageNumber > 0)
+        {
+            keyParts.Add($"Page:{pageNumber}");
+        }
+        return string.Join(":", keyParts);
+    }
+
+    protected override Expression VisitBinary(BinaryExpression binaryExpression)
+    {
+        if (binaryExpression.Left is MemberExpression memberExpression)
+        {
+            Conditions.Add((memberExpression.Member.Name, binaryExpression.NodeType.ToString(), GetValue(binaryExpression.Right)));
+        }
+        return base.VisitBinary(binaryExpression);
+    }
+
+    protected override Expression VisitMethodCall(MethodCallExpression methodCallExpression)
+    {
+        if (methodCallExpression.Object is MemberExpression memberExpression)
+        {
+            object argumentValue = methodCallExpression.Arguments.Count > 0
+                ? GetValue(methodCallExpression.Arguments[0]) : null;
+            Conditions.Add((memberExpression.Member.Name, methodCallExpression.Method.Name, argumentValue));
+        }
+        return base.VisitMethodCall(methodCallExpression);
+    }
+
+    private static List<string> GetPredicateParts(LambdaExpression expression)
+    {
+        ExpressionConditionExtractor extractor = new();
+        extractor.Visit(expression.Body);
+        List<string> parts = extractor.Conditions.OrderBy(condition => condition.Property)
+            .ThenBy(condition => condition.Operator)
+            .Select(condition => $"{condition.Property}{NormalizeOperator(condition.Operator)}{FormatValue(condition.Value)}")
+            .ToList();
+        return parts.Count > 0 ? parts : new List<string> { "ALL" };
+    }
+
+    private static List<string> GetMethodCallParts(LambdaExpression expression)
+    {
+        MethodCallExpression methodCall = expression.Body switch
+        {
+            MethodCallExpression call => call,
+            UnaryExpression { Operand: MethodCallExpression call } => call,
+            _ => throw new ArgumentException("La expresion debe ser una llamada a un metodo o un predicado.")
+        };
+        List<string> parts = new()
+        {
+            methodCall.Method.DeclaringType == null ? "Unknown" : GetCleanTypeName(methodCall.Method.DeclaringType),
+            methodCall.Method.Name,
+            GetCleanTypeName(methodCall.Method.ReturnType)
+        };
+        parts.AddRange(methodCall.Arguments.Where(argument => argument.Type != typeof(CancellationToken))
+            .Select(argument => FormatValue(GetValue(argument))));
+        return parts;
+    }
+
+    private static string NormalizeOperator(string operatorName) => operatorName switch
+    {
+        "Equal" => "=",
+        "NotEqual" => "!=",
+        "GreaterThan" => ">",
+        "GreaterThanOrEqual" => ">=",
+        "LessThan" => "<",
+        "LessThanOrEqual" => "<=",
+        "StartsWith" => "^=",
+        "EndsWith" => "=$",
+        "Contains" => "*=",
+        "In" => "IN",
+        "NotIn" => "NOT IN",
+        "IsNull" => "IS NULL",
+        "IsNotNull" => "IS NOT NULL",
+        "Between" => "BETWEEN",
+        _ => operatorName
+    };
+
+    private static string GetCleanTypeName(Type type)
+    {
+        if (type == typeof(Task))
+        {
+            return "Void";
+        }
+        if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Task<>))
+        {
+            return GetCleanTypeName(type.GetGenericArguments()[0]);
+        }
+        if (type.IsGenericType)
+        {
+            string typeName = type.Name.Split('`')[0];
+            return $"{typeName}|{string.Join("|", type.GetGenericArguments().Select(GetCleanTypeName))}|";
+        }
+        return type.Name;
+    }
+
+    private static string FormatValue(object value) => value switch
+    {
+        null => "NULL",
+        DateTime dateTime => dateTime.ToString("yyyy-MM-ddTHH:mm:ss"),
+        bool boolean => boolean ? "1" : "0",
+        string text => text,
+        LambdaExpression lambda => BuildRedisKey(lambda),
+        Dictionary<string, object> dictionary => string.Join(",", dictionary.Select(pair => $"{pair.Key}|{FormatValue(pair.Value)}")),
+        System.Collections.IEnumerable enumerable => $"[{string.Join(",", enumerable.Cast<object>().Select(item => item?.ToString() ?? "NULL"))}]",
+        _ => value.ToString()?.Trim()
+    };
+
+    private static object GetValue(Expression expression) => expression switch
+    {
+        ConstantExpression constant => constant.Value,
+        MemberExpression member => EvaluateMemberExpression(member),
+        UnaryExpression unary => EvaluateUnaryExpression(unary),
+        MethodCallExpression methodCall => EvaluateExpression(methodCall),
+        ParameterExpression parameter => parameter.Name,
+        BinaryExpression binary => EvaluateExpression(binary),
+        _ => null
+    };
+
+    private static object EvaluateMemberExpression(MemberExpression expression)
+    {
+        object result = Expression.Lambda(expression).Compile().DynamicInvoke();
+        if (result is LambdaExpression)
+        {
+            return result;
+        }
+        return result != null && IsComplexType(result.GetType()) ? ExtractProperties(result) : result;
+    }
+
+    private static object EvaluateUnaryExpression(UnaryExpression expression)
+    {
+        try
+        {
+            return Expression.Lambda(expression).Compile().DynamicInvoke();
+        }
+        catch
+        {
+            return GetValue(expression.Operand);
+        }
+    }
+
+    private static object EvaluateExpression(Expression expression)
+    {
+        try
+        {
+            return Expression.Lambda(expression).Compile().DynamicInvoke();
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static bool IsComplexType(Type type)
+    {
+        bool isSimple = type.IsPrimitive || type.IsEnum || type == typeof(string) || type == typeof(decimal)
+            || type == typeof(DateTime) || type == typeof(DateTimeOffset) || type == typeof(TimeSpan) || type == typeof(Guid);
+        return !isSimple && !typeof(System.Collections.IEnumerable).IsAssignableFrom(type);
+    }
+
+    private static Dictionary<string, object> ExtractProperties(object source)
+    {
+        Dictionary<string, object> properties = new();
+        foreach (PropertyInfo property in source.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance))
+        {
+            if (property.PropertyType == typeof(CancellationToken))
+            {
+                continue;
+            }
+            try
+            {
+                properties[property.Name] = property.GetValue(source);
+            }
+            catch
+            {
+                properties[property.Name] = null;
+            }
+        }
+        return properties;
+    }
+}
+'@
+    $redisExpressionConditionExtractor.Replace('__PROJECT_NAME__', $ProjectName) | Set-Content "src/Infrastructure/Redis/ExpressionConditionExtractor.cs"
+}
+
 # Azure Key Vault project (opcional)
 $azureKeyVaultDependencyContainer = @"
 namespace $ProjectName.AzureKeyVault
@@ -1105,8 +1459,8 @@ global using Microsoft.Extensions.Configuration;
 global using Microsoft.Extensions.DependencyInjection;
 global using DevKit.JWT.Extensions;
 global using DevKit.JWT.Options;
-$(if($USE_REDIS){"global using DevKit.ExecutionEngine.Redis;"})
-$(if($USE_REDIS){"global using DevKit.ExecutionEngine.Redis.Options;"})
+$(if($USE_REDIS){"global using $ProjectName.Redis;"})
+$(if($USE_REDIS){"global using $ProjectName.Redis.Options;"})
 
 "@
 $iocGlobalUsings | Set-Content "src/Presentation/IoC/GlobalUsings.cs"
@@ -1320,6 +1674,7 @@ WORKDIR /src
 
 # Copy project files
 COPY src/Presentation/Api/$ProjectName.WebApi.csproj src/Presentation/Api/
+COPY src/Application/Abstractions/$ProjectName.Abstractions.csproj src/Application/Abstractions/
 COPY src/Application/Commands/$ProjectName.Commands.csproj src/Application/Commands/
 COPY src/Presentation/Controllers/$ProjectName.Controllers.csproj src/Presentation/Controllers/
 COPY src/Domain/$ProjectName.Domain.csproj src/Domain/
@@ -1334,6 +1689,7 @@ COPY src/Application/Queries/$ProjectName.Queries.csproj src/Application/Queries
 COPY src/Application/Validators/$ProjectName.Validators.csproj src/Application/Validators/
 $(if($USE_RABBITMQ){"COPY src/Infrastructure/Messaging/RabbitMQ/$ProjectName.RabbitMQ.csproj src/Infrastructure/Messaging/RabbitMQ/"})
 $(if($USE_EXTERNAL_APIS){"COPY src/Infrastructure/WebApis/$ProjectName.WebApis.csproj src/Infrastructure/WebApis/"})
+$(if($USE_REDIS){"COPY src/Infrastructure/Redis/$ProjectName.Redis.csproj src/Infrastructure/Redis/"})
 $(if($USE_KEYVAULT){"COPY src/Infrastructure/AzureKeyVault/$ProjectName.AzureKeyVault.csproj src/Infrastructure/AzureKeyVault/"})
 
 # Restore dependencies
@@ -1551,7 +1907,13 @@ Orquesta el dominio para resolver una necesidad concreta del usuario.
 - `Queries/`: consultas que leen estado (`GetOrderByIdQuery`).
 - `Models/`: DTOs y modelos de transporte entre capas.
 - `Validators/`: reglas de validación de entrada con FluentValidation.
-- `Interfaces/`: puertos que la aplicación necesita (`IUnitOfWork`).
+- `Abstractions/`: proyecto de puertos de entrada y salida de la aplicación,
+  como contratos de casos de uso, `IUnitOfWork` e `ICacheService`.
+  Referencia Domain y Models, nunca adaptadores.
+
+Commands y Queries referencian Abstractions y Models. Los adaptadores
+referencian Abstractions para implementar estos puertos y acceder a sus DTOs.
+Los puertos propios del negocio permanecen en Domain/Interfaces.
 
 Un caso de uso no sabe que existe `DbContext`; solo conoce interfaces.
 
@@ -1656,9 +2018,9 @@ vaya hacia la base de datos.
 
 ### 3.2 Constructores e inyección de dependencias
 
-> **Regla de Uncle Bob:** los constructores de las clases de aplicación
-> solo deben solicitar **abstracciones (interfaces)**; nunca clases
-> concretas de infraestructura, ORM, clientes HTTP, utilerías, etc.
+> **Regla de dependencia:** los Controllers y Use Cases solicitan puertos
+> del núcleo para acceder a servicios externos; no reciben tipos de
+> infraestructura, ORM o clientes HTTP.
 
 ✅ Correcto:
 
@@ -1694,11 +2056,12 @@ public class OrdersController : ControllerBase
 }
 ```
 
-Esto aplica a **todos** los constructores de la aplicación: controladores,
-use cases, servicios de aplicación y adaptadores. La única
-excepción son tipos de valor, DTOs, opciones de configuración inmutables
-y, en algunos casos, `ILogger<T>` o `IHttpContextAccessor` cuando son
-abstracciones del framework ya establecidas.
+Los adaptadores sí pueden recibir tipos concretos de su tecnología,
+como DbContext, HttpClient o clientes de Redis. Estos detalles no deben
+aparecer en los contratos del núcleo. Los tipos de valor, DTOs y opciones
+no necesitan interfaces por el solo hecho de usarse en un constructor.
+Evita IHttpContextAccessor en el núcleo: transmite los datos necesarios
+del usuario o de la petición mediante parámetros o puertos de aplicación.
 
 ---
 
@@ -1756,7 +2119,8 @@ los archivos de una feature, la organización está mal.
 ## ✅ Buenas prácticas
 
 - **Mantener independencia por feature**: cada carpeta de `Orders`, `Customers`, etc. debe contener todo lo necesario para esa funcionalidad.
-- **Interfaces en Domain**: siempre definen los puertos (`IOrderRepository`).
+- **Puertos en el núcleo**: contratos de negocio en Domain/Interfaces;
+    contratos de aplicación en Application/Abstractions, nunca en Infrastructure.
 - **UseCases en Application**: orquestan lógica de negocio usando puertos.
 - **Adaptadores en Infrastructure**: implementan los puertos (`OrderRepository`).
 - **APIs externas con `IHttpClientFactory`**: los adaptadores HTTP deben
@@ -1783,6 +2147,8 @@ los archivos de una feature, la organización está mal.
       /Controllers                     Adaptadores HTTP
       /IoC                             Composición de dependencias
     /Application
+            /Abstractions                    Puertos de entrada y salida
+                /Caching                       ICacheService (si se selecciona Redis)
       /Commands                        Comandos (write side)
       /Queries                         Consultas (read side)
       /Models                          DTOs
@@ -1799,6 +2165,7 @@ los archivos de una feature, la organización está mal.
         /PostgreSQL                     Implementación PostgreSQL
         /Oracle                         Implementación Oracle
         /Options
+            /Redis                            Adaptador de caché opcional
   /tests
     /UnitTests
   /documentation
@@ -1810,11 +2177,14 @@ Referencias entre proyectos:
 | Proyecto        | Referencia a                       |
 |-----------------|------------------------------------|
 | Domain          | *(ninguna)*                        |
-| Application     | Domain                             |
-| Infrastructure  | Domain                             |
+| Models          | Domain                             |
+| Abstractions    | Domain, Models                     |
+| Commands/Queries | Domain, Abstractions, Models       |
+| Validators      | Domain, Commands, Models           |
+| Infrastructure  | Domain, Abstractions (Models transitivo) |
 | Controllers     | Application                        |
 | IoC             | Application, Infrastructure        |
-| Api             | Controllers, IoC                   |
+| Api             | IoC (Controllers transitivo)        |
 | UnitTests       | Domain, Application, Validators    |
 
 ---
@@ -1837,7 +2207,7 @@ Application/Commands o Queries  (caso de uso)
 Application/Validators          (valida entrada)
    │
    ▼
-Domain/Interfaces               (puerto)
+Domain/Interfaces o Application/Abstractions (puerto)
    │
    ▼
 Infrastructure/DataBase         (EF Core, repositorios)
@@ -1872,6 +2242,8 @@ Sigue estos pasos para mantener el orden de capas y Vertical Slice:
    - `Domain/Entities/{Feature}/{Entity}.cs`
 
 2. **Application:** crea el comando/consulta, caso de uso, validator y DTOs.
+    - `Application/Abstractions/{Feature}/I{UseCase}.cs` para puertos de entrada.
+    - `Application/Abstractions/{Feature}/I{Service}.cs` para puertos de salida de aplicación.
    - `Application/Commands/{Feature}/{Action}/{Action}Command.cs` (solo si tiene 2+ parámetros)
    - `Application/Commands/{Feature}/{Action}/{Action}UseCase.cs`
    - `Application/Commands/{Feature}/{Action}/{Action}Result.cs`
@@ -1909,11 +2281,10 @@ Sigue estos pasos para mantener el orden de capas y Vertical Slice:
   `Helpers/` fuera de una feature.
 - ❌ Repositorios genéricos (`IRepository<T>`): cada agregado expone su
   propio puerto (`IOrderRepository`) e implementación (`OrderRepository`).
-- ❌ Constructores que reciban clases concretas de infraestructura,
-  ORM, clientes HTTP o utilerías; los constructores deben inyectar
-  **únicamente interfaces**.
-- ❌ Clases concretas sin interfaz (excepto validadores): cada servicio,
-  repositorio o adaptador debe declarar su interfaz en la capa interna.
+- ❌ Controllers o use cases que reciban tipos de infraestructura,
+    ORM o clientes HTTP en lugar de puertos del núcleo.
+- ❌ Contratos de aplicación definidos dentro de adaptadores concretos.
+    Los detalles internos de un adaptador no necesitan una interfaz propia.
 
 ---
 
