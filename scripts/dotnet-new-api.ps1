@@ -284,6 +284,7 @@ dotnet add src/Application/Validators reference src/Application/Models
 dotnet add src/Presentation/Controllers reference src/Application/Commands
 dotnet add src/Presentation/Controllers reference src/Application/Queries
 dotnet add src/Presentation/Controllers reference src/Application/Models
+dotnet add src/Presentation/Controllers reference src/Application/Abstractions
 # IoC depends on all Application projects + Infrastructure + Domain
 dotnet add src/Presentation/IoC reference src/Application/Abstractions
 dotnet add src/Presentation/IoC reference src/Application/Commands
@@ -357,6 +358,9 @@ dotnet add src/Application/Commands package DependencyInjection.ReflectionExtens
 dotnet add src/Application/Models package FluentValidation
 dotnet add src/Application/Models package Microsoft.Extensions.DependencyInjection.Abstractions
 dotnet add src/Application/Models package DependencyInjection.ReflectionExtensions
+
+dotnet add src/Application/Abstractions package Microsoft.Extensions.DependencyInjection.Abstractions
+dotnet add src/Application/Abstractions package DependencyInjection.ReflectionExtensions
 
 dotnet add src/Application/Queries package FluentValidation
 dotnet add src/Application/Queries package Microsoft.Extensions.DependencyInjection.Abstractions
@@ -587,6 +591,174 @@ $prodAppSettings | Set-Content "src/Presentation/Api/appsettings.Production.json
 # CREATE BASIC FILES
 # =========================
 
+# RegisterServices class in Abstractions Project
+New-Item -ItemType Directory -Path "src/Application/Abstractions/Shared" -Force | Out-Null
+@"
+using System;
+using System.Collections.Generic;
+using System.Reflection;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace $ProjectName.Abstractions.Shared
+{
+    public static class RegisterServices
+    {
+        /// <summary>
+        /// Registra automáticamente las clases de un ensamblado en el contenedor de servicios.
+        /// </summary>
+        /// <param name="services">La colección de servicios de <see cref="IServiceCollection"/>.</param>
+        /// <param name="assembly">El ensamblado de donde se cargarán los tipos.</param>
+        /// <param name="filter">Filtro opcional para los tipos.</param>
+        /// <param name="logTo">Acción opcional para registrar el proceso.</param>
+        /// <param name="onlyClass">Si es verdadero, registra la clase directamente. Si es falso (por defecto), registra por sus interfaces.</param>
+        /// <param name="lifetime">El tiempo de vida del servicio (Scoped por defecto).</param>
+        /// <returns>La misma colección de servicios para encadenar llamadas.</returns>
+        public static IServiceCollection AddServicesFromAssembly(this IServiceCollection services,
+            Assembly assembly,
+            Func<Type, bool> filter = null,
+            Action<string> logTo = null,
+            bool onlyClass = false,
+            ServiceLifetime lifetime = ServiceLifetime.Scoped)
+        {
+            if (services == null)
+            {
+                throw new ArgumentNullException(nameof(services));
+            }
+            if (assembly == null)
+            {
+                throw new ArgumentNullException(nameof(assembly));
+            }
+
+            string assemblyName = assembly.GetName().Name ?? assembly.ManifestModule.Name;
+
+            bool IsCandidate(Type type)
+            {
+                if (type == null)
+                {
+                    return false;
+                }
+                if (type.IsClass == false || type.IsAbstract)
+                {
+                    return false;
+                }
+                // Excluir records (clases con método de instancia <Clone>$ generado por el compilador).
+                if (type.GetMethod("<Clone>$", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic) is not null)
+                {
+                    return false;
+                }
+                string fullName = type.FullName;
+                if (string.IsNullOrWhiteSpace(fullName))
+                {
+                    return false;
+                }
+                if (fullName.Contains("+<") || fullName.Contains("+>") || fullName.Contains("<") || fullName.Contains(">") || fullName.Contains("<>"))
+                {
+                    return false;
+                }
+                if (fullName.Contains("Microsoft") || fullName.Contains("System.Runtime"))
+                {
+                    return false;
+                }
+
+                if (filter is not null && filter(type) == false)
+                {
+                    return false;
+                }
+                return true;
+            }
+
+            List<Type> types = assembly.GetTypes()
+                .Where(IsCandidate)
+                .ToList();
+
+            foreach (Type type in types)
+            {
+                if (onlyClass)
+                {
+                    services.TryAdd(new ServiceDescriptor(type, type, lifetime));
+                    logTo?.Invoke($"Registrado => {type.Name}");
+                }
+                else
+                {
+                    Type[] interfaces = type.GetInterfaces().Where(p => p.FullName.Contains("IEnumerable") == false).ToArray();
+                    foreach (Type service in interfaces)
+                    {
+                        services.TryAdd(new ServiceDescriptor(service, type, lifetime));
+                        logTo?.Invoke($"Registrado => {type.Name}:{service.Name}");
+                    }
+                }
+            }
+
+            logTo?.Invoke(types.Count == 0
+                ? $"No se encontraron tipos en el ensamblado {assemblyName} que coincidan con los criterios."
+                : $"Se encontraron {types.Count} tipos en el ensamblado {assemblyName}.");
+
+            return services;
+        }
+
+        /// <summary>
+        /// Registra servicios desde múltiples ensamblados.
+        /// </summary>
+        /// <param name="services">La colección de servicios de <see cref="IServiceCollection"/>.</param>
+        /// <param name="assemblies">Lista de ensamblados.</param>
+        /// <param name="filter">Filtro opcional.</param>
+        /// <param name="logTo">Acción de registro opcional.</param>
+        /// <param name="lifetime">Tiempo de vida del servicio.</param>
+        /// <returns>La misma colección de servicios.</returns>
+        public static IServiceCollection AddServicesFromAssemblies(this IServiceCollection services,
+            IEnumerable<Assembly> assemblies,
+            Func<Type, bool> filter = null,
+            Action<string> logTo = null,
+            ServiceLifetime lifetime = ServiceLifetime.Scoped)
+        {
+            if (services == null)
+            {
+                throw new ArgumentNullException(nameof(services));
+            }
+
+            foreach (Assembly assembly in assemblies)
+            {
+                services.AddServicesFromAssembly(assembly, filter, logTo, false, lifetime);
+            }
+            return services;
+        }
+
+        /// <summary>
+        /// Registra servicios del ensamblado actual automáticamente.
+        /// </summary>
+        /// <param name="services">La colección de servicios de <see cref="IServiceCollection"/>.</param>
+        /// <param name="filter"></param>
+        /// <param name="logTo">Acción de registro opcional.</param>
+        /// <param name="onlyClass"></param>
+        /// <param name="lifetime"></param>
+        /// <returns>La misma colección de servicios.</returns>
+        public static IServiceCollection AddServicesCurrentAssembly(this IServiceCollection services,
+            Func<Type, bool> filter = null,
+            Action<string> logTo = null,
+            bool onlyClass = false,
+            ServiceLifetime lifetime = ServiceLifetime.Scoped)
+        {
+            if (services == null)
+            {
+                throw new ArgumentNullException(nameof(services));
+            }
+
+            Assembly callingAssembly = Assembly.GetCallingAssembly();
+            return services.AddServicesFromAssembly(callingAssembly, filter, logTo, onlyClass, lifetime);
+        }
+
+        /// <summary>
+        /// Registra los servicios del proyecto Abstractions.
+        /// </summary>
+        public static IServiceCollection AddAbstractions(this IServiceCollection services)
+        {
+            return services.AddServicesFromAssembly(typeof(RegisterServices).Assembly);
+        }
+
+    }
+}
+"@ | Set-Content "src/Application/Abstractions/Shared/RegisterServices.cs"
+
 # DependencyContainer class in Commands Project
 @"
 namespace $ProjectName.Commands
@@ -605,7 +777,7 @@ namespace $ProjectName.Commands
 # GlobalUsings Commands
 @"
 global using System.Reflection;
-global using DevKit.Injection.Extensions;
+global using $ProjectName.Abstractions.Shared;
 global using Microsoft.Extensions.DependencyInjection;
 
 "@ | Set-Content "src/Application/Commands/GlobalUsings.cs"
@@ -628,7 +800,7 @@ namespace $ProjectName.Queries
 # GlobalUsings Queries
 @"
 global using System.Reflection;
-global using DevKit.Injection.Extensions;
+global using $ProjectName.Abstractions.Shared;
 global using Microsoft.Extensions.DependencyInjection;
 
 "@ | Set-Content "src/Application/Queries/GlobalUsings.cs"
@@ -745,7 +917,7 @@ namespace $ProjectName.MongoDb
 
 $mongoDbGlobalUsings = @"
 global using System.Reflection;
-global using DevKit.Injection.Extensions;
+global using $ProjectName.Abstractions.Shared;
 global using Microsoft.Extensions.DependencyInjection;
 
 "@
@@ -865,7 +1037,7 @@ namespace $ProjectName.RabbitMQ
 
 $rabbitMqGlobalUsings = @"
 global using System.Reflection;
-global using DevKit.Injection.Extensions;
+global using $ProjectName.Abstractions.Shared;
 global using Microsoft.Extensions.DependencyInjection;
 
 "@
@@ -892,7 +1064,7 @@ namespace $ProjectName.WebApis
 
 $webApisGlobalUsings = @"
 global using System.Reflection;
-global using DevKit.Injection.Extensions;
+global using $ProjectName.Abstractions.Shared;
 global using Microsoft.Extensions.DependencyInjection;
 
 "@
@@ -1246,7 +1418,7 @@ global using System.Threading.Tasks;
 global using Azure.Core;
 global using Azure.Identity;
 global using Azure.Security.KeyVault.Secrets;
-global using DevKit.Injection.Extensions;
+global using $ProjectName.Abstractions.Shared;
 global using Microsoft.Extensions.DependencyInjection;
 global using Microsoft.Extensions.Options;
 global using $ProjectName.AzureKeyVault.Options;
@@ -1398,7 +1570,7 @@ namespace $ProjectName.IoC
 # GlobalUsings Validators
 $validatorsGlobalUsings = @"
 global using System.Reflection;
-global using DevKit.Injection.Extensions;
+global using $ProjectName.Abstractions.Shared;
 global using Microsoft.Extensions.DependencyInjection;
 global using System;
 
@@ -1409,7 +1581,7 @@ $validatorsGlobalUsings | Set-Content "src/Application/Validators/GlobalUsings.c
 # GlobalUsings Infrastructure
 $dbGlobalUsings = @"
 global using System.Reflection;
-global using DevKit.Injection.Extensions;
+global using $ProjectName.Abstractions.Shared;
 global using Microsoft.Extensions.DependencyInjection;
 global using System;
 
@@ -1418,7 +1590,7 @@ global using System;
 if ($USE_SQLSERVER) {
     $sqlServerGlobalUsings = @"
 global using System.Reflection;
-global using DevKit.Injection.Extensions;
+global using $ProjectName.Abstractions.Shared;
 global using Microsoft.Extensions.Configuration;
 global using Microsoft.Extensions.DependencyInjection;
 global using Serilog;
@@ -1464,6 +1636,16 @@ $(if($USE_REDIS){"global using $ProjectName.Redis.Options;"})
 
 "@
 $iocGlobalUsings | Set-Content "src/Presentation/IoC/GlobalUsings.cs"
+
+# GlobalUsings Abstractions
+@"
+global using System;
+global using System.Collections.Generic;
+global using System.Linq;
+global using System.Reflection;
+global using Microsoft.Extensions.DependencyInjection;
+
+"@ | Set-Content "src/Application/Abstractions/GlobalUsings.cs"
 
 # GlobalUsings Controllers
 $controllersGlobalUsings = @"

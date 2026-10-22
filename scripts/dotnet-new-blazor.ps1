@@ -92,7 +92,10 @@ Write-Host "Creating Class Library (Domain)..." -ForegroundColor Yellow
 dotnet new classlib -n "$ProjectName.Domain" -o "src/Domain"
 
 Write-Host "Creating Class Library (ViewModels)..." -ForegroundColor Yellow
-dotnet new classlib -n "$ProjectName.ViewModels" -o "src/Application/ViewModels"
+dotnet new classlib -n "$ProjectName.ViewModel" -o "src/Application/ViewModels"
+
+Write-Host "Creating Class Library (Abstractions)..." -ForegroundColor Yellow
+dotnet new classlib -n "$ProjectName.Abstractions" -o "src/Application/Abstractions"
 
 Write-Host "Creating Class Library (Infrastructure)..." -ForegroundColor Yellow
 dotnet new classlib -n "$ProjectName.WebApi" -o "src/Infrastructure/WebApi"
@@ -212,6 +215,7 @@ Write-Host "Adding projects to solution..." -ForegroundColor Yellow
 dotnet sln add src/Presentation/Client
 dotnet sln add src/Domain
 dotnet sln add src/Application/ViewModels
+dotnet sln add src/Application/Abstractions
 dotnet sln add src/Infrastructure/WebApi
 dotnet sln add src/Presentation/IoC
 dotnet sln add src/Application/Validators
@@ -220,9 +224,14 @@ dotnet sln add tests/UnitTests
 
 Write-Host "Adding project references..." -ForegroundColor Yellow
 dotnet add src/Application/ViewModels reference src/Domain
+dotnet add src/Application/Abstractions reference src/Domain
 dotnet add src/Application/Validators reference src/Domain
+dotnet add src/Application/Validators reference src/Application/Abstractions
+dotnet add src/Application/ViewModels reference src/Application/Abstractions
 dotnet add src/Infrastructure/WebApi reference src/Domain
+dotnet add src/Infrastructure/WebApi reference src/Application/Abstractions
 dotnet add src/Presentation/IoC reference src/Application/ViewModels
+dotnet add src/Presentation/IoC reference src/Application/Abstractions
 dotnet add src/Presentation/IoC reference src/Domain
 dotnet add src/Presentation/IoC reference src/Infrastructure/WebApi
 dotnet add src/Presentation/IoC reference src/Application/Validators
@@ -238,6 +247,8 @@ dotnet add tests/UnitTests reference src/Application/Validators
 Write-Host "Adding NuGet packages..." -ForegroundColor Yellow
 dotnet add src/Application/ViewModels package DependencyInjection.ReflectionExtensions
 dotnet add src/Application/ViewModels package FluentValidation
+dotnet add src/Application/Abstractions package Microsoft.Extensions.DependencyInjection.Abstractions
+dotnet add src/Application/Abstractions package DependencyInjection.ReflectionExtensions
 dotnet add src/Application/Validators package DependencyInjection.ReflectionExtensions
 dotnet add src/Application/Validators package FluentValidation
 dotnet add src/Infrastructure/WebApi package DependencyInjection.ReflectionExtensions
@@ -260,16 +271,125 @@ global using System.Collections.Generic;
 
 # Application (ViewModels) GlobalUsings
 @"
-global using DevKit.Injection.Extensions;
+global using $ProjectName.Abstractions.Shared;
 global using Microsoft.Extensions.DependencyInjection;
 global using System.ComponentModel;
 global using System.Reflection;
 global using System.Runtime.CompilerServices;
 global using $ProjectName.Domain.Interfaces.Auth;
 global using $ProjectName.Domain.Shared.Errors;
-global using $ProjectName.ViewModels.Base;
+global using $ProjectName.ViewModel.Base;
 
 "@ | Set-Content "src/Application/ViewModels/GlobalUsings.cs"
+
+# Application (Abstractions) GlobalUsings
+@"
+global using System;
+global using System.Collections.Generic;
+global using System.Linq;
+global using System.Reflection;
+global using Microsoft.Extensions.DependencyInjection;
+
+"@ | Set-Content "src/Application/Abstractions/GlobalUsings.cs"
+
+# RegisterServices class in Abstractions Project
+New-Item -ItemType Directory -Path "src/Application/Abstractions/Shared" -Force | Out-Null
+@"
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace $ProjectName.Abstractions.Shared
+{
+    public static class RegisterServices
+    {
+        /// <summary>
+        /// Registra automáticamente las clases de un ensamblado en el contenedor de servicios.
+        /// </summary>
+        public static IServiceCollection AddServicesFromAssembly(this IServiceCollection services,
+            Assembly assembly,
+            Func<Type, bool> filter = null,
+            Action<string> logTo = null,
+            bool onlyClass = false,
+            ServiceLifetime lifetime = ServiceLifetime.Scoped)
+        {
+            if (services == null) throw new ArgumentNullException(nameof(services));
+            if (assembly == null) throw new ArgumentNullException(nameof(assembly));
+
+            string assemblyName = assembly.GetName().Name ?? assembly.ManifestModule.Name;
+
+            bool IsCandidate(Type type)
+            {
+                if (type == null) return false;
+                if (type.IsClass == false || type.IsAbstract) return false;
+                if (type.GetMethod("<Clone>$", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic) is not null) return false;
+                string fullName = type.FullName;
+                if (string.IsNullOrWhiteSpace(fullName)) return false;
+                if (fullName.Contains("+<") || fullName.Contains("+>") || fullName.Contains("<") || fullName.Contains(">") || fullName.Contains("<>")) return false;
+                if (fullName.Contains("Microsoft") || fullName.Contains("System.Runtime")) return false;
+                if (filter is not null && filter(type) == false) return false;
+                return true;
+            }
+
+            List<Type> types = assembly.GetTypes().Where(IsCandidate).ToList();
+
+            foreach (Type type in types)
+            {
+                if (onlyClass)
+                {
+                    services.TryAdd(new ServiceDescriptor(type, type, lifetime));
+                    logTo?.Invoke($"Registrado => {type.Name}");
+                }
+                else
+                {
+                    Type[] interfaces = type.GetInterfaces().Where(p => !p.FullName.Contains("IEnumerable")).ToArray();
+                    foreach (Type service in interfaces)
+                    {
+                        services.TryAdd(new ServiceDescriptor(service, type, lifetime));
+                        logTo?.Invoke($"Registrado => {type.Name}:{service.Name}");
+                    }
+                }
+            }
+
+            logTo?.Invoke(types.Count == 0
+                ? $"No se encontraron tipos en el ensamblado {assemblyName} que coincidan con los criterios."
+                : $"Se encontraron {types.Count} tipos en el ensamblado {assemblyName}.");
+
+            return services;
+        }
+
+        public static IServiceCollection AddServicesFromAssemblies(this IServiceCollection services,
+            IEnumerable<Assembly> assemblies,
+            Func<Type, bool> filter = null,
+            Action<string> logTo = null,
+            ServiceLifetime lifetime = ServiceLifetime.Scoped)
+        {
+            if (services == null) throw new ArgumentNullException(nameof(services));
+            foreach (Assembly assembly in assemblies)
+                services.AddServicesFromAssembly(assembly, filter, logTo, false, lifetime);
+            return services;
+        }
+
+        public static IServiceCollection AddServicesCurrentAssembly(this IServiceCollection services,
+            Func<Type, bool> filter = null,
+            Action<string> logTo = null,
+            bool onlyClass = false,
+            ServiceLifetime lifetime = ServiceLifetime.Scoped)
+        {
+            if (services == null) throw new ArgumentNullException(nameof(services));
+            Assembly callingAssembly = Assembly.GetCallingAssembly();
+            return services.AddServicesFromAssembly(callingAssembly, filter, logTo, onlyClass, lifetime);
+        }
+
+        public static IServiceCollection AddAbstractions(this IServiceCollection services)
+        {
+            return services.AddServicesFromAssembly(typeof(RegisterServices).Assembly);
+        }
+    }
+}
+"@ | Set-Content "src/Application/Abstractions/Shared/RegisterServices.cs"
 
 # Application (ViewModels) DependencyContainer
 @"
@@ -379,7 +499,7 @@ global using System.Net.Http.Json;
 global using System.Reflection;
 global using System.Text;
 global using System.Text.Json;
-global using DevKit.Injection.Extensions;
+global using $ProjectName.Abstractions.Shared;
 global using Microsoft.Extensions.DependencyInjection;
 global using Microsoft.JSInterop;
 global using $ProjectName.WebApi.Handlers;
@@ -393,7 +513,7 @@ global using $ProjectName.Domain.ValueObjects.Auth;
 @"
 global using System.Reflection;
 global using Microsoft.Extensions.DependencyInjection;
-global using DevKit.Injection.Extensions;
+global using $ProjectName.Abstractions.Shared;
 global using FluentValidation;
 "@ | Set-Content "src/Application/Validators/GlobalUsings.cs"
 
