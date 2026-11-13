@@ -64,10 +64,10 @@ New-Item -ItemType Directory -Path "tests" -Force | Out-Null
 dotnet new sln -n "$ProjectName"
 
 Write-Host "Creating Blazor Web Assembly project..." -ForegroundColor Yellow
-dotnet new blazorwasm -n "$ProjectName.Web" -o "src/Presentation/Client" --no-https
+dotnet new blazorwasm -n "$ProjectName.Web" -o "src/Frameworks/Client" --no-https
 
 Write-Host "Writing launchSettings.json with deterministic port ($HttpPort)..." -ForegroundColor Yellow
-New-Item -ItemType Directory -Path "src/Presentation/Client/Properties" -Force | Out-Null
+New-Item -ItemType Directory -Path "src/Frameworks/Client/Properties" -Force | Out-Null
 @"
 {
   "`$schema": "https://json.schemastore.org/launchsettings.json",
@@ -83,31 +83,31 @@ New-Item -ItemType Directory -Path "src/Presentation/Client/Properties" -Force |
     }
   }
 }
-"@ | Set-Content "src/Presentation/Client/Properties/launchSettings.json"
+"@ | Set-Content "src/Frameworks/Client/Properties/launchSettings.json"
 
 Write-Host "Removing Shared folder from Client..." -ForegroundColor Yellow
-Remove-Item "src/Presentation/Client/Shared" -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item "src/Frameworks/Client/Shared" -Recurse -Force -ErrorAction SilentlyContinue
 
-Write-Host "Creating Class Library (Domain)..." -ForegroundColor Yellow
-dotnet new classlib -n "$ProjectName.Domain" -o "src/Domain"
+Write-Host "Creating Class Library (Entities)..." -ForegroundColor Yellow
+dotnet new classlib -n "$ProjectName.Entities" -o "src/Entities"
 
-Write-Host "Creating Class Library (ViewModels)..." -ForegroundColor Yellow
-dotnet new classlib -n "$ProjectName.ViewModel" -o "src/Application/ViewModels"
+Write-Host "Creating Class Library (ViewModels - Adapters)..." -ForegroundColor Yellow
+dotnet new classlib -n "$ProjectName.ViewModels" -o "src/Adapters/ViewModels"
 
-Write-Host "Creating Class Library (Abstractions)..." -ForegroundColor Yellow
-dotnet new classlib -n "$ProjectName.Abstractions" -o "src/Application/Abstractions"
+Write-Host "Creating Class Library (Abstractions - UseCases)..." -ForegroundColor Yellow
+dotnet new classlib -n "$ProjectName.Abstractions" -o "src/UseCases/Abstractions"
 
-Write-Host "Creating Class Library (Infrastructure)..." -ForegroundColor Yellow
-dotnet new classlib -n "$ProjectName.WebApi" -o "src/Infrastructure/WebApi"
+Write-Host "Creating Class Library (WebApi - Adapters)..." -ForegroundColor Yellow
+dotnet new classlib -n "$ProjectName.WebApi" -o "src/Adapters/WebApi"
 
-Write-Host "Creating Class Library (IoC)..." -ForegroundColor Yellow
-dotnet new classlib -n "$ProjectName.IoC" -o "src/Presentation/IoC"
+Write-Host "Creating Class Library (IoC - Frameworks)..." -ForegroundColor Yellow
+dotnet new classlib -n "$ProjectName.IoC" -o "src/Frameworks/IoC"
 
-Write-Host "Creating Class Library (Validators)..." -ForegroundColor Yellow
-dotnet new classlib -n "$ProjectName.Validators" -o "src/Application/Validators"
+Write-Host "Creating Class Library (Validators - UseCases)..." -ForegroundColor Yellow
+dotnet new classlib -n "$ProjectName.Validators" -o "src/UseCases/Validators"
 
-Write-Host "Creating Class Library (Views)..." -ForegroundColor Yellow
-dotnet new razorclasslib -n "$ProjectName.Views" -o "src/Presentation/Views"
+Write-Host "Creating Class Library (Views - Frameworks)..." -ForegroundColor Yellow
+dotnet new razorclasslib -n "$ProjectName.Views" -o "src/Frameworks/Views"
 
 Write-Host "Creating Unit Tests project (xUnit v3)..." -ForegroundColor Yellow
 # Asegurar que la plantilla xunit3 esté disponible (paquete xunit.v3.templates)
@@ -120,15 +120,15 @@ if ($templateList -notmatch "(?m)^\s*xunit3\b") {
         exit 1
     }
 }
-# Detectar el TFM que usa el SDK activo leyéndolo del csproj de Domain
+# Detectar el TFM que usa el SDK activo leyéndolo del csproj de Entities
 # (creado con "dotnet new classlib", que sigue el default del SDK). Así,
 # cuando el SDK avance (net11.0, net12.0, ...), el proyecto de pruebas se
 # alinea automáticamente sin tocar el script.
-$domainCsproj = "src/Domain/$ProjectName.Domain.csproj"
+$entitiesCsproj = "src/Entities/$ProjectName.Entities.csproj"
 $defaultTfm = $null
-if (Test-Path $domainCsproj) {
-    $domainCsprojContent = Get-Content -Raw -Path $domainCsproj
-    $tfmMatch = [regex]::Match($domainCsprojContent, '<TargetFramework>\s*(net\d+\.\d+)\s*</TargetFramework>')
+if (Test-Path $entitiesCsproj) {
+    $entitiesCsprojContent = Get-Content -Raw -Path $entitiesCsproj
+    $tfmMatch = [regex]::Match($entitiesCsprojContent, '<TargetFramework>\s*(net\d+\.\d+)\s*</TargetFramework>')
     if ($tfmMatch.Success) {
         $defaultTfm = $tfmMatch.Groups[1].Value
     }
@@ -163,22 +163,22 @@ if (Test-Path $unitTestsCsproj) {
 }
 
 Write-Host "Removing default Class1.cs files..." -ForegroundColor Yellow
-Remove-Item "src/Domain/Class1.cs" -Force -ErrorAction SilentlyContinue
-Remove-Item "src/Application/ViewModels/Class1.cs" -Force -ErrorAction SilentlyContinue
-Remove-Item "src/Infrastructure/WebApi/Class1.cs" -Force -ErrorAction SilentlyContinue
-Remove-Item "src/Presentation/IoC/Class1.cs" -Force -ErrorAction SilentlyContinue
-Remove-Item "src/Application/Validators/Class1.cs" -Force -ErrorAction SilentlyContinue
-Remove-Item "src/Presentation/Views/Component1.razor" -Force -ErrorAction SilentlyContinue
-Remove-Item "src/Presentation/Views/Component1.razor.css" -Force -ErrorAction SilentlyContinue
-Remove-Item "src/Presentation/Views/ExampleJsInterop.cs" -Force -ErrorAction SilentlyContinue
-Remove-Item "src/Presentation/Client/App.razor" -Force -ErrorAction SilentlyContinue
+Remove-Item "src/Entities/Class1.cs" -Force -ErrorAction SilentlyContinue
+Remove-Item "src/Adapters/ViewModels/Class1.cs" -Force -ErrorAction SilentlyContinue
+Remove-Item "src/Adapters/WebApi/Class1.cs" -Force -ErrorAction SilentlyContinue
+Remove-Item "src/Frameworks/IoC/Class1.cs" -Force -ErrorAction SilentlyContinue
+Remove-Item "src/UseCases/Validators/Class1.cs" -Force -ErrorAction SilentlyContinue
+Remove-Item "src/Frameworks/Views/Component1.razor" -Force -ErrorAction SilentlyContinue
+Remove-Item "src/Frameworks/Views/Component1.razor.css" -Force -ErrorAction SilentlyContinue
+Remove-Item "src/Frameworks/Views/ExampleJsInterop.cs" -Force -ErrorAction SilentlyContinue
+Remove-Item "src/Frameworks/Client/App.razor" -Force -ErrorAction SilentlyContinue
 Remove-Item "tests/UnitTests/Class1.cs" -Force -ErrorAction SilentlyContinue
 Remove-Item "tests/UnitTests/UnitTest1.cs" -Force -ErrorAction SilentlyContinue
 
-Remove-Item -Path "src/Presentation/Client/Layout" -Recurse -Force -ErrorAction SilentlyContinue
-Remove-Item -Path "src/Presentation/Client/Pages" -Recurse -Force -ErrorAction SilentlyContinue
-Remove-Item -Path "src/Presentation/Client/wwwroot/sample-data" -Recurse -Force -ErrorAction SilentlyContinue
-Remove-Item -Path "src/Presentation/Client/wwwroot/lib/bootstrap" -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item -Path "src/Frameworks/Client/Layout" -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item -Path "src/Frameworks/Client/Pages" -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item -Path "src/Frameworks/Client/wwwroot/sample-data" -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item -Path "src/Frameworks/Client/wwwroot/lib/bootstrap" -Recurse -Force -ErrorAction SilentlyContinue
 
 # Remove <Nullable>enable</Nullable> from every generated .csproj
 Get-ChildItem -Path 'src','tests' -Recurse -Filter *.csproj | ForEach-Object {
@@ -188,101 +188,101 @@ Get-ChildItem -Path 'src','tests' -Recurse -Filter *.csproj | ForEach-Object {
 }
 
 Write-Host "Creating folder structure..." -ForegroundColor Yellow
-New-Item -ItemType Directory -Path "src/Domain/Interfaces" -Force | Out-Null
-New-Item -ItemType Directory -Path "src/Domain/Entities" -Force | Out-Null
-New-Item -ItemType Directory -Path "src/Domain/ValueObjects" -Force | Out-Null
-New-Item -ItemType Directory -Path "src/Domain/Enums" -Force | Out-Null
-"" | Set-Content "src/Domain/Interfaces/.gitkeep"
-"" | Set-Content "src/Domain/Entities/.gitkeep"
-"" | Set-Content "src/Domain/ValueObjects/.gitkeep"
-"" | Set-Content "src/Domain/Enums/.gitkeep"
-New-Item -ItemType Directory -Path "src/Presentation/Views/Layout" -Force | Out-Null
-New-Item -ItemType Directory -Path "src/Presentation/Views/Pages" -Force | Out-Null
-New-Item -ItemType Directory -Path "src/Presentation/Views/Shared/Components" -Force | Out-Null
-New-Item -ItemType Directory -Path "src/Presentation/Views/Shared/Helper" -Force | Out-Null
-New-Item -ItemType Directory -Path "src/Infrastructure/WebApi/Options" -Force | Out-Null
-New-Item -ItemType Directory -Path "src/Domain/Interfaces/Auth" -Force | Out-Null
-New-Item -ItemType Directory -Path "src/Infrastructure/WebApi/Auth" -Force | Out-Null
-New-Item -ItemType Directory -Path "src/Domain/ValueObjects/Auth" -Force | Out-Null
-New-Item -ItemType Directory -Path "src/Presentation/Views/Shared/Auth" -Force | Out-Null
-New-Item -ItemType Directory -Path "src/Application/ViewModels/Auth" -Force | Out-Null
-New-Item -ItemType Directory -Path "src/Application/ViewModels/Base" -Force | Out-Null
-New-Item -ItemType Directory -Path "src/Domain/Shared/Errors" -Force | Out-Null
-New-Item -ItemType Directory -Path "src/Infrastructure/WebApi/Handlers" -Force | Out-Null
-New-Item -ItemType Directory -Path "src/Application/ViewModels/Options" -Force | Out-Null
+New-Item -ItemType Directory -Path "src/Entities/Interfaces" -Force | Out-Null
+New-Item -ItemType Directory -Path "src/Entities/Entities" -Force | Out-Null
+New-Item -ItemType Directory -Path "src/Entities/ValueObjects" -Force | Out-Null
+New-Item -ItemType Directory -Path "src/Entities/Enums" -Force | Out-Null
+"" | Set-Content "src/Entities/Interfaces/.gitkeep"
+"" | Set-Content "src/Entities/Entities/.gitkeep"
+"" | Set-Content "src/Entities/ValueObjects/.gitkeep"
+"" | Set-Content "src/Entities/Enums/.gitkeep"
+New-Item -ItemType Directory -Path "src/Frameworks/Views/Layout" -Force | Out-Null
+New-Item -ItemType Directory -Path "src/Frameworks/Views/Pages" -Force | Out-Null
+New-Item -ItemType Directory -Path "src/Frameworks/Views/Shared/Components" -Force | Out-Null
+New-Item -ItemType Directory -Path "src/Frameworks/Views/Shared/Helper" -Force | Out-Null
+New-Item -ItemType Directory -Path "src/Adapters/WebApi/Options" -Force | Out-Null
+New-Item -ItemType Directory -Path "src/Entities/Interfaces/Auth" -Force | Out-Null
+New-Item -ItemType Directory -Path "src/Adapters/WebApi/Auth" -Force | Out-Null
+New-Item -ItemType Directory -Path "src/Entities/ValueObjects/Auth" -Force | Out-Null
+New-Item -ItemType Directory -Path "src/Frameworks/Views/Shared/Auth" -Force | Out-Null
+New-Item -ItemType Directory -Path "src/Adapters/ViewModels/Auth" -Force | Out-Null
+New-Item -ItemType Directory -Path "src/Adapters/ViewModels/Base" -Force | Out-Null
+New-Item -ItemType Directory -Path "src/Entities/Shared/Errors" -Force | Out-Null
+New-Item -ItemType Directory -Path "src/Adapters/WebApi/Handlers" -Force | Out-Null
+New-Item -ItemType Directory -Path "src/Adapters/ViewModels/Options" -Force | Out-Null
 
 Write-Host "Adding projects to solution..." -ForegroundColor Yellow
-dotnet sln add src/Presentation/Client
-dotnet sln add src/Domain
-dotnet sln add src/Application/ViewModels
-dotnet sln add src/Application/Abstractions
-dotnet sln add src/Infrastructure/WebApi
-dotnet sln add src/Presentation/IoC
-dotnet sln add src/Application/Validators
-dotnet sln add src/Presentation/Views
+dotnet sln add src/Frameworks/Client
+dotnet sln add src/Entities
+dotnet sln add src/Adapters/ViewModels
+dotnet sln add src/UseCases/Abstractions
+dotnet sln add src/Adapters/WebApi
+dotnet sln add src/Frameworks/IoC
+dotnet sln add src/UseCases/Validators
+dotnet sln add src/Frameworks/Views
 dotnet sln add tests/UnitTests
 
 Write-Host "Adding project references..." -ForegroundColor Yellow
-dotnet add src/Application/ViewModels reference src/Domain
-dotnet add src/Application/Abstractions reference src/Domain
-dotnet add src/Application/Validators reference src/Domain
-dotnet add src/Application/Validators reference src/Application/Abstractions
-dotnet add src/Application/ViewModels reference src/Application/Abstractions
-dotnet add src/Infrastructure/WebApi reference src/Domain
-dotnet add src/Infrastructure/WebApi reference src/Application/Abstractions
-dotnet add src/Presentation/IoC reference src/Application/ViewModels
-dotnet add src/Presentation/IoC reference src/Application/Abstractions
-dotnet add src/Presentation/IoC reference src/Domain
-dotnet add src/Presentation/IoC reference src/Infrastructure/WebApi
-dotnet add src/Presentation/IoC reference src/Application/Validators
-dotnet add src/Presentation/IoC reference src/Presentation/Views
-dotnet add src/Presentation/Views reference src/Application/ViewModels
-dotnet add src/Presentation/Client reference src/Presentation/IoC
-dotnet add src/Presentation/Client reference src/Presentation/Views
-dotnet add src/Presentation/Views reference src/Domain
-dotnet add tests/UnitTests reference src/Domain
-dotnet add tests/UnitTests reference src/Application/ViewModels
-dotnet add tests/UnitTests reference src/Application/Validators
+dotnet add src/Adapters/ViewModels reference src/Entities
+dotnet add src/UseCases/Abstractions reference src/Entities
+dotnet add src/UseCases/Validators reference src/Entities
+dotnet add src/UseCases/Validators reference src/UseCases/Abstractions
+dotnet add src/Adapters/ViewModels reference src/UseCases/Abstractions
+dotnet add src/Adapters/WebApi reference src/Entities
+dotnet add src/Adapters/WebApi reference src/UseCases/Abstractions
+dotnet add src/Frameworks/IoC reference src/Adapters/ViewModels
+dotnet add src/Frameworks/IoC reference src/UseCases/Abstractions
+dotnet add src/Frameworks/IoC reference src/Entities
+dotnet add src/Frameworks/IoC reference src/Adapters/WebApi
+dotnet add src/Frameworks/IoC reference src/UseCases/Validators
+dotnet add src/Frameworks/IoC reference src/Frameworks/Views
+dotnet add src/Frameworks/Views reference src/Adapters/ViewModels
+dotnet add src/Frameworks/Client reference src/Frameworks/IoC
+dotnet add src/Frameworks/Client reference src/Frameworks/Views
+dotnet add src/Frameworks/Views reference src/Entities
+dotnet add tests/UnitTests reference src/Entities
+dotnet add tests/UnitTests reference src/Adapters/ViewModels
+dotnet add tests/UnitTests reference src/UseCases/Validators
 
 Write-Host "Adding NuGet packages..." -ForegroundColor Yellow
-dotnet add src/Application/ViewModels package DependencyInjection.ReflectionExtensions
-dotnet add src/Application/ViewModels package FluentValidation
-dotnet add src/Application/Abstractions package Microsoft.Extensions.DependencyInjection.Abstractions
-dotnet add src/Application/Abstractions package DependencyInjection.ReflectionExtensions
-dotnet add src/Application/Validators package DependencyInjection.ReflectionExtensions
-dotnet add src/Application/Validators package FluentValidation
-dotnet add src/Infrastructure/WebApi package DependencyInjection.ReflectionExtensions
-dotnet add src/Presentation/IoC package DependencyInjection.ReflectionExtensions
-dotnet add src/Presentation/IoC package FluentValidation
-dotnet add src/Presentation/IoC package Microsoft.Extensions.Configuration.Abstractions
-dotnet add src/Presentation/IoC package Microsoft.Extensions.Http
-dotnet add src/Presentation/Views package Microsoft.AspNetCore.Components.Authorization
-dotnet add src/Presentation/Views package LeaderAnalytics.LeaderPivot.Blazor
-dotnet add src/Presentation/Client package LeaderAnalytics.LeaderPivot.Blazor
-dotnet add src/Infrastructure/WebApi package Microsoft.JSInterop
+dotnet add src/Adapters/ViewModels package DependencyInjection.ReflectionExtensions
+dotnet add src/Adapters/ViewModels package FluentValidation
+dotnet add src/UseCases/Abstractions package Microsoft.Extensions.DependencyInjection.Abstractions
+dotnet add src/UseCases/Abstractions package DependencyInjection.ReflectionExtensions
+dotnet add src/UseCases/Validators package DependencyInjection.ReflectionExtensions
+dotnet add src/UseCases/Validators package FluentValidation
+dotnet add src/Adapters/WebApi package DependencyInjection.ReflectionExtensions
+dotnet add src/Frameworks/IoC package DependencyInjection.ReflectionExtensions
+dotnet add src/Frameworks/IoC package FluentValidation
+dotnet add src/Frameworks/IoC package Microsoft.Extensions.Configuration.Abstractions
+dotnet add src/Frameworks/IoC package Microsoft.Extensions.Http
+dotnet add src/Frameworks/Views package Microsoft.AspNetCore.Components.Authorization
+dotnet add src/Frameworks/Views package LeaderAnalytics.LeaderPivot.Blazor
+dotnet add src/Frameworks/Client package LeaderAnalytics.LeaderPivot.Blazor
+dotnet add src/Adapters/WebApi package Microsoft.JSInterop
 dotnet add tests/UnitTests package FluentAssertions
 
 Write-Host "Creating GlobalUsings files..." -ForegroundColor Yellow
 
-# Domain GlobalUsings
+# Entities GlobalUsings
 @"
 global using System.Collections.Generic;
-"@ | Set-Content "src/Domain/GlobalUsings.cs"
+"@ | Set-Content "src/Entities/GlobalUsings.cs"
 
-# Application (ViewModels) GlobalUsings
+# Adapters (ViewModels) GlobalUsings
 @"
 global using $ProjectName.Abstractions.Shared;
 global using Microsoft.Extensions.DependencyInjection;
 global using System.ComponentModel;
 global using System.Reflection;
 global using System.Runtime.CompilerServices;
-global using $ProjectName.Domain.Interfaces.Auth;
-global using $ProjectName.Domain.Shared.Errors;
-global using $ProjectName.ViewModel.Base;
+global using $ProjectName.Entities.Interfaces.Auth;
+global using $ProjectName.Entities.Shared.Errors;
+global using $ProjectName.ViewModels.Base;
 
-"@ | Set-Content "src/Application/ViewModels/GlobalUsings.cs"
+"@ | Set-Content "src/Adapters/ViewModels/GlobalUsings.cs"
 
-# Application (Abstractions) GlobalUsings
+# UseCases (Abstractions) GlobalUsings
 @"
 global using System;
 global using System.Collections.Generic;
@@ -290,16 +290,17 @@ global using System.Linq;
 global using System.Reflection;
 global using Microsoft.Extensions.DependencyInjection;
 
-"@ | Set-Content "src/Application/Abstractions/GlobalUsings.cs"
+"@ | Set-Content "src/UseCases/Abstractions/GlobalUsings.cs"
 
 # RegisterServices class in Abstractions Project
-New-Item -ItemType Directory -Path "src/Application/Abstractions/Shared" -Force | Out-Null
+New-Item -ItemType Directory -Path "src/UseCases/Abstractions/Shared" -Force | Out-Null
 @"
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace $ProjectName.Abstractions.Shared
 {
@@ -315,21 +316,49 @@ namespace $ProjectName.Abstractions.Shared
             bool onlyClass = false,
             ServiceLifetime lifetime = ServiceLifetime.Scoped)
         {
-            if (services == null) throw new ArgumentNullException(nameof(services));
-            if (assembly == null) throw new ArgumentNullException(nameof(assembly));
+            ArgumentNullException.ThrowIfNull(services);
+            ArgumentNullException.ThrowIfNull(assembly);
 
             string assemblyName = assembly.GetName().Name ?? assembly.ManifestModule.Name;
 
             bool IsCandidate(Type type)
             {
-                if (type == null) return false;
-                if (type.IsClass == false || type.IsAbstract) return false;
-                if (type.GetMethod("<Clone>$", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic) is not null) return false;
+                if (type == null)
+                {
+                    return false;
+                }
+
+                if (type.IsClass == false || type.IsAbstract)
+                {
+                    return false;
+                }
+
+                if (type.GetMethod("<Clone>$", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic) is not null)
+                {
+                    return false;
+                }
+
                 string fullName = type.FullName;
-                if (string.IsNullOrWhiteSpace(fullName)) return false;
-                if (fullName.Contains("+<") || fullName.Contains("+>") || fullName.Contains("<") || fullName.Contains(">") || fullName.Contains("<>")) return false;
-                if (fullName.Contains("Microsoft") || fullName.Contains("System.Runtime")) return false;
-                if (filter is not null && filter(type) == false) return false;
+                if (string.IsNullOrWhiteSpace(fullName))
+                {
+                    return false;
+                }
+
+                if (fullName.Contains("+<") || fullName.Contains("+>") || fullName.Contains("<") || fullName.Contains(">") || fullName.Contains("<>"))
+                {
+                    return false;
+                }
+
+                if (fullName.Contains("Microsoft") || fullName.Contains("System.Runtime"))
+                {
+                    return false;
+                }
+
+                if (filter is not null && filter(type) == false)
+                {
+                    return false;
+                }
+
                 return true;
             }
 
@@ -389,9 +418,9 @@ namespace $ProjectName.Abstractions.Shared
         }
     }
 }
-"@ | Set-Content "src/Application/Abstractions/Shared/RegisterServices.cs"
+"@ | Set-Content "src/UseCases/Abstractions/Shared/RegisterServices.cs"
 
-# Application (ViewModels) DependencyContainer
+# Adapters (ViewModels) DependencyContainer
 @"
 namespace $ProjectName.ViewModels
 {
@@ -404,16 +433,16 @@ namespace $ProjectName.ViewModels
         }
     }
 }
-"@ | Set-Content "src/Application/ViewModels/DependencyContainer.cs"
+"@ | Set-Content "src/Adapters/ViewModels/DependencyContainer.cs"
 
 # DependencyContainers
-# Infrastructure DependencyContainer
+# WebApi (Adapters) DependencyContainer
 @"
 namespace $ProjectName.WebApi
 {
     public static class DependencyContainer
     {
-        public static IServiceCollection AddInfrastructure(this IServiceCollection services)
+        public static IServiceCollection AddWebApi(this IServiceCollection services)
         {  
             services.AddTransient<GlobalExceptionHandler>();
             services.AddServicesCurrentAssembly();
@@ -421,7 +450,7 @@ namespace $ProjectName.WebApi
         }
     }
 }
-"@ | Set-Content "src/Infrastructure/WebApi/DependencyContainer.cs"
+"@ | Set-Content "src/Adapters/WebApi/DependencyContainer.cs"
 
 # Validators DependencyContainer
 @"
@@ -436,7 +465,7 @@ namespace $ProjectName.Validators
         }
     }
 }
-"@ | Set-Content "src/Application/Validators/DependencyContainer.cs"
+"@ | Set-Content "src/UseCases/Validators/DependencyContainer.cs"
 
 # IoC DependencyContainer
 @"
@@ -452,11 +481,11 @@ namespace $ProjectName.IoC
 
             services.AddViewModels()
                     .AddValidators()
-                    .AddInfrastructure();
+                    .AddWebApi();
 
             services.AddAuthorizationCore();
             services.AddCascadingAuthenticationState();
-            services.AddScoped<IJwtTokenService, JwtTokenService>();
+            services.AddScoped<IJwtTokenGateway, JwtTokenGateway>();
             services.AddScoped<AuthenticationStateProvider, JwtAuthenticationStateProvider>();
 
             services.AddHttpClient("ApiClient", client =>
@@ -475,10 +504,10 @@ namespace $ProjectName.IoC
         }
     }
 }
-"@ | Set-Content "src/Presentation/IoC/DependencyContainer.cs"
+"@ | Set-Content "src/Frameworks/IoC/DependencyContainer.cs"
 
-# Infrastructure Options
-# ApiOptions class in Infrastructure
+# WebApi Options
+# ApiOptions class in Adapters/WebApi
 @"
 namespace $ProjectName.WebApi.Options
 {
@@ -488,9 +517,9 @@ namespace $ProjectName.WebApi.Options
         public string BaseUrl { get; set; }
     }
 }
-"@ | Set-Content "src/Infrastructure/WebApi/Options/ApiOptions.cs"
+"@ | Set-Content "src/Adapters/WebApi/Options/ApiOptions.cs"
 
-# Infrastructure GlobalUsings
+# WebApi (Adapters) GlobalUsings
 @"
 global using System.Collections.Generic;
 global using System.Linq;
@@ -504,10 +533,10 @@ global using Microsoft.Extensions.DependencyInjection;
 global using Microsoft.JSInterop;
 global using $ProjectName.WebApi.Handlers;
 global using $ProjectName.WebApi.Options;
-global using $ProjectName.Domain.Interfaces.Auth;
-global using $ProjectName.Domain.Shared.Errors;
-global using $ProjectName.Domain.ValueObjects.Auth;
-"@ | Set-Content "src/Infrastructure/WebApi/GlobalUsings.cs"
+global using $ProjectName.Entities.Interfaces.Auth;
+global using $ProjectName.Entities.Shared.Errors;
+global using $ProjectName.Entities.ValueObjects.Auth;
+"@ | Set-Content "src/Adapters/WebApi/GlobalUsings.cs"
 
 # Validators GlobalUsings
 @"
@@ -515,7 +544,7 @@ global using System.Reflection;
 global using Microsoft.Extensions.DependencyInjection;
 global using $ProjectName.Abstractions.Shared;
 global using FluentValidation;
-"@ | Set-Content "src/Application/Validators/GlobalUsings.cs"
+"@ | Set-Content "src/UseCases/Validators/GlobalUsings.cs"
 
 # IoC GlobalUsings
 @"
@@ -529,9 +558,9 @@ global using $ProjectName.WebApi.Auth;
 global using $ProjectName.WebApi.Handlers;
 global using $ProjectName.WebApi.Options;
 global using $ProjectName.Validators;
-global using $ProjectName.Domain.Interfaces.Auth;
+global using $ProjectName.Entities.Interfaces.Auth;
 global using $ProjectName.Views.Shared.Auth;
-"@ | Set-Content "src/Presentation/IoC/GlobalUsings.cs"
+"@ | Set-Content "src/Frameworks/IoC/GlobalUsings.cs"
 
 # Client GlobalUsings
 @"
@@ -542,7 +571,7 @@ global using Microsoft.AspNetCore.Components.Web;
 global using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 global using Microsoft.Extensions.DependencyInjection;
 
-"@ | Set-Content "src/Presentation/Client/GlobalUsings.cs"
+"@ | Set-Content "src/Frameworks/Client/GlobalUsings.cs"
 
 # Tests GlobalUsings
 @"
@@ -561,7 +590,7 @@ string apiBaseUrl = builder.Configuration["ApiOptions:BaseUrl"] ?? builder.HostE
 builder.Services.AddIoC(builder.Configuration, apiBaseUrl);
 
 await builder.Build().RunAsync();
-"@ | Set-Content "src/Presentation/Client/Program.cs"
+"@ | Set-Content "src/Frameworks/Client/Program.cs"
 
 # Client appsettings.json
 @"
@@ -570,9 +599,9 @@ await builder.Build().RunAsync();
     "BaseUrl": "https://localhost:5001"
   }
 }
-"@ | Set-Content "src/Presentation/Client/wwwroot/appsettings.json"
+"@ | Set-Content "src/Frameworks/Client/wwwroot/appsettings.json"
 
-Remove-Item "src/Presentation/Client/App.razor" -Force -ErrorAction SilentlyContinue
+Remove-Item "src/Frameworks/Client/App.razor" -Force -ErrorAction SilentlyContinue
 
 # Index.razor lives in the Views assembly so the Router (AppAssembly = typeof(App).Assembly) can discover it.
 @"
@@ -597,7 +626,7 @@ Remove-Item "src/Presentation/Client/App.razor" -Force -ErrorAction SilentlyCont
             <ul class="list-none mb-4 space-y-1 text-gray-700">
                 <li><i class="bi bi-cup-hot-fill text-yellow-500"></i> Café: <em>opcional pero recomendado</em>.</li>
                 <li><i class="bi bi-layers-fill text-green-600"></i> Capas: como una cebolla, pero sin llorar (Onion Architecture approved).</li>
-                <li><i class="bi bi-shield-lock-fill text-gray-600"></i> Domain no sabe que existe la base de datos. Y así queremos que siga.</li>
+                <li><i class="bi bi-shield-lock-fill text-gray-600"></i> Entities no sabe que existe la base de datos. Y así queremos que siga.</li>
                 <li><i class="bi bi-bug-fill text-red-600"></i> Si compila a la primera, revisa que no estés soñando.</li>
             </ul>
 
@@ -614,7 +643,7 @@ Remove-Item "src/Presentation/Client/App.razor" -Force -ErrorAction SilentlyCont
     </div>
 </div>
 
-"@ | Set-Content "src/Presentation/Views/Pages/Index.razor"
+"@ | Set-Content "src/Frameworks/Views/Pages/Index.razor"
 
 # Index.razor.cs code-behind
 @"
@@ -624,9 +653,9 @@ namespace $ProjectName.Views.Pages;
 public partial class Index : ComponentBase
 {
 }
-"@ | Set-Content "src/Presentation/Views/Pages/Index.razor.cs"
+"@ | Set-Content "src/Frameworks/Views/Pages/Index.razor.cs"
 
-# LoginRequest in Application/ViewModels/Auth
+# LoginRequest in Adapters/ViewModels/Auth
 @"
 namespace $ProjectName.ViewModels.Auth
 {
@@ -636,9 +665,9 @@ namespace $ProjectName.ViewModels.Auth
         public string Password { get; set; } = string.Empty;
     }
 }
-"@ | Set-Content "src/Application/ViewModels/Auth/LoginRequest.cs"
+"@ | Set-Content "src/Adapters/ViewModels/Auth/LoginRequest.cs"
 
-# RegisterRequest in Application/ViewModels/Auth
+# RegisterRequest in Adapters/ViewModels/Auth
 @"
 namespace $ProjectName.ViewModels.Auth
 {
@@ -649,23 +678,23 @@ namespace $ProjectName.ViewModels.Auth
         public string Password { get; set; } = string.Empty;
     }
 }
-"@ | Set-Content "src/Application/ViewModels/Auth/RegisterRequest.cs"
+"@ | Set-Content "src/Adapters/ViewModels/Auth/RegisterRequest.cs"
 
-# IAuthService in Domain
+# IAuthGateway in Entities
 @"
-namespace $ProjectName.Domain.Interfaces.Auth
+namespace $ProjectName.Entities.Interfaces.Auth
 {
-    public interface IAuthService
+    public interface IAuthGateway
     {
         Task<string> LoginAsync(string userEmail, string password, CancellationToken cancellationToken = default);
         Task LogoutAsync();
     }
 }
-"@ | Set-Content "src/Domain/Interfaces/Auth/IAuthService.cs"
+"@ | Set-Content "src/Entities/Interfaces/Auth/IAuthGateway.cs"
 
-# UserSessionInfo in Domain/ValueObjects/Auth
+# UserSessionInfo in Entities/ValueObjects/Auth
 @"
-namespace $ProjectName.Domain.ValueObjects.Auth
+namespace $ProjectName.Entities.ValueObjects.Auth
 {
     public class UserSessionInfo
     {
@@ -676,13 +705,13 @@ namespace $ProjectName.Domain.ValueObjects.Auth
         public bool IsExpired { get; set; }
     }
 }
-"@ | Set-Content "src/Domain/ValueObjects/Auth/UserSessionInfo.cs"
+"@ | Set-Content "src/Entities/ValueObjects/Auth/UserSessionInfo.cs"
 
-# IJwtTokenService in Domain
+# IJwtTokenGateway in Entities
 @"
-namespace $ProjectName.Domain.Interfaces.Auth
+namespace $ProjectName.Entities.Interfaces.Auth
 {
-    public interface IJwtTokenService
+    public interface IJwtTokenGateway
     {
         event EventHandler TokenChanged;
         Task<string> GetTokenAsync(CancellationToken cancellationToken = default);
@@ -691,13 +720,13 @@ namespace $ProjectName.Domain.Interfaces.Auth
         Task<ValueObjects.Auth.UserSessionInfo> GetUserSessionAsync(CancellationToken cancellationToken = default);
     }
 }
-"@ | Set-Content "src/Domain/Interfaces/Auth/IJwtTokenService.cs"
+"@ | Set-Content "src/Entities/Interfaces/Auth/IJwtTokenGateway.cs"
 
-# JwtTokenService in Infrastructure/WebApi/Auth
+# JwtTokenGateway in Adapters/WebApi/Auth
 @"
 namespace $ProjectName.WebApi.Auth
 {
-    public class JwtTokenService(IJSRuntime jsRuntime) : IJwtTokenService
+    public class JwtTokenGateway(IJSRuntime jsRuntime) : IJwtTokenGateway
     {
         private const string TokenKey = "auth_token";
 
@@ -807,13 +836,13 @@ namespace $ProjectName.WebApi.Auth
         }
     }
 }
-"@ | Set-Content "src/Infrastructure/WebApi/Auth/JwtTokenService.cs"
+"@ | Set-Content "src/Adapters/WebApi/Auth/JwtTokenGateway.cs"
 
-# AuthWebApi in Infrastructure/WebApi
+# AuthGateway in Adapters/WebApi
 @"
 namespace $ProjectName.WebApi.Auth
 {
-    public class AuthWebApi(HttpClient httpClient, IJwtTokenService tokenService) : IAuthService
+    public class AuthGateway(HttpClient httpClient, IJwtTokenGateway tokenGateway) : IAuthGateway
     {
         public async Task<string> LoginAsync(string userEmail, string password, CancellationToken cancellationToken = default)
         {
@@ -834,13 +863,13 @@ namespace $ProjectName.WebApi.Auth
             }));
             string token = $"{header}.{payload}.signature";
 
-            await tokenService.SetTokenAsync(token, cancellationToken).ConfigureAwait(false);
+            await tokenGateway.SetTokenAsync(token, cancellationToken).ConfigureAwait(false);
             return token;
         }
 
         public async Task LogoutAsync()
         {
-            await tokenService.ClearTokenAsync().ConfigureAwait(false);
+            await tokenGateway.ClearTokenAsync().ConfigureAwait(false);
         }
 
         private static string Base64UrlEncode(string value)
@@ -852,9 +881,9 @@ namespace $ProjectName.WebApi.Auth
         }
     }
 }
-"@ | Set-Content "src/Infrastructure/WebApi/Auth/AuthWebApi.cs"
+"@ | Set-Content "src/Adapters/WebApi/Auth/AuthGateway.cs"
 
-# GlobalExceptionHandler in Infrastructure/WebApi/Handlers
+# GlobalExceptionHandler in Adapters/WebApi/Handlers
 @"
 namespace $ProjectName.WebApi.Handlers
 {
@@ -1002,11 +1031,11 @@ namespace $ProjectName.WebApi.Handlers
         }
     }
 }
-"@ | Set-Content "src/Infrastructure/WebApi/Handlers/GlobalExceptionHandler.cs"
+"@ | Set-Content "src/Adapters/WebApi/Handlers/GlobalExceptionHandler.cs"
 
-# ErrorKind in Domain/Shared/Errors
+# ErrorKind in Entities/Shared/Errors
 @"
-namespace $ProjectName.Domain.Shared.Errors
+namespace $ProjectName.Entities.Shared.Errors
 {
     public enum ErrorKind
     {
@@ -1022,11 +1051,11 @@ namespace $ProjectName.Domain.Shared.Errors
         Unexpected
     }
 }
-"@ | Set-Content "src/Domain/Shared/Errors/ErrorKind.cs"
+"@ | Set-Content "src/Entities/Shared/Errors/ErrorKind.cs"
 
-# GlobalApplicationException in Domain/Shared/Errors
+# GlobalApplicationException in Entities/Shared/Errors
 @"
-namespace $ProjectName.Domain.Shared.Errors
+namespace $ProjectName.Entities.Shared.Errors
 {
     public class GlobalApplicationException(
         string userMessage,
@@ -1041,9 +1070,9 @@ namespace $ProjectName.Domain.Shared.Errors
         public bool IsRetryable { get; } = isRetryable;
     }
 }
-"@ | Set-Content "src/Domain/Shared/Errors/GlobalApplicationException.cs"
+"@ | Set-Content "src/Entities/Shared/Errors/GlobalApplicationException.cs"
 
-# ViewModelBase in Application/ViewModels/Base
+# ViewModelBase in Adapters/ViewModels/Base
 @"
 namespace $ProjectName.ViewModels.Base
 {
@@ -1210,9 +1239,9 @@ namespace $ProjectName.ViewModels.Base
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 }
-"@ | Set-Content "src/Application/ViewModels/Base/ViewModelBase.cs"
+"@ | Set-Content "src/Adapters/ViewModels/Base/ViewModelBase.cs"
 
-# ILoginViewModel in Application/ViewModels/Auth
+# ILoginViewModel in Adapters/ViewModels/Auth
 @"
 namespace $ProjectName.ViewModels.Auth
 {
@@ -1226,13 +1255,13 @@ namespace $ProjectName.ViewModels.Auth
         Task LogoutAsync();
     }
 }
-"@ | Set-Content "src/Application/ViewModels/Auth/ILoginViewModel.cs"
+"@ | Set-Content "src/Adapters/ViewModels/Auth/ILoginViewModel.cs"
 
-# LoginViewModel in Application/ViewModels/Auth
+# LoginViewModel in Adapters/ViewModels/Auth
 @"
 namespace $ProjectName.ViewModels.Auth
 {
-    public class LoginViewModel(IAuthService authService) : ViewModelBase(), ILoginViewModel
+    public class LoginViewModel(IAuthGateway authGateway) : ViewModelBase(), ILoginViewModel
     {
         public LoginRequest Request { get; set; } = new();
 
@@ -1243,7 +1272,7 @@ namespace $ProjectName.ViewModels.Auth
 
             try
             {
-                return await authService.LoginAsync(Request.UserEmail, Request.Password);
+                return await authGateway.LoginAsync(Request.UserEmail, Request.Password);
             }
             catch (Exception ex)
             {
@@ -1261,7 +1290,7 @@ namespace $ProjectName.ViewModels.Auth
             IsLoading = true;
             try
             {
-                await authService.LogoutAsync();
+                await authGateway.LogoutAsync();
             }
             finally
             {
@@ -1270,7 +1299,7 @@ namespace $ProjectName.ViewModels.Auth
         }
     }
 }
-"@ | Set-Content "src/Application/ViewModels/Auth/LoginViewModel.cs"
+"@ | Set-Content "src/Adapters/ViewModels/Auth/LoginViewModel.cs"
 
 # Login.razor in Views/Pages
 @"
@@ -1359,7 +1388,7 @@ namespace $ProjectName.ViewModels.Auth
         </div>
     </div>
 </div>
-"@ | Set-Content "src/Presentation/Views/Pages/Login.razor"
+"@ | Set-Content "src/Frameworks/Views/Pages/Login.razor"
 
 # Login.razor.cs code-behind
 @"
@@ -1384,7 +1413,7 @@ public partial class Login : ComponentBase
         IsLoginPasswordVisible = !IsLoginPasswordVisible;
     }
 }
-"@ | Set-Content "src/Presentation/Views/Pages/Login.razor.cs"
+"@ | Set-Content "src/Frameworks/Views/Pages/Login.razor.cs"
 
 # Register.razor in Views/Pages
 @"
@@ -1510,7 +1539,7 @@ public partial class Login : ComponentBase
         </div>
     </div>
 </div>
-"@ | Set-Content "src/Presentation/Views/Pages/Register.razor"
+"@ | Set-Content "src/Frameworks/Views/Pages/Register.razor"
 
 # Register.razor.cs code-behind
 @"
@@ -1570,25 +1599,25 @@ public partial class Register : ComponentBase
         IsConfirmPasswordVisible = !IsConfirmPasswordVisible;
     }
 }
-"@ | Set-Content "src/Presentation/Views/Pages/Register.razor.cs"
+"@ | Set-Content "src/Frameworks/Views/Pages/Register.razor.cs"
 
 # Client _Imports.razor update
 @"
 @using Microsoft.AspNetCore.Components.Web
-"@ | Set-Content "src/Presentation/Client/_Imports.razor"
+"@ | Set-Content "src/Frameworks/Client/_Imports.razor"
 
 # Client index.html update
-$content = Get-Content "src/Presentation/Client/wwwroot/index.html" -Raw
+$content = Get-Content "src/Frameworks/Client/wwwroot/index.html" -Raw
 $content = $content -replace "<link href=`"$ProjectName.Web.styles.css`" rel=`"stylesheet`" />", @"
 <script src="https://cdn.tailwindcss.com"></script>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
 <link href="_content/LeaderAnalytics.LeaderPivot.Blazor/leader-pivot.css" rel="stylesheet" />
 "@
 
-$content | Set-Content "src/Presentation/Client/wwwroot/index.html"
+$content | Set-Content "src/Frameworks/Client/wwwroot/index.html"
 
 # Replace default app.css with a Tailwind-only version.
-$appCssPath = "src/Presentation/Client/wwwroot/css/app.css"
+$appCssPath = "src/Frameworks/Client/wwwroot/css/app.css"
 @"
 html, body {
     font-family: 'Segoe UI', sans-serif;
@@ -1682,16 +1711,16 @@ code {
 @using Microsoft.AspNetCore.Components.Routing
 @using Microsoft.AspNetCore.Components.Authorization
 @using $ProjectName.ViewModels.Auth
-@using $ProjectName.Domain.Interfaces.Auth
+@using $ProjectName.Entities.Interfaces.Auth
 @using $ProjectName.Views.Shared.Auth
 @using LeaderAnalytics.LeaderPivot.Blazor
 
-"@ | Set-Content "src/Presentation/Views/_Imports.razor"
+"@ | Set-Content "src/Frameworks/Views/_Imports.razor"
 
 # Views GlobalUsings.cs
 @"
-global using $ProjectName.Domain.Interfaces.Auth;
-global using $ProjectName.Domain.ValueObjects.Auth;
+global using $ProjectName.Entities.Interfaces.Auth;
+global using $ProjectName.Entities.ValueObjects.Auth;
 global using $ProjectName.ViewModels.Auth;
 global using $ProjectName.Views.Layout;
 global using $ProjectName.Views.Shared.Auth;
@@ -1706,7 +1735,7 @@ global using System.Globalization;
 global using System.Security.Claims;
 global using System.Text;
 global using System.Text.Json;
-"@ | Set-Content "src/Presentation/Views/GlobalUsings.cs"
+"@ | Set-Content "src/Frameworks/Views/GlobalUsings.cs"
 
 # App.razor in Views root
 @"
@@ -1741,7 +1770,7 @@ global using System.Text.Json;
     </Router>
 </CascadingAuthenticationState>
 
-"@ | Set-Content "src/Presentation/Views/App.razor"
+"@ | Set-Content "src/Frameworks/Views/App.razor"
 
 # RedirectToLogin.razor in Views/Shared/Auth
 @"
@@ -1753,7 +1782,7 @@ global using System.Text.Json;
         Navigation.NavigateTo("/login", forceLoad: false);
     }
 }
-"@ | Set-Content "src/Presentation/Views/Shared/Auth/RedirectToLogin.razor"
+"@ | Set-Content "src/Frameworks/Views/Shared/Auth/RedirectToLogin.razor"
 
 # JwtAuthenticationStateProvider in Views/Shared/Auth
 @"
@@ -1761,18 +1790,18 @@ namespace $ProjectName.Views.Shared.Auth
 {
     public class JwtAuthenticationStateProvider : AuthenticationStateProvider
     {
-        public JwtAuthenticationStateProvider(IJwtTokenService jwtTokenService) : base()
+        public JwtAuthenticationStateProvider(IJwtTokenGateway jwtTokenGateway) : base()
         {
-            _jwtTokenService = jwtTokenService;
-            _jwtTokenService.TokenChanged += (_, _) =>
+            _jwtTokenGateway = jwtTokenGateway;
+            _jwtTokenGateway.TokenChanged += (_, _) =>
                 NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
         }
 
-        private readonly IJwtTokenService _jwtTokenService;
+        private readonly IJwtTokenGateway _jwtTokenGateway;
 
         public override async Task<AuthenticationState> GetAuthenticationStateAsync()
         {
-            UserSessionInfo session = await _jwtTokenService.GetUserSessionAsync().ConfigureAwait(false);
+            UserSessionInfo session = await _jwtTokenGateway.GetUserSessionAsync().ConfigureAwait(false);
 
             if (string.IsNullOrWhiteSpace(session.UserId) || session.IsExpired)
             {
@@ -1799,12 +1828,12 @@ namespace $ProjectName.Views.Shared.Auth
         }
     }
 }
-"@ | Set-Content "src/Presentation/Views/Shared/Auth/JwtAuthenticationStateProvider.cs"
+"@ | Set-Content "src/Frameworks/Views/Shared/Auth/JwtAuthenticationStateProvider.cs"
 
 # NotFound.razor in Views/Pages
 @"
 <p>Sorry, there's nothing at this address.</p>
-"@ | Set-Content "src/Presentation/Views/Pages/NotFound.razor"
+"@ | Set-Content "src/Frameworks/Views/Pages/NotFound.razor"
 
 # MainLayout.razor in Views/Layout
 @"
@@ -1863,7 +1892,7 @@ namespace $ProjectName.Views.Shared.Auth
          @onclick="NavMenuState.CloseOpen">
     </div>
 }
-"@ | Set-Content "src/Presentation/Views/Layout/MainLayout.razor"
+"@ | Set-Content "src/Frameworks/Views/Layout/MainLayout.razor"
 
 # MainLayout.razor.cs code-behind
 @"
@@ -1886,7 +1915,7 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
         NavMenuState.Changed -= OnNavMenuStateChanged;
     }
 }
-"@ | Set-Content "src/Presentation/Views/Layout/MainLayout.razor.cs"
+"@ | Set-Content "src/Frameworks/Views/Layout/MainLayout.razor.cs"
 
 # NavMenu.razor in Views/Layout
 @"
@@ -1934,7 +1963,7 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
     </div>
 </nav>
 
-"@ | Set-Content "src/Presentation/Views/Layout/NavMenu.razor"
+"@ | Set-Content "src/Frameworks/Views/Layout/NavMenu.razor"
 
 # NavMenu.razor.cs code-behind
 @"
@@ -1973,7 +2002,7 @@ public partial class NavMenu : ComponentBase, IDisposable
         NavMenuState.Changed -= OnStateChanged;
     }
 }
-"@ | Set-Content "src/Presentation/Views/Layout/NavMenu.razor.cs"
+"@ | Set-Content "src/Frameworks/Views/Layout/NavMenu.razor.cs"
 
 # NavMenuStateService
 @"
@@ -2024,7 +2053,7 @@ public class NavMenuStateService
         Changed?.Invoke(this, EventArgs.Empty);
     }
 }
-"@ | Set-Content "src/Presentation/Views/Layout/NavMenuStateService.cs"
+"@ | Set-Content "src/Frameworks/Views/Layout/NavMenuStateService.cs"
 
 # TopBar.razor
 @"
@@ -2103,7 +2132,7 @@ public class NavMenuStateService
     </div>
 </header>
 
-"@ | Set-Content "src/Presentation/Views/Layout/TopBar.razor"
+"@ | Set-Content "src/Frameworks/Views/Layout/TopBar.razor"
 
 # TopBar.razor.cs
 @"
@@ -2177,10 +2206,10 @@ public partial class TopBar : ComponentBase, IDisposable
         IsUserMenuOpen = false;
     }
 }
-"@ | Set-Content "src/Presentation/Views/Layout/TopBar.razor.cs"
+"@ | Set-Content "src/Frameworks/Views/Layout/TopBar.razor.cs"
 
 # NavMenu.razor.css (no custom CSS — using Tailwind utility classes in NavMenu.razor and MainLayout.razor)
-"" | Set-Content "src/Presentation/Views/Layout/NavMenu.razor.css"
+"" | Set-Content "src/Frameworks/Views/Layout/NavMenu.razor.css"
 
 # TopBar.razor.css
 @"
@@ -2192,15 +2221,15 @@ public partial class TopBar : ComponentBase, IDisposable
 .topbar .btn-link:focus {
     color: rgba(0, 0, 0, 0.7) !important;
 }
-"@ | Set-Content "src/Presentation/Views/Layout/TopBar.razor.css"
+"@ | Set-Content "src/Frameworks/Views/Layout/TopBar.razor.css"
 
 # MainLayout.razor.css
 @"
 /* Empty: layout uses Tailwind utility classes. Keep file if you need component-scoped overrides later. */
-"@ | Set-Content "src/Presentation/Views/Layout/MainLayout.razor.css"
+"@ | Set-Content "src/Frameworks/Views/Layout/MainLayout.razor.css"
 
 # Login.razor.css (no custom CSS — using Tailwind utility classes in Login.razor)
-"" | Set-Content "src/Presentation/Views/Pages/Login.razor.css"
+"" | Set-Content "src/Frameworks/Views/Pages/Login.razor.css"
 
 # ListComponent.razor.css (scoped styles for table/mobile behavior)
 @"
@@ -2211,7 +2240,7 @@ public partial class TopBar : ComponentBase, IDisposable
 .table-scroll table {
     min-width: 640px;
 }
-"@ | Set-Content "src/Presentation/Views/Shared/Components/ListComponent.razor.css"
+"@ | Set-Content "src/Frameworks/Views/Shared/Components/ListComponent.razor.css"
 
 # PaginationComponent.razor in Views/Shared/Components
 @"
@@ -2273,7 +2302,7 @@ public partial class TopBar : ComponentBase, IDisposable
         </div>
     </div>
 </div>
-"@ | Set-Content "src/Presentation/Views/Shared/Components/PaginationComponent.razor"
+"@ | Set-Content "src/Frameworks/Views/Shared/Components/PaginationComponent.razor"
 
 # PaginationComponent.razor.cs code-behind
 @"
@@ -2307,7 +2336,7 @@ public partial class PaginationComponent
     private async Task NextPage() => await OnPageChanged.InvokeAsync(CurrentPage + 1);
     private async Task LastPage() => await OnPageChanged.InvokeAsync(TotalPages);
 }
-"@ | Set-Content "src/Presentation/Views/Shared/Components/PaginationComponent.razor.cs"
+"@ | Set-Content "src/Frameworks/Views/Shared/Components/PaginationComponent.razor.cs"
 
 # ListComponent.razor in Views/Shared/Components
 @"
@@ -2394,7 +2423,7 @@ else
         }
     </div>
 }
-"@ | Set-Content "src/Presentation/Views/Shared/Components/ListComponent.razor"
+"@ | Set-Content "src/Frameworks/Views/Shared/Components/ListComponent.razor"
 
 # ListComponent.razor.cs code-behind
 @"
@@ -2422,7 +2451,7 @@ public partial class ListComponent<TItem>
     private bool IsTableMode => TableHeader != null && TableRow != null;
     private bool HasMobileView => MobileItem != null;
 }
-"@ | Set-Content "src/Presentation/Views/Shared/Components/ListComponent.razor.cs"
+"@ | Set-Content "src/Frameworks/Views/Shared/Components/ListComponent.razor.cs"
 
 # SearchSelect.razor in Views/Shared/Components
 @"
@@ -2472,7 +2501,7 @@ public partial class ListComponent<TItem>
         </ul>
     }
 </div>
-"@ | Set-Content "src/Presentation/Views/Shared/Components/SearchSelect.razor"
+"@ | Set-Content "src/Frameworks/Views/Shared/Components/SearchSelect.razor"
 
 # SearchSelect.razor.cs code-behind
 @"
@@ -2545,7 +2574,7 @@ public partial class SearchSelect<TItem> : IDisposable
         SearchCts?.Dispose();
     }
 }
-"@ | Set-Content "src/Presentation/Views/Shared/Components/SearchSelect.razor.cs"
+"@ | Set-Content "src/Frameworks/Views/Shared/Components/SearchSelect.razor.cs"
 
 # NumberConverter in Views/Shared/Helper
 @"
@@ -2574,7 +2603,7 @@ public static class NumberConverter
                 decimal.TryParse(capturedValue, NumberStyles.Number, CultureInfo.CurrentCulture, out decimalValue);
     }
 }
-"@ | Set-Content "src/Presentation/Views/Shared/Helper/NumberConverter.cs"
+"@ | Set-Content "src/Frameworks/Views/Shared/Helper/NumberConverter.cs"
 
 # InputDecimal.razor in Views/Shared/Components
 @"
@@ -2590,7 +2619,7 @@ public static class NumberConverter
        readonly="@ReadOnly"
        disabled="@Disabled"
        @attributes="AdditionalAttributes" />
-"@ | Set-Content "src/Presentation/Views/Shared/Components/InputDecimal.razor"
+"@ | Set-Content "src/Frameworks/Views/Shared/Components/InputDecimal.razor"
 
 # InputDecimal.razor.cs code-behind
 @"
@@ -2684,7 +2713,7 @@ public partial class InputDecimal
         return classes.Contains("text-start") || classes.Contains("text-center") || classes.Contains("text-end");
     }
 }
-"@ | Set-Content "src/Presentation/Views/Shared/Components/InputDecimal.razor.cs"
+"@ | Set-Content "src/Frameworks/Views/Shared/Components/InputDecimal.razor.cs"
 
 # PivotComponent.razor in Views/Shared/Components
 @"
@@ -2865,7 +2894,7 @@ public partial class InputDecimal
         Agrega al menos una dimensión en <strong>Filas</strong> y una en <strong>Columnas</strong> para ver la tabla pivote.
     </div>
 }
-"@ | Set-Content "src/Presentation/Views/Shared/Components/PivotComponent.razor"
+"@ | Set-Content "src/Frameworks/Views/Shared/Components/PivotComponent.razor"
 
 # PivotComponent.razor.cs code-behind
 @"
@@ -3113,7 +3142,7 @@ public partial class PivotComponent<T> where T : class
         }
     }
 }
-"@ | Set-Content "src/Presentation/Views/Shared/Components/PivotComponent.razor.cs"
+"@ | Set-Content "src/Frameworks/Views/Shared/Components/PivotComponent.razor.cs"
 
 # PivotBuilder.cs in Views/Shared/Components
 @"
@@ -3366,7 +3395,7 @@ public partial class PivotBuilder<T>
             .Where(p => types.Contains(p.PropertyType) && !_excludedMeasures.Contains(p.Name));
     }
 }
-"@ | Set-Content "src/Presentation/Views/Shared/Components/PivotBuilder.cs"
+"@ | Set-Content "src/Frameworks/Views/Shared/Components/PivotBuilder.cs"
 
 Write-Host "Creating CI/CD files..." -ForegroundColor Yellow
 
@@ -3378,22 +3407,23 @@ ARG Configuration=Release
 WORKDIR /src
 
 # Copy project files
-COPY src/Presentation/Client/$ProjectName.Web.csproj src/Presentation/Client/
-COPY src/Domain/$ProjectName.Domain.csproj src/Domain/
-COPY src/Application/ViewModels/$ProjectName.ViewModels.csproj src/Application/ViewModels/
-COPY src/Infrastructure/WebApi/$ProjectName.WebApi.csproj src/Infrastructure/WebApi/
-COPY src/Presentation/IoC/$ProjectName.IoC.csproj src/Presentation/IoC/
-COPY src/Application/Validators/$ProjectName.Validators.csproj src/Application/Validators/
-COPY src/Presentation/Views/$ProjectName.Views.csproj src/Presentation/Views/
+COPY src/Frameworks/Client/$ProjectName.Web.csproj src/Frameworks/Client/
+COPY src/Entities/$ProjectName.Entities.csproj src/Entities/
+COPY src/UseCases/Abstractions/$ProjectName.Abstractions.csproj src/UseCases/Abstractions/
+COPY src/Adapters/ViewModels/$ProjectName.ViewModels.csproj src/Adapters/ViewModels/
+COPY src/Adapters/WebApi/$ProjectName.WebApi.csproj src/Adapters/WebApi/
+COPY src/Frameworks/IoC/$ProjectName.IoC.csproj src/Frameworks/IoC/
+COPY src/UseCases/Validators/$ProjectName.Validators.csproj src/UseCases/Validators/
+COPY src/Frameworks/Views/$ProjectName.Views.csproj src/Frameworks/Views/
 
 # Restore dependencies
-RUN dotnet restore src/Presentation/Client/$ProjectName.Web.csproj
+RUN dotnet restore src/Frameworks/Client/$ProjectName.Web.csproj
 
 # Copy all source code
 COPY . .
 
 # Publish project
-WORKDIR /src/src/Presentation/Client
+WORKDIR /src/src/Frameworks/Client
 RUN dotnet publish $ProjectName.Web.csproj -c `$Configuration -o /app/publish
 
 # Final stage (Nginx)
@@ -3404,15 +3434,15 @@ WORKDIR /usr/share/nginx/html
 COPY --from=build /app/publish/wwwroot .
 
 # Copy custom nginx configuration
-COPY src/Presentation/Client/nginx.conf /etc/nginx/nginx.conf
+COPY src/Frameworks/Client/nginx.conf /etc/nginx/nginx.conf
 
 EXPOSE 80
 
 # Helper commands:
-# docker build -f src/Presentation/Client/Dockerfile -t $($ProjectName.ToLower())-web:latest .
+# docker build -f src/Frameworks/Client/Dockerfile -t $($ProjectName.ToLower())-web:latest .
 # docker container rm -f $($ProjectName.ToLower())-web
 # docker run -d --name $($ProjectName.ToLower())-web -p $DockerPort1`:80 $($ProjectName.ToLower())-web:latest
-"@ | Set-Content "src/Presentation/Client/Dockerfile"
+"@ | Set-Content "src/Frameworks/Client/Dockerfile"
 
 # nginx.conf
 @'
@@ -3428,7 +3458,7 @@ http {
         }
     }
 }
-'@ | Set-Content "src/Presentation/Client/nginx.conf"
+'@ | Set-Content "src/Frameworks/Client/nginx.conf"
 
 # azure-pipelines.yml
 @'
@@ -3450,16 +3480,16 @@ steps:
         runOptions: inline
         inline: |
             cd /var/www/__PROJECT_DIR__/__PROJECT_NAME__
-            chmod +x src/Presentation/Client/deploy.sh
-            ./src/Presentation/Client/deploy.sh
+            chmod +x src/Frameworks/Client/deploy.sh
+            ./src/Frameworks/Client/deploy.sh
         failOnStdErr: false
-'@ | Set-Content "src/Presentation/Client/azure-pipelines.yml"
+'@ | Set-Content "src/Frameworks/Client/azure-pipelines.yml"
 
 $projectDirName = "web-$($ProjectName.ToLower())"
 $projectSlug = $ProjectName.ToLower().Replace('.', '-').Replace('_', '-')
-$azurePipelinesContent = Get-Content -Raw "src/Presentation/Client/azure-pipelines.yml"
+$azurePipelinesContent = Get-Content -Raw "src/Frameworks/Client/azure-pipelines.yml"
 $azurePipelinesContent = $azurePipelinesContent.Replace("__PROJECT_DIR__", $projectDirName).Replace("__PROJECT_NAME__", $ProjectName)
-$azurePipelinesContent | Set-Content "src/Presentation/Client/azure-pipelines.yml"
+$azurePipelinesContent | Set-Content "src/Frameworks/Client/azure-pipelines.yml"
 
 # deploy.sh
 @'
@@ -3494,7 +3524,7 @@ fi
 
 # 2. Build de imagen
 echo "Construyendo imagen Docker..."
-docker build -f src/Presentation/Client/Dockerfile -t $IMAGE_NAME .
+docker build -f src/Frameworks/Client/Dockerfile -t $IMAGE_NAME .
 
 # 3. Detener y eliminar contenedores existentes
 echo "Eliminando contenedores previos..."
@@ -3510,11 +3540,11 @@ docker run -d -p __DOCKER_PORT_4__:80 --name web-__PROJECT_SLUG__4 $IMAGE_NAME
 echo "====================================="
 echo "Deploy finalizado correctamente"
 echo "====================================="
-'@ | Set-Content "src/Presentation/Client/deploy.sh"
+'@ | Set-Content "src/Frameworks/Client/deploy.sh"
 
-$deployScriptContent = Get-Content -Raw "src/Presentation/Client/deploy.sh"
+$deployScriptContent = Get-Content -Raw "src/Frameworks/Client/deploy.sh"
 $deployScriptContent = $deployScriptContent.Replace("__PROJECT_DIR__", $projectDirName).Replace("__PROJECT_NAME__", $ProjectName).Replace("__PROJECT_SLUG__", $projectSlug).Replace("__DOCKER_PORT_1__", "$DockerPort1").Replace("__DOCKER_PORT_2__", "$DockerPort2").Replace("__DOCKER_PORT_3__", "$DockerPort3").Replace("__DOCKER_PORT_4__", "$DockerPort4")
-$deployScriptContent | Set-Content "src/Presentation/Client/deploy.sh"
+$deployScriptContent | Set-Content "src/Frameworks/Client/deploy.sh"
 
 # =========================
 # CLEAN ARCHITECTURE DOC (Tío Bob)
@@ -3566,16 +3596,16 @@ cambia; las capas de afuera son detalles técnicos que puedes sustituir.
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│  Presentation (UI)                                      │
-│  Componentes .razor, layouts, Blazor, Tailwind CSS...   │  ← capa externa
+│  Frameworks & Drivers (detalles técnicos)               │
+│  Blazor WebAssembly, componentes .razor, Tailwind, IoC..│  ← capa externa
 ├─────────────────────────────────────────────────────────┤
-│  Infrastructure (adaptadores)                           │
-│  HttpClient, localStorage, tokens, opciones...          │  ← detalles técnicos
+│  Interface Adapters (adaptadores)                       │
+│  ViewModels (presenters), gateways HTTP...              │
 ├─────────────────────────────────────────────────────────┤
-│  Application (casos de uso)                             │
-│  ViewModels, validaciones, DTOs...                      │  ← orquestación
+│  Use Cases (reglas de aplicación)                       │
+│  Abstracciones de casos de uso, validaciones...         │
 ├─────────────────────────────────────────────────────────┤
-│  Domain (reglas de negocio)                             │
+│  Entities (reglas de negocio de empresa)                │
 │  Entidades, value objects, interfaces de puertos...     │  ← centro
 └─────────────────────────────────────────────────────────┘
 ```
@@ -3583,49 +3613,54 @@ cambia; las capas de afuera son detalles técnicos que puedes sustituir.
 > **Regla:** las flechas de dependencia apuntan hacia abajo. La capa de
 > arriba puede conocer a la de abajo, pero nunca al revés.
 
-### 2.1 Domain — el centro
+### 2.1 Entities — el centro
 
-Contiene las reglas de negocio puras. No conoce Blazor, HTTP, JSON, etc.
+Contiene las reglas de negocio puras (enterprise business rules). No
+conoce Blazor, HTTP, JSON, etc.
 
 - `Entities/`: objetos con identidad (`User`, `Order`).
 - `ValueObjects/`: objetos inmutables (`Email`, `Money`).
 - `Enums/`: enumeraciones de negocio.
-- `Interfaces/`: **puertos** que expresan lo que el dominio necesita,
-  p. ej. `IAuthService`, `IOrderWebApi`.
+- `Interfaces/`: **puertos** que expresan lo que el negocio necesita,
+  p. ej. `IAuthGateway`, `IOrderGateway`.
 
 **Regla:** si tienes que importar `System.Net.Http` aquí, algo está mal.
 
-### 2.2 Application — los casos de uso
+### 2.2 Use Cases — las reglas de aplicación
 
-Orquesta el dominio para resolver una necesidad concreta del usuario.
+Define los límites de los casos de uso y sus reglas de entrada.
 
-- `ViewModels/`: cada caso de uso expuesto como un ViewModel que la UI
-  puede invocar (`LoginViewModel`, `CreateOrderViewModel`).
-- `ViewModels/Base/`: clase base reutilizable (`ViewModelBase`) con
-    `INotifyPropertyChanged`, manejo de errores (`GlobalApplicationException`) y
-  paginación.
+- `Abstractions/`: puertos de entrada y salida de la aplicación y
+  utilidades compartidas de registro de servicios.
 - `Validators/`: reglas de validación de entrada con FluentValidation.
-- `Interfaces/`: puertos que la aplicación necesita (`IApiClient`).
+
+Un caso de uso no sabe que existe `HttpClient`; solo conoce interfaces.
+
+### 2.3 Interface Adapters — los adaptadores
+
+Convierten los datos entre el formato de los casos de uso y el mundo
+exterior. Aquí viven los **presenters** y los **gateways**.
+
+- `ViewModels/`: cada caso de uso expuesto como un ViewModel (presenter)
+  que la UI puede invocar (`LoginViewModel`, `CreateOrderViewModel`).
+- `ViewModels/Base/`: clase base reutilizable (`ViewModelBase`) con
+  `INotifyPropertyChanged`, manejo de errores (`GlobalApplicationException`)
+  y paginación.
+- `WebApi/`: gateway HTTP que implementa los puertos consumiendo la API remota.
+- `WebApi/Auth/`: estado de autenticación, tokens e implementación de `IAuthGateway`.
+- `WebApi/Handlers/`: `DelegatingHandler`s del pipeline `HttpClient`.
+- `WebApi/Options/`: configuración (`BaseUrl`, keys).
 
 Un ViewModel no sabe que existe `HttpClient`; solo conoce interfaces.
-
-### 2.3 Infrastructure — los adaptadores
-
-Implementa los puertos de Domain y Application.
-
-- `WebApi/`: adaptador HTTP que consume la API remota.
-- `WebApi/Auth/`: estado de autenticación, tokens e implementación de `IAuthService`.
-- `WebApi/Handlers/`: `DelegatingHandler`s del pipeline `HttpClient`.
-- `Options/`: configuración (`BaseUrl`, keys).
-
-Es la única capa que conoce URLs, verbos HTTP y JSON de la API.
+El gateway `WebApi` es el único adaptador que conoce URLs, verbos HTTP y
+JSON de la API.
 
 #### Manejo centralizado de errores HTTP
 
 La plantilla incluye `GlobalExceptionHandler` (`DelegatingHandler`) para
 unificar el tratamiento de errores de red y respuestas no exitosas de la API
-remota. Infrastructure los traduce a `GlobalApplicationException`, que vive
-en Domain, por lo que Application no depende de detalles HTTP.
+remota. El gateway de Adapters los traduce a `GlobalApplicationException`, que vive
+en Entities, por lo que los ViewModels no dependen de detalles HTTP.
 
 - `GlobalExceptionHandler` intercepta cada solicitud saliente y:
     - Convierte `OperationCanceledException` por timeout en
@@ -3650,7 +3685,7 @@ public async Task<string> SubmitAsync()
 {
     try
     {
-        return await authService.LoginAsync(email, password);
+        return await authGateway.LoginAsync(email, password);
     }
     catch (GlobalApplicationException ex) when (ex.IsRetryable)
     {
@@ -3666,13 +3701,16 @@ public async Task<string> SubmitAsync()
 }
 ```
 
-### 2.4 Presentation — la entrega
+### 2.4 Frameworks & Drivers — los detalles
 
-Punto de entrada Blazor.
+La capa más externa: el framework de UI y la composición raíz.
 
-- `Client/`: host WebAssembly (`Program.cs`, `wwwroot`, `index.html`).
+- `Client/`: host Blazor WebAssembly (`Program.cs`, `wwwroot`, `index.html`).
 - `Views/`: Razor Class Library con componentes, layouts y páginas.
 - `IoC/`: composición raíz donde se registran implementaciones concretas.
+
+En el modelo del tío Bob la UI es un detalle: Blazor, Tailwind CSS y el
+navegador son frameworks sustituibles.
 
 ---
 
@@ -3681,26 +3719,27 @@ Punto de entrada Blazor.
 > Las dependencias del código fuente solo pueden apuntar hacia adentro.
 
 ```
-Presentation   ──►  Application  ──►  Domain
-Infrastructure ──►  Application  ──►  Domain
-Infrastructure ──►  Domain
+Frameworks ──►  Adapters  ──►  UseCases  ──►  Entities
+Frameworks ──►  UseCases  ──►  Entities
+Frameworks ──►  Entities
 ```
 
 Nunca al revés:
 
-- ❌ `Domain` no referencia `Application`, `Infrastructure` ni `Presentation`.
-- ❌ `Application` no referencia `Infrastructure` ni `Presentation`.
-- ✅ `Infrastructure` y `Presentation` sí referencian capas internas.
+- ❌ `Entities` no referencia `UseCases`, `Adapters` ni `Frameworks`.
+- ❌ `UseCases` no referencia `Adapters` ni `Frameworks`.
+- ❌ `Adapters` no referencia `Frameworks`.
+- ✅ `Frameworks` sí referencia capas internas.
 
 ### 3.1 ¿Cómo se invierte la dependencia?
 
 Ejemplo: el login necesita llamar a una API.
 
-1. `Domain/Interfaces/Auth/IAuthService.cs` define el puerto.
-2. `Infrastructure/WebApi/Auth/AuthWebApi.cs` implementa el puerto.
-3. `Application/ViewModels/Auth/LoginViewModel.cs` depende de `IAuthService`.
-4. `Presentation/IoC/DependencyContainer.cs` registra la implementación.
-5. `Presentation/Views/Pages/Login.razor` usa `LoginViewModel`.
+1. `Entities/Interfaces/Auth/IAuthGateway.cs` define el puerto.
+2. `Adapters/WebApi/Auth/AuthGateway.cs` implementa el puerto.
+3. `Adapters/ViewModels/Auth/LoginViewModel.cs` depende de `IAuthGateway`.
+4. `Frameworks/IoC/DependencyContainer.cs` registra la implementación.
+5. `Frameworks/Views/Pages/Login.razor` usa `LoginViewModel`.
 
 La interfaz pertenece a la capa interna; la implementación, a la externa.
 Así las dependencias apuntan hacia adentro, aunque el flujo de control
@@ -3710,16 +3749,16 @@ vaya hacia la API.
 
 La plantilla usa el proveedor de estado de autenticación nativo de Blazor:
 
-1. `Domain/ValueObjects/Auth/UserSessionInfo.cs` describe la sesión.
-2. `Domain/Interfaces/Auth/IJwtTokenService.cs` define lectura/escritura
+1. `Entities/ValueObjects/Auth/UserSessionInfo.cs` describe la sesión.
+2. `Entities/Interfaces/Auth/IJwtTokenGateway.cs` define lectura/escritura
    del token (en este caso, `localStorage`).
-3. `Infrastructure/WebApi/Auth/JwtTokenService.cs` implementa el puerto con
+3. `Adapters/WebApi/Auth/JwtTokenGateway.cs` implementa el puerto con
    `IJSRuntime`.
-4. `Presentation/Views/Shared/Auth/JwtAuthenticationStateProvider.cs`
+4. `Frameworks/Views/Shared/Auth/JwtAuthenticationStateProvider.cs`
    hereda de `AuthenticationStateProvider` y genera un `ClaimsPrincipal`
    a partir del token.
-5. `Presentation/IoC/DependencyContainer.cs` registra
-   `AuthenticationStateProvider` y `IJwtTokenService`.
+5. `Frameworks/IoC/DependencyContainer.cs` registra
+   `AuthenticationStateProvider` y `IJwtTokenGateway`.
 6. `App.razor` envuelve el router con `<CascadingAuthenticationState>` y
    usa `<AuthorizeRouteView>` para redirigir al login cuando sea necesario.
 7. Las páginas protegidas usan `@attribute [Authorize]`.
@@ -3738,24 +3777,24 @@ subcarpetas con el mismo nombre dentro de cada capa.
 
 ```
 src
-├── Domain
+├── Entities
 │   ├── ValueObjects/Auth/
 │   │   └── UserSessionInfo.cs
 │   └── Interfaces/Auth/
-│       ├── IAuthService.cs
-│       └── IJwtTokenService.cs
-├── Application
+│       ├── IAuthGateway.cs
+│       └── IJwtTokenGateway.cs
+├── UseCases
+│   └── Validators/Auth/
+│       └── LoginValidator.cs
+├── Adapters
 │   ├── ViewModels/Auth/
 │   │   ├── LoginRequest.cs
 │   │   ├── LoginViewModel.cs
 │   │   └── ILoginViewModel.cs
-│   └── Validators/Auth/
-│       └── LoginValidator.cs
-├── Infrastructure
 │   └── WebApi/Auth/
-│       ├── AuthWebApi.cs
-│       └── JwtTokenService.cs
-└── Presentation
+│       ├── AuthGateway.cs
+│       └── JwtTokenGateway.cs
+└── Frameworks
     └── Views/
         ├── Pages/
         │   ├── Login.razor
@@ -3778,22 +3817,22 @@ FEATURE: CreateOrder
 ────────────────────
 
 src
-├── Domain
+├── Entities
 │   ├── Entities/Orders/
 │   │   └── Order.cs
 │   └── Interfaces/Orders/
-│       └── IOrderWebApi.cs
-├── Application
+│       └── IOrderGateway.cs
+├── UseCases
+│   └── Validators/Orders/
+│       └── CreateOrderValidator.cs
+├── Adapters
 │   ├── ViewModels/Orders/
 │   │   ├── CreateOrderRequest.cs
 │   │   ├── CreateOrderViewModel.cs
 │   │   └── ICreateOrderViewModel.cs
-│   └── Validators/Orders/
-│       └── CreateOrderValidator.cs
-├── Infrastructure
 │   └── WebApi/Orders/
-│       └── OrderWebApi.cs
-└── Presentation
+│       └── OrderGateway.cs
+└── Frameworks
     └── Views/Pages/Orders/
         └── CreateOrder.razor
 
@@ -3815,7 +3854,20 @@ los archivos de una feature, la organización está mal.
 
 /{ProjectName}
   /src
-    /Presentation
+    /Entities                          Reglas de negocio de empresa (capa central)
+      /Entities
+      /ValueObjects
+      /Enums
+      /Interfaces
+      /Shared/Errors
+    /UseCases                          Reglas de aplicación
+      /Abstractions
+      /Validators
+    /Adapters                          Interface Adapters
+      /ViewModels                      Presenters (orquestan casos de uso)
+      /WebApi                          Gateway HTTP hacia la API remota
+        /Options
+    /Frameworks                        Frameworks & Drivers
       /Client                          Blazor WebAssembly host
         /Properties
         /wwwroot
@@ -3823,18 +3875,6 @@ los archivos de una feature, la organización está mal.
         /Layout
         /Pages
       /IoC                             Composición de dependencias
-    /Domain
-      /Entities
-      /ValueObjects
-      /Enums
-      /Interfaces
-      /Shared/Errors
-    /Application
-      /ViewModels
-      /Validators
-    /Infrastructure
-      /WebApi
-        /Options
   /tests
     /UnitTests
   /documentation
@@ -3846,13 +3886,15 @@ Referencias entre proyectos:
 
 | Proyecto        | Referencia a                       |
 |-----------------|------------------------------------|
-| Domain          | *(ninguna)*                        |
-| Application     | Domain                             |
-| Infrastructure  | Application, Domain                |
-| Presentation    | Application, Infrastructure, Views |
-| Views           | Application, Domain                |
+| Entities        | *(ninguna)*                        |
+| Abstractions    | Entities                           |
+| Validators      | Entities, Abstractions             |
+| ViewModels      | Entities, Abstractions             |
+| WebApi          | Entities, Abstractions             |
+| Views           | ViewModels, Entities               |
+| IoC             | ViewModels, Abstractions, Entities, WebApi, Validators, Views |
 | Client          | IoC, Views                         |
-| UnitTests       | Domain, Application, Validators    |
+| UnitTests       | Entities, ViewModels, Validators   |
 
 ---
 
@@ -3862,25 +3904,25 @@ Referencias entre proyectos:
 Usuario / Navegador
    │
    ▼
-Presentation/Views              (componentes .razor)
+Frameworks/Views                (componentes .razor)
    │
    ▼
-Application/ViewModels          (orquestador del caso de uso)
+Adapters/ViewModels             (orquestador del caso de uso)
    │
    ▼
-Application/Validators          (valida entrada)
+UseCases/Validators             (valida entrada)
    │
    ▼
-Domain/Interfaces               (puerto)
+Entities/Interfaces             (puerto)
    │
    ▼
-Infrastructure/WebApi           (HttpClient hacia API remota)
+Adapters/WebApi                 (HttpClient hacia API remota)
    │
    ▼
 API remota
    │
    ▼
-Domain/Entities                 (reglas de negocio)
+Entities                        (reglas de negocio)
 ```
 
 Reglas prácticas:
@@ -3888,16 +3930,16 @@ Reglas prácticas:
 - Los componentes `.razor` no llaman directamente a `HttpClient`.
 - Los ViewModels no usan `NavigationManager`, `IJSRuntime` ni `HttpClient`.
 - Los Validators no acceden a la red.
-- Infrastructure es el único lugar que conoce la API remota.
+- Adapters/WebApi es el único lugar que conoce la API remota.
 - El `HttpClient` se registra con `IHttpClientFactory` y el
   `GlobalExceptionHandler` se adjunta como `DelegatingHandler`.
-- Los errores HTTP se traducen en Infrastructure a `GlobalApplicationException`;
+- Los errores HTTP se traducen en Adapters/WebApi a `GlobalApplicationException`;
     los ViewModels los procesan mediante `ViewModelBase.HandleException`.
 - Los componentes leen `ViewModel.ErrorMessage` para mostrar mensajes amigables.
 - La autenticación usa el patrón nativo de Blazor:
   `AuthenticationStateProvider`, `AuthorizeRouteView`, `[Authorize]` y
   `<CascadingAuthenticationState>`.
-- El token JWT se almacena en `localStorage` a través de `IJwtTokenService`.
+- El token JWT se almacena en `localStorage` a través de `IJwtTokenGateway`.
   `JwtAuthenticationStateProvider` notifica a la UI cuando el token cambia.
 
 ---
@@ -3906,30 +3948,30 @@ Reglas prácticas:
 
 Sigue estos pasos para mantener el orden de capas y Vertical Slice:
 
-1. **Domain:** define entidades, value objects e interfaces de puertos.
-   - `Domain/Interfaces/{Feature}/I{Feature}Service.cs`
-   - `Domain/Entities/{Feature}/{Entity}.cs`
+1. **Entities:** define entidades, value objects e interfaces de puertos.
+   - `Entities/Interfaces/{Feature}/I{Feature}Gateway.cs`
+   - `Entities/Entities/{Feature}/{Entity}.cs`
 
-2. **Application:** crea el ViewModel y el Validator.
-   - Hereda de `Application/ViewModels/Base/ViewModelBase.cs` si necesitas
+2. **Adapters (ViewModels):** crea el ViewModel y el Validator.
+   - Hereda de `Adapters/ViewModels/Base/ViewModelBase.cs` si necesitas
      `INotifyPropertyChanged`, manejo de errores o paginación.
-   - `Application/ViewModels/{Feature}/{Action}ViewModel.cs`
-   - `Application/ViewModels/{Feature}/{Action}Request.cs`
-   - `Application/Validators/{Feature}/{Action}Validator.cs`
+   - `Adapters/ViewModels/{Feature}/{Action}ViewModel.cs`
+   - `Adapters/ViewModels/{Feature}/{Action}Request.cs`
+   - `UseCases/Validators/{Feature}/{Action}Validator.cs`
 
-3. **Infrastructure:** implementa el puerto.
-   - `Infrastructure/WebApi/{Feature}/{Feature}WebApi.cs`
-   - Si el adaptador necesita un `DelegatingHandler` propio (por ejemplo,
+3. **Adapters (WebApi):** implementa el puerto.
+   - `Adapters/WebApi/{Feature}/{Feature}Gateway.cs`
+   - Si el gateway necesita un `DelegatingHandler` propio (por ejemplo,
      un header de correlación o reintentos por feature), regístralo en
-     `Infrastructure/WebApi/Handlers/` y adjúntalo al `HttpClient` en
+     `Adapters/WebApi/Handlers/` y adjúntalo al `HttpClient` en
      `Program.cs` o en `DependencyContainer`.
 
-4. **Presentation:** crea el componente Razor.
-   - `Presentation/Views/Pages/{Feature}/{Action}.razor`
-   - `Presentation/Views/Pages/{Feature}/{Action}.razor.cs`
+4. **Frameworks:** crea el componente Razor.
+   - `Frameworks/Views/Pages/{Feature}/{Action}.razor`
+   - `Frameworks/Views/Pages/{Feature}/{Action}.razor.cs`
 
 5. **IoC:** registra la implementación si la inyección automática no la
-   encuentra.
+   encuentra (`Frameworks/IoC/DependencyContainer.cs`).
 
 6. **Tests:** prueba el ViewModel y el Validator sin levantar Blazor ni
    `HttpClient`.
@@ -3945,7 +3987,7 @@ Sigue estos pasos para mantener el orden de capas y Vertical Slice:
 - ❌ Lógica de negocio en componentes `.razor`.
 - ❌ Usar `HttpClient`, `NavigationManager` o `IJSRuntime` dentro de
   ViewModels.
-- ❌ Definir interfaces de servicios externos en Infrastructure.
+- ❌ Definir interfaces de servicios externos en Adapters o Frameworks.
 - ❌ Crear carpetas genéricas grandes como `Services/`, `Models/`,
   `Helpers/` fuera de una feature.
 - ❌ Compartir request/response DTOs entre features sin necesidad.
@@ -3957,7 +3999,7 @@ Sigue estos pasos para mantener el orden de capas y Vertical Slice:
 ## 9. Beneficios de esta combinación
 
 - **Cambios localizados:** una feature vive junta; tocarla no rompe otras.
-- **Testabilidad:** Domain, Validators y ViewModels se prueban sin Blazor.
+- **Testabilidad:** Entities, Validators y ViewModels se prueban sin Blazor.
 - **Sustituibilidad:** cambiar REST por gRPC, Tailwind CSS por MudBlazor o
   WebAssembly por MAUI es un cambio en una capa externa.
 - **Escalabilidad cognitiva:** un desarrollador solo necesita entender la
@@ -4268,13 +4310,10 @@ Para más detalles, consulta [architecture-guide.md](architecture-guide.md).
 
 ```text
 src/
-├── Domain/                    # Dominio y reglas de negocio
-├── Application/ViewModels/   # ViewModels y modelos de aplicación
-├── Application/Validators/   # Validaciones con FluentValidation
-├── Infrastructure/WebApi/    # Servicios externos, HTTP clients
-├── Presentation/Client/      # Blazor WebAssembly
-├── Presentation/Views/       # Componentes Razor, Layouts
-└── Presentation/IoC/         # Inyección de dependencias
+├── Entities/                  # Reglas de negocio de empresa (capa central)
+├── UseCases/                  # Reglas de aplicación (Abstractions, Validators)
+├── Adapters/                  # ViewModels (presenters) y gateway HTTP (WebApi)
+└── Frameworks/                # Client (Blazor WASM), Views (Razor), IoC
 ```
 
 ## Configuración
@@ -4287,7 +4326,7 @@ Edita los archivos `appsettings.json` para configurar:
 ## Ejecutar
 
 ```bash
-dotnet run --project src/Presentation/Client
+dotnet run --project src/Frameworks/Client
 ```
 
 La aplicación estará disponible en http://localhost:$HttpPort
@@ -4507,12 +4546,12 @@ Write-Host "Solution created successfully!" -ForegroundColor Green
 Set-Location ..
 
 Write-Host "`nProject Structure:" -ForegroundColor White
-Write-Host "  src/Presentation/Client/      ($ProjectName.Web - Blazor Web Assembly)"           -ForegroundColor Gray
-Write-Host "  src/Domain/                   ($ProjectName.Domain - Entities, Interfaces)"        -ForegroundColor Gray
-Write-Host "  src/Application/ViewModels/   ($ProjectName.ViewModels - Use Cases, Services)"     -ForegroundColor Gray
-Write-Host "  src/Application/Validators/   ($ProjectName.Validators - FluentValidation)"        -ForegroundColor Gray
-Write-Host "  src/Infrastructure/WebApi/    ($ProjectName.WebApi - External Services, HTTP)"     -ForegroundColor Gray
-Write-Host "  src/Presentation/Views/       ($ProjectName.Views - Razor Components, Layouts)"    -ForegroundColor Gray
-Write-Host "  src/Presentation/IoC/         ($ProjectName.IoC - Dependency Injection)"           -ForegroundColor Gray
+Write-Host "  src/Frameworks/Client/        ($ProjectName.Web - Blazor Web Assembly)"            -ForegroundColor Gray
+Write-Host "  src/Entities/                 ($ProjectName.Entities - Entities, Interfaces)"      -ForegroundColor Gray
+Write-Host "  src/Adapters/ViewModels/      ($ProjectName.ViewModels - Presenters, Use Cases)"   -ForegroundColor Gray
+Write-Host "  src/UseCases/Validators/      ($ProjectName.Validators - FluentValidation)"        -ForegroundColor Gray
+Write-Host "  src/Adapters/WebApi/          ($ProjectName.WebApi - External Services, HTTP)"     -ForegroundColor Gray
+Write-Host "  src/Frameworks/Views/         ($ProjectName.Views - Razor Components, Layouts)"    -ForegroundColor Gray
+Write-Host "  src/Frameworks/IoC/           ($ProjectName.IoC - Dependency Injection)"           -ForegroundColor Gray
 Write-Host ""
 Write-Host "Powered by David Vazquez Palestino" -ForegroundColor DarkGray

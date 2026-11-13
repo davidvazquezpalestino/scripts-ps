@@ -25,85 +25,85 @@ $slnxContent = @"
 $slnxContent | Set-Content "$ProjectName.slnx"
 
 # =========================
-# CREATE PROJECTS (Hexagonal Architecture)
+# CREATE PROJECTS (Clean Architecture — tío Bob)
 # =========================
 # Cada proyecto vive dentro de su propia subcarpeta para que bin/obj queden aislados
-# y la carpeta-capa (Application, Infrastructure, etc.) pueda alojar proyectos hermanos.
+# y la carpeta-capa (UseCases, Adapters, Frameworks, etc.) pueda alojar proyectos hermanos.
 
-# Domain
-dotnet new classlib -n "$ProjectName.Domain" -o "src/Domain"
+# Entities (capa central: reglas de negocio de empresa)
+dotnet new classlib -n "$ProjectName.Entities" -o "src/Entities"
 
-# Application
-dotnet new classlib -n "$ProjectName.UseCases" -o "src/Application/UseCases"
+# UseCases (reglas de aplicación)
+dotnet new classlib -n "$ProjectName.UseCases" -o "src/UseCases"
 
-# Infrastructure
-dotnet new classlib -n "$ProjectName.Infrastructure" -o "src/Infrastructure"
+# Adapters (implementaciones de puertos: gateways, presenters)
+dotnet new classlib -n "$ProjectName.Adapters" -o "src/Adapters"
 
-# IoC
-dotnet new classlib -n "$ProjectName.IoC" -o "src/Presentation/IoC"
+# IoC (composición raíz, capa Frameworks & Drivers)
+dotnet new classlib -n "$ProjectName.IoC" -o "src/Frameworks/IoC"
 
-# Console (Presentation layer)
-dotnet new console -n "$ProjectName.Console" -o "src/Presentation/Console"
+# Console (UI, capa Frameworks & Drivers)
+dotnet new console -n "$ProjectName.Console" -o "src/Frameworks/Console"
 
 # =========================
 # ADD TO SOLUTION
 # =========================
-dotnet sln add src/Domain
-dotnet sln add src/Application/UseCases
-dotnet sln add src/Infrastructure
-dotnet sln add src/Presentation/IoC
-dotnet sln add src/Presentation/Console
+dotnet sln add src/Entities
+dotnet sln add src/UseCases
+dotnet sln add src/Adapters
+dotnet sln add src/Frameworks/IoC
+dotnet sln add src/Frameworks/Console
 
 # =========================
 # PROJECT REFERENCES
 # =========================
-# Application depends on Domain
-dotnet add src/Application/UseCases reference src/Domain
+# UseCases depend on Entities
+dotnet add src/UseCases reference src/Entities
 
-# Infrastructure depends on Application and Domain (implements ports)
-dotnet add src/Infrastructure reference src/Application/UseCases
-dotnet add src/Infrastructure reference src/Domain
+# Adapters depend on UseCases and Entities (implement ports)
+dotnet add src/Adapters reference src/UseCases
+dotnet add src/Adapters reference src/Entities
 
 # IoC composes all layers
-dotnet add src/Presentation/IoC reference src/Application/UseCases
-dotnet add src/Presentation/IoC reference src/Infrastructure
-dotnet add src/Presentation/IoC reference src/Domain
+dotnet add src/Frameworks/IoC reference src/UseCases
+dotnet add src/Frameworks/IoC reference src/Adapters
+dotnet add src/Frameworks/IoC reference src/Entities
 
 # Console depends only on IoC
-dotnet add src/Presentation/Console reference src/Presentation/IoC
+dotnet add src/Frameworks/Console reference src/Frameworks/IoC
 
 # =========================
 # ADD PACKAGES
 # =========================
-# Application
-dotnet add src/Application/UseCases package Microsoft.Extensions.DependencyInjection.Abstractions
-dotnet add src/Application/UseCases package Microsoft.Extensions.Options
-dotnet add src/Application/UseCases package DependencyInjection.ReflectionExtensions
+# UseCases
+dotnet add src/UseCases package Microsoft.Extensions.DependencyInjection.Abstractions
+dotnet add src/UseCases package Microsoft.Extensions.Options
+dotnet add src/UseCases package DependencyInjection.ReflectionExtensions
 
-# Infrastructure
-dotnet add src/Infrastructure package Microsoft.Extensions.DependencyInjection.Abstractions
-dotnet add src/Infrastructure package DependencyInjection.ReflectionExtensions
+# Adapters
+dotnet add src/Adapters package Microsoft.Extensions.DependencyInjection.Abstractions
+dotnet add src/Adapters package DependencyInjection.ReflectionExtensions
 
 # IoC
-dotnet add src/Presentation/IoC package Microsoft.Extensions.Hosting
-dotnet add src/Presentation/IoC package Microsoft.Extensions.Configuration
-dotnet add src/Presentation/IoC package Microsoft.Extensions.Configuration.Json
-dotnet add src/Presentation/IoC package Microsoft.Extensions.Configuration.EnvironmentVariables
-dotnet add src/Presentation/IoC package Microsoft.Extensions.Configuration.Binder
-dotnet add src/Presentation/IoC package Microsoft.Extensions.DependencyInjection
-dotnet add src/Presentation/IoC package Microsoft.Extensions.Options.ConfigurationExtensions
-dotnet add src/Presentation/IoC package DependencyInjection.ReflectionExtensions
+dotnet add src/Frameworks/IoC package Microsoft.Extensions.Hosting
+dotnet add src/Frameworks/IoC package Microsoft.Extensions.Configuration
+dotnet add src/Frameworks/IoC package Microsoft.Extensions.Configuration.Json
+dotnet add src/Frameworks/IoC package Microsoft.Extensions.Configuration.EnvironmentVariables
+dotnet add src/Frameworks/IoC package Microsoft.Extensions.Configuration.Binder
+dotnet add src/Frameworks/IoC package Microsoft.Extensions.DependencyInjection
+dotnet add src/Frameworks/IoC package Microsoft.Extensions.Options.ConfigurationExtensions
+dotnet add src/Frameworks/IoC package DependencyInjection.ReflectionExtensions
 
 # Console
-dotnet add src/Presentation/Console package Microsoft.Extensions.Hosting
+dotnet add src/Frameworks/Console package Microsoft.Extensions.Hosting
 
 # =========================
 # REMOVE DEFAULT CLASS1.cs
 # =========================
-Remove-Item "src/Domain/Class1.cs" -Force -ErrorAction SilentlyContinue
-Remove-Item "src/Application/UseCases/Class1.cs" -Force -ErrorAction SilentlyContinue
-Remove-Item "src/Infrastructure/Class1.cs" -Force -ErrorAction SilentlyContinue
-Remove-Item "src/Presentation/IoC/Class1.cs" -Force -ErrorAction SilentlyContinue
+Remove-Item "src/Entities/Class1.cs" -Force -ErrorAction SilentlyContinue
+Remove-Item "src/UseCases/Class1.cs" -Force -ErrorAction SilentlyContinue
+Remove-Item "src/Adapters/Class1.cs" -Force -ErrorAction SilentlyContinue
+Remove-Item "src/Frameworks/IoC/Class1.cs" -Force -ErrorAction SilentlyContinue
 
 
 # Remove <Nullable>enable</Nullable> from every generated .csproj
@@ -118,7 +118,7 @@ Get-ChildItem -Path 'src' -Recurse -Filter *.csproj | ForEach-Object {
 # =========================
 
 # appsettings.json
-Out-File -FilePath "src/Presentation/Console/appsettings.json" -InputObject @'
+Out-File -FilePath "src/Frameworks/Console/appsettings.json" -InputObject @'
 {
     "Logging": {
         "LogLevel": {
@@ -130,7 +130,7 @@ Out-File -FilePath "src/Presentation/Console/appsettings.json" -InputObject @'
 '@
 
 # appsettings.Development.json
-Out-File -FilePath "src/Presentation/Console/appsettings.Development.json" -InputObject @'
+Out-File -FilePath "src/Frameworks/Console/appsettings.Development.json" -InputObject @'
 {
     "Logging": {
         "LogLevel": {
@@ -141,7 +141,7 @@ Out-File -FilePath "src/Presentation/Console/appsettings.Development.json" -Inpu
 '@
 
 # Configure csproj to copy appsettings on build
-$csprojPath = "src/Presentation/Console/$ProjectName.Console.csproj"
+$csprojPath = "src/Frameworks/Console/$ProjectName.Console.csproj"
 [xml]$csprojXml = Get-Content $csprojPath
 $itemGroup = $csprojXml.CreateElement("ItemGroup")
 foreach ($file in @("appsettings.json", "appsettings.Development.json")) {
@@ -155,34 +155,34 @@ foreach ($file in @("appsettings.json", "appsettings.Development.json")) {
 $csprojXml.Project.AppendChild($itemGroup) | Out-Null
 $csprojXml.Save((Resolve-Path $csprojPath))
 
-# Application GlobalUsings
+# UseCases GlobalUsings
 @"
 global using DevKit.Injection.Extensions;
 global using Microsoft.Extensions.DependencyInjection;
-"@ | Set-Content "src/Application/UseCases/GlobalUsings.cs"
+"@ | Set-Content "src/UseCases/GlobalUsings.cs"
 
-# Infrastructure DependencyContainer
+# Adapters DependencyContainer
 @"
-namespace $ProjectName.Infrastructure
+namespace $ProjectName.Adapters
 {
     public static class DependencyContainer
     {
-        public static IServiceCollection AddInfrastructure(this IServiceCollection services)
+        public static IServiceCollection AddAdapters(this IServiceCollection services)
         {  
             services.AddServicesCurrentAssembly();
             return services;
         }
     }
 }
-"@ | Set-Content "src/Infrastructure/DependencyContainer.cs"
+"@ | Set-Content "src/Adapters/DependencyContainer.cs"
 
-# Infrastructure GlobalUsings
+# Adapters GlobalUsings
 @"
 global using DevKit.Injection.Extensions;
 global using Microsoft.Extensions.DependencyInjection;
-"@ | Set-Content "src/Infrastructure/GlobalUsings.cs"
+"@ | Set-Content "src/Adapters/GlobalUsings.cs"
 
-# Application DependencyContainer
+# UseCases DependencyContainer
 @"
 namespace $ProjectName.UseCases
 {
@@ -195,7 +195,7 @@ namespace $ProjectName.UseCases
         }
     }
 }
-"@ | Set-Content "src/Application/UseCases/DependencyContainer.cs"
+"@ | Set-Content "src/UseCases/DependencyContainer.cs"
 
 # IoC DependencyContainer
 @"
@@ -205,24 +205,24 @@ namespace $ProjectName.IoC
     {
         public static IServiceCollection AddIoC(this IServiceCollection services)
         {
-            services.AddInfrastructure()
+            services.AddAdapters()
                     .AddUseCases();
             return services;
         }
     }
 }
-"@ | Set-Content "src/Presentation/IoC/DependencyContainer.cs"
+"@ | Set-Content "src/Frameworks/IoC/DependencyContainer.cs"
 
 # IoC GlobalUsings
 @"
 global using DevKit.Injection.Extensions;
 global using Microsoft.Extensions.Configuration;
 global using Microsoft.Extensions.DependencyInjection;
-global using $ProjectName.Infrastructure;
+global using $ProjectName.Adapters;
 global using $ProjectName.UseCases;
-"@ | Set-Content "src/Presentation/IoC/GlobalUsings.cs"
+"@ | Set-Content "src/Frameworks/IoC/GlobalUsings.cs"
 
-# Console Program.cs (Generic Host + DI + appsettings + Hexagonal Architecture)
+# Console Program.cs (Generic Host + DI + appsettings + Clean Architecture)
 @"
 using $ProjectName.IoC;
 
@@ -238,7 +238,7 @@ IHostBuilder builder = Host.CreateDefaultBuilder(args)
     });
 
 using IHost host = builder.Build();
-"@ | Set-Content "src/Presentation/Console/Program.cs"
+"@ | Set-Content "src/Frameworks/Console/Program.cs"
 
 # Console GlobalUsings
 @"
@@ -246,7 +246,7 @@ global using Microsoft.Extensions.Configuration;
 global using Microsoft.Extensions.DependencyInjection;
 global using Microsoft.Extensions.Hosting;
 global using $ProjectName.IoC;
-"@ | Set-Content "src/Presentation/Console/GlobalUsings.cs"
+"@ | Set-Content "src/Frameworks/Console/GlobalUsings.cs"
 
 # Git ignore
 dotnet new gitignore
@@ -322,11 +322,11 @@ Este proyecto combina:
 
 ```text
 src/
-├── Domain/                    # Dominio y reglas de negocio (Ports)
-├── Application/UseCases/      # Casos de uso (UseCases)
-├── Infrastructure/           # Implementaciones (Adapters)
-├── Presentation/IoC/          # Inyección de dependencias
-└── Presentation/Console/      # Aplicación de consola
+├── Entities/                  # Reglas de negocio de empresa (capa central, puertos)
+├── UseCases/                  # Reglas de aplicación (casos de uso)
+├── Adapters/                  # Implementaciones de puertos (gateways, presenters)
+├── Frameworks/IoC/            # Composición raíz (inyección de dependencias)
+└── Frameworks/Console/        # Aplicación de consola (UI)
 ```
 
 ## Configuración
@@ -338,12 +338,12 @@ Edita los archivos `appsettings.json` para configurar:
 ## Ejecutar
 
 ```bash
-dotnet run --project src/Presentation/Console
+dotnet run --project src/Frameworks/Console
 ```
 
 O con argumentos:
 ```bash
-dotnet run --project src/Presentation/Console -- "TuNombre"
+dotnet run --project src/Frameworks/Console -- "TuNombre"
 ```
 
 ## Build

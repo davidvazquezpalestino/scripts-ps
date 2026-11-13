@@ -131,65 +131,67 @@ New-Item -ItemType Directory -Path "tests"
 # CREATE PROJECTS
 # =========================
 # Cada proyecto vive dentro de su propia subcarpeta para que bin/obj queden aislados
-# y la carpeta-capa (Application, Infrastructure, etc.) pueda alojar proyectos hermanos.
+# y la carpeta-capa (UseCases, Adapters, Frameworks, etc.) pueda alojar proyectos hermanos.
 
-# API
-dotnet new web -n "$ProjectName.WebApi" -o "src/Presentation/Api"
+# API host (Frameworks & Drivers)
+dotnet new web -n "$ProjectName.WebApi" -o "src/Frameworks/WebApi"
 
-# Application sub-projects (separate projects)
-dotnet new classlib -n "$ProjectName.Abstractions" -o "src/Application/Abstractions"
-dotnet new classlib -n "$ProjectName.Commands" -o "src/Application/Commands"
-dotnet new classlib -n "$ProjectName.Models" -o "src/Application/Models"
-dotnet new classlib -n "$ProjectName.Queries" -o "src/Application/Queries"
-dotnet new classlib -n "$ProjectName.Validators" -o "src/Application/Validators"
-dotnet new classlib -n "$ProjectName.Controllers" -o "src/Presentation/Controllers"
+# UseCases sub-projects (reglas de aplicación, separate projects)
+dotnet new classlib -n "$ProjectName.Abstractions" -o "src/UseCases/Abstractions"
+dotnet new classlib -n "$ProjectName.Commands" -o "src/UseCases/Commands"
+dotnet new classlib -n "$ProjectName.Models" -o "src/UseCases/Models"
+dotnet new classlib -n "$ProjectName.Queries" -o "src/UseCases/Queries"
+dotnet new classlib -n "$ProjectName.Validators" -o "src/UseCases/Validators"
 
-# IoC Project at same level as Application
-dotnet new classlib -n "$ProjectName.IoC" -o "src/Presentation/IoC"
+# Interface Adapters (controllers y gateways)
+dotnet new classlib -n "$ProjectName.Controllers" -o "src/Adapters/Controllers"
 
-# Domain
-dotnet new classlib -n "$ProjectName.Domain" -o "src/Domain"
+# IoC Project (composición raíz, Frameworks & Drivers)
+dotnet new classlib -n "$ProjectName.IoC" -o "src/Frameworks/IoC"
 
-# Infrastructure
+# Entities (capa central: reglas de negocio de empresa)
+dotnet new classlib -n "$ProjectName.Entities" -o "src/Entities"
+
+# Frameworks & Drivers: bases de datos
 if ($USE_SQLSERVER -or $USE_MYSQL -or $USE_POSTGRES -or $USE_ORACLE -or $USE_MONGO) {
-    New-Item -ItemType Directory -Path "src/Infrastructure/DataBases" -Force
+    New-Item -ItemType Directory -Path "src/Frameworks/DataBases" -Force
 }
 
 # Create specific DB projects based on selection
 if ($USE_SQLSERVER) {
-    dotnet new classlib -n "$ProjectName.SqlServer" -o "src/Infrastructure/DataBases/SQLServer"
+    dotnet new classlib -n "$ProjectName.SqlServer" -o "src/Frameworks/DataBases/SQLServer"
 }
 if ($USE_MYSQL) {
-    dotnet new classlib -n "$ProjectName.MySql" -o "src/Infrastructure/DataBases/MySQL"
+    dotnet new classlib -n "$ProjectName.MySql" -o "src/Frameworks/DataBases/MySQL"
 }
 if ($USE_POSTGRES) {
-    dotnet new classlib -n "$ProjectName.PostgreSql" -o "src/Infrastructure/DataBases/PostgreSQL"
+    dotnet new classlib -n "$ProjectName.PostgreSql" -o "src/Frameworks/DataBases/PostgreSQL"
 }
 if ($USE_ORACLE) {
-    dotnet new classlib -n "$ProjectName.Oracle" -o "src/Infrastructure/DataBases/Oracle"
+    dotnet new classlib -n "$ProjectName.Oracle" -o "src/Frameworks/DataBases/Oracle"
 }
 if ($USE_MONGO) {
-    dotnet new classlib -n "$ProjectName.MongoDb" -o "src/Infrastructure/DataBases/MongoDB"
+    dotnet new classlib -n "$ProjectName.MongoDb" -o "src/Frameworks/DataBases/MongoDB"
 }
 
 # RabbitMQ (opcional)
 if ($USE_RABBITMQ) {
-    New-Item -ItemType Directory -Path "src/Infrastructure/Messaging" -Force -ErrorAction SilentlyContinue
-    dotnet new classlib -n "$ProjectName.RabbitMQ" -o "src/Infrastructure/Messaging/RabbitMQ"
+    New-Item -ItemType Directory -Path "src/Frameworks/Messaging" -Force -ErrorAction SilentlyContinue
+    dotnet new classlib -n "$ProjectName.RabbitMQ" -o "src/Frameworks/Messaging/RabbitMQ"
 }
 
-# External APIs / Web Services (opcional)
+# External APIs / Web Services (opcional, gateways en Interface Adapters)
 if ($USE_EXTERNAL_APIS) {
-    dotnet new classlib -n "$ProjectName.WebApis" -o "src/Infrastructure/WebApis"
+    dotnet new classlib -n "$ProjectName.WebApis" -o "src/Adapters/WebApis"
 }
 
 if ($USE_REDIS) {
-    dotnet new classlib -n "$ProjectName.Redis" -o "src/Infrastructure/Redis"
+    dotnet new classlib -n "$ProjectName.Redis" -o "src/Frameworks/Redis"
 }
 
 # Azure Key Vault (opcional)
 if ($USE_KEYVAULT) {
-    dotnet new classlib -n "$ProjectName.AzureKeyVault" -o "src/Infrastructure/AzureKeyVault"
+    dotnet new classlib -n "$ProjectName.AzureKeyVault" -o "src/Frameworks/AzureKeyVault"
 }
 
 # Tests (xUnit.net v3)
@@ -210,23 +212,23 @@ if ($LASTEXITCODE -ne 0 -or -not (Test-Path "tests/UnitTests")) {
 }
 
 # Remove default Class1.cs files
-Remove-Item "src/Application/Abstractions/Class1.cs" -Force -ErrorAction SilentlyContinue
-Remove-Item "src/Application/Commands/Class1.cs" -Force -ErrorAction SilentlyContinue
-Remove-Item "src/Application/Models/Class1.cs" -Force -ErrorAction SilentlyContinue
-Remove-Item "src/Application/Queries/Class1.cs" -Force -ErrorAction SilentlyContinue
-Remove-Item "src/Presentation/Controllers/Class1.cs" -Force -ErrorAction SilentlyContinue
-Remove-Item "src/Presentation/IoC/Class1.cs" -Force -ErrorAction SilentlyContinue
-Remove-Item "src/Domain/Class1.cs" -Force -ErrorAction SilentlyContinue
-Remove-Item "src/Application/Validators/Class1.cs" -Force -ErrorAction SilentlyContinue
-if ($USE_SQLSERVER) { Remove-Item "src/Infrastructure/DataBases/SQLServer/Class1.cs" -Force -ErrorAction SilentlyContinue }
-if ($USE_MYSQL) { Remove-Item "src/Infrastructure/DataBases/MySQL/Class1.cs" -Force -ErrorAction SilentlyContinue }
-if ($USE_POSTGRES) { Remove-Item "src/Infrastructure/DataBases/PostgreSQL/Class1.cs" -Force -ErrorAction SilentlyContinue }
-if ($USE_ORACLE) { Remove-Item "src/Infrastructure/DataBases/Oracle/Class1.cs" -Force -ErrorAction SilentlyContinue }
-if ($USE_MONGO) { Remove-Item "src/Infrastructure/DataBases/MongoDB/Class1.cs" -Force -ErrorAction SilentlyContinue }
-if ($USE_RABBITMQ) { Remove-Item "src/Infrastructure/Messaging/RabbitMQ/Class1.cs" -Force -ErrorAction SilentlyContinue }
-if ($USE_EXTERNAL_APIS) { Remove-Item "src/Infrastructure/WebApis/Class1.cs" -Force -ErrorAction SilentlyContinue }
-if ($USE_REDIS) { Remove-Item "src/Infrastructure/Redis/Class1.cs" -Force -ErrorAction SilentlyContinue }
-if ($USE_KEYVAULT) { Remove-Item "src/Infrastructure/AzureKeyVault/Class1.cs" -Force -ErrorAction SilentlyContinue }
+Remove-Item "src/UseCases/Abstractions/Class1.cs" -Force -ErrorAction SilentlyContinue
+Remove-Item "src/UseCases/Commands/Class1.cs" -Force -ErrorAction SilentlyContinue
+Remove-Item "src/UseCases/Models/Class1.cs" -Force -ErrorAction SilentlyContinue
+Remove-Item "src/UseCases/Queries/Class1.cs" -Force -ErrorAction SilentlyContinue
+Remove-Item "src/Adapters/Controllers/Class1.cs" -Force -ErrorAction SilentlyContinue
+Remove-Item "src/Frameworks/IoC/Class1.cs" -Force -ErrorAction SilentlyContinue
+Remove-Item "src/Entities/Class1.cs" -Force -ErrorAction SilentlyContinue
+Remove-Item "src/UseCases/Validators/Class1.cs" -Force -ErrorAction SilentlyContinue
+if ($USE_SQLSERVER) { Remove-Item "src/Frameworks/DataBases/SQLServer/Class1.cs" -Force -ErrorAction SilentlyContinue }
+if ($USE_MYSQL) { Remove-Item "src/Frameworks/DataBases/MySQL/Class1.cs" -Force -ErrorAction SilentlyContinue }
+if ($USE_POSTGRES) { Remove-Item "src/Frameworks/DataBases/PostgreSQL/Class1.cs" -Force -ErrorAction SilentlyContinue }
+if ($USE_ORACLE) { Remove-Item "src/Frameworks/DataBases/Oracle/Class1.cs" -Force -ErrorAction SilentlyContinue }
+if ($USE_MONGO) { Remove-Item "src/Frameworks/DataBases/MongoDB/Class1.cs" -Force -ErrorAction SilentlyContinue }
+if ($USE_RABBITMQ) { Remove-Item "src/Frameworks/Messaging/RabbitMQ/Class1.cs" -Force -ErrorAction SilentlyContinue }
+if ($USE_EXTERNAL_APIS) { Remove-Item "src/Adapters/WebApis/Class1.cs" -Force -ErrorAction SilentlyContinue }
+if ($USE_REDIS) { Remove-Item "src/Frameworks/Redis/Class1.cs" -Force -ErrorAction SilentlyContinue }
+if ($USE_KEYVAULT) { Remove-Item "src/Frameworks/AzureKeyVault/Class1.cs" -Force -ErrorAction SilentlyContinue }
 Remove-Item "tests/UnitTests/Class1.cs" -Force -ErrorAction SilentlyContinue
 Remove-Item "tests/UnitTests/UnitTest1.cs" -Force -ErrorAction SilentlyContinue
 
@@ -241,137 +243,137 @@ Get-ChildItem -Path 'src','tests' -Recurse -Filter *.csproj | ForEach-Object {
 # ADD TO SOLUTION
 # =========================
 
-dotnet sln add src/Presentation/Api
-dotnet sln add src/Application/Abstractions
-dotnet sln add src/Application/Commands
-dotnet sln add src/Application/Models
-dotnet sln add src/Application/Queries
-dotnet sln add src/Application/Validators
-dotnet sln add src/Presentation/Controllers
-dotnet sln add src/Presentation/IoC
-dotnet sln add src/Domain
-if ($USE_SQLSERVER) { dotnet sln add src/Infrastructure/DataBases/SQLServer }
-if ($USE_MYSQL) { dotnet sln add src/Infrastructure/DataBases/MySQL }
-if ($USE_POSTGRES) { dotnet sln add src/Infrastructure/DataBases/PostgreSQL }
-if ($USE_ORACLE) { dotnet sln add src/Infrastructure/DataBases/Oracle }
-if ($USE_MONGO) { dotnet sln add src/Infrastructure/DataBases/MongoDB }
-if ($USE_RABBITMQ) { dotnet sln add src/Infrastructure/Messaging/RabbitMQ }
-if ($USE_EXTERNAL_APIS) { dotnet sln add src/Infrastructure/WebApis }
-if ($USE_REDIS) { dotnet sln add src/Infrastructure/Redis }
-if ($USE_KEYVAULT) { dotnet sln add src/Infrastructure/AzureKeyVault }
+dotnet sln add src/Frameworks/WebApi
+dotnet sln add src/UseCases/Abstractions
+dotnet sln add src/UseCases/Commands
+dotnet sln add src/UseCases/Models
+dotnet sln add src/UseCases/Queries
+dotnet sln add src/UseCases/Validators
+dotnet sln add src/Adapters/Controllers
+dotnet sln add src/Frameworks/IoC
+dotnet sln add src/Entities
+if ($USE_SQLSERVER) { dotnet sln add src/Frameworks/DataBases/SQLServer }
+if ($USE_MYSQL) { dotnet sln add src/Frameworks/DataBases/MySQL }
+if ($USE_POSTGRES) { dotnet sln add src/Frameworks/DataBases/PostgreSQL }
+if ($USE_ORACLE) { dotnet sln add src/Frameworks/DataBases/Oracle }
+if ($USE_MONGO) { dotnet sln add src/Frameworks/DataBases/MongoDB }
+if ($USE_RABBITMQ) { dotnet sln add src/Frameworks/Messaging/RabbitMQ }
+if ($USE_EXTERNAL_APIS) { dotnet sln add src/Adapters/WebApis }
+if ($USE_REDIS) { dotnet sln add src/Frameworks/Redis }
+if ($USE_KEYVAULT) { dotnet sln add src/Frameworks/AzureKeyVault }
 dotnet sln add tests/UnitTests
 
 # =========================
 # PROJECT REFERENCES
 # =========================
 
-# Application sub-projects depend on Domain
-dotnet add src/Application/Commands reference src/Domain
-dotnet add src/Application/Models reference src/Domain
-dotnet add src/Application/Queries reference src/Domain
-dotnet add src/Application/Validators reference src/Domain
+# UseCases sub-projects depend on Entities
+dotnet add src/UseCases/Commands reference src/Entities
+dotnet add src/UseCases/Models reference src/Entities
+dotnet add src/UseCases/Queries reference src/Entities
+dotnet add src/UseCases/Validators reference src/Entities
 
-dotnet add src/Application/Abstractions reference src/Domain
-dotnet add src/Application/Abstractions reference src/Application/Models
-dotnet add src/Application/Commands reference src/Application/Abstractions
-dotnet add src/Application/Commands reference src/Application/Models
-dotnet add src/Application/Queries reference src/Application/Abstractions
-dotnet add src/Application/Queries reference src/Application/Models
-dotnet add src/Application/Validators reference src/Application/Commands
-dotnet add src/Application/Validators reference src/Application/Models
+dotnet add src/UseCases/Abstractions reference src/Entities
+dotnet add src/UseCases/Abstractions reference src/UseCases/Models
+dotnet add src/UseCases/Commands reference src/UseCases/Abstractions
+dotnet add src/UseCases/Commands reference src/UseCases/Models
+dotnet add src/UseCases/Queries reference src/UseCases/Abstractions
+dotnet add src/UseCases/Queries reference src/UseCases/Models
+dotnet add src/UseCases/Validators reference src/UseCases/Commands
+dotnet add src/UseCases/Validators reference src/UseCases/Models
 
-# Controllers depend only on Application layer projects
-dotnet add src/Presentation/Controllers reference src/Application/Commands
-dotnet add src/Presentation/Controllers reference src/Application/Queries
-dotnet add src/Presentation/Controllers reference src/Application/Models
-dotnet add src/Presentation/Controllers reference src/Application/Abstractions
-# IoC depends on all Application projects + Infrastructure + Domain
-dotnet add src/Presentation/IoC reference src/Application/Abstractions
-dotnet add src/Presentation/IoC reference src/Application/Commands
-dotnet add src/Presentation/IoC reference src/Application/Models
-dotnet add src/Presentation/IoC reference src/Application/Queries
-dotnet add src/Presentation/IoC reference src/Application/Validators
-dotnet add src/Presentation/IoC reference src/Presentation/Controllers
-if ($USE_SQLSERVER) { dotnet add src/Presentation/IoC reference src/Infrastructure/DataBases/SQLServer }
-if ($USE_MYSQL) { dotnet add src/Presentation/IoC reference src/Infrastructure/DataBases/MySQL }
-if ($USE_POSTGRES) { dotnet add src/Presentation/IoC reference src/Infrastructure/DataBases/PostgreSQL }
-if ($USE_ORACLE) { dotnet add src/Presentation/IoC reference src/Infrastructure/DataBases/Oracle }
-if ($USE_MONGO) { dotnet add src/Presentation/IoC reference src/Infrastructure/DataBases/MongoDB }
-if ($USE_EXTERNAL_APIS) { dotnet add src/Presentation/IoC reference src/Infrastructure/WebApis }
-if ($USE_REDIS) { dotnet add src/Presentation/IoC reference src/Infrastructure/Redis }
-if ($USE_KEYVAULT) { dotnet add src/Presentation/IoC reference src/Infrastructure/AzureKeyVault }
-dotnet add src/Presentation/IoC reference src/Domain
+# Controllers (Adapters) depend only on UseCases layer projects
+dotnet add src/Adapters/Controllers reference src/UseCases/Commands
+dotnet add src/Adapters/Controllers reference src/UseCases/Queries
+dotnet add src/Adapters/Controllers reference src/UseCases/Models
+dotnet add src/Adapters/Controllers reference src/UseCases/Abstractions
+# IoC depends on all UseCases projects + Adapters + Frameworks + Entities
+dotnet add src/Frameworks/IoC reference src/UseCases/Abstractions
+dotnet add src/Frameworks/IoC reference src/UseCases/Commands
+dotnet add src/Frameworks/IoC reference src/UseCases/Models
+dotnet add src/Frameworks/IoC reference src/UseCases/Queries
+dotnet add src/Frameworks/IoC reference src/UseCases/Validators
+dotnet add src/Frameworks/IoC reference src/Adapters/Controllers
+if ($USE_SQLSERVER) { dotnet add src/Frameworks/IoC reference src/Frameworks/DataBases/SQLServer }
+if ($USE_MYSQL) { dotnet add src/Frameworks/IoC reference src/Frameworks/DataBases/MySQL }
+if ($USE_POSTGRES) { dotnet add src/Frameworks/IoC reference src/Frameworks/DataBases/PostgreSQL }
+if ($USE_ORACLE) { dotnet add src/Frameworks/IoC reference src/Frameworks/DataBases/Oracle }
+if ($USE_MONGO) { dotnet add src/Frameworks/IoC reference src/Frameworks/DataBases/MongoDB }
+if ($USE_EXTERNAL_APIS) { dotnet add src/Frameworks/IoC reference src/Adapters/WebApis }
+if ($USE_REDIS) { dotnet add src/Frameworks/IoC reference src/Frameworks/Redis }
+if ($USE_KEYVAULT) { dotnet add src/Frameworks/IoC reference src/Frameworks/AzureKeyVault }
+dotnet add src/Frameworks/IoC reference src/Entities
 
-if ($USE_SQLSERVER) { dotnet add src/Infrastructure/DataBases/SQLServer reference src/Domain }
-if ($USE_MYSQL) { dotnet add src/Infrastructure/DataBases/MySQL reference src/Domain }
-if ($USE_POSTGRES) { dotnet add src/Infrastructure/DataBases/PostgreSQL reference src/Domain }
-if ($USE_ORACLE) { dotnet add src/Infrastructure/DataBases/Oracle reference src/Domain }
-if ($USE_MONGO) { dotnet add src/Infrastructure/DataBases/MongoDB reference src/Domain }
+if ($USE_SQLSERVER) { dotnet add src/Frameworks/DataBases/SQLServer reference src/Entities }
+if ($USE_MYSQL) { dotnet add src/Frameworks/DataBases/MySQL reference src/Entities }
+if ($USE_POSTGRES) { dotnet add src/Frameworks/DataBases/PostgreSQL reference src/Entities }
+if ($USE_ORACLE) { dotnet add src/Frameworks/DataBases/Oracle reference src/Entities }
+if ($USE_MONGO) { dotnet add src/Frameworks/DataBases/MongoDB reference src/Entities }
 if ($USE_RABBITMQ) {
-    dotnet add src/Infrastructure/Messaging/RabbitMQ reference src/Domain
-    dotnet add src/Presentation/IoC reference src/Infrastructure/Messaging/RabbitMQ
+    dotnet add src/Frameworks/Messaging/RabbitMQ reference src/Entities
+    dotnet add src/Frameworks/IoC reference src/Frameworks/Messaging/RabbitMQ
 }
 if ($USE_EXTERNAL_APIS) {
-    dotnet add src/Infrastructure/WebApis reference src/Domain
+    dotnet add src/Adapters/WebApis reference src/Entities
 }
 if ($USE_KEYVAULT) {
-    dotnet add src/Infrastructure/AzureKeyVault reference src/Domain
+    dotnet add src/Frameworks/AzureKeyVault reference src/Entities
 }
 if ($USE_SQLSERVER -and $USE_KEYVAULT) {
-    dotnet add src/Infrastructure/DataBases/SQLServer reference src/Infrastructure/AzureKeyVault
+    dotnet add src/Frameworks/DataBases/SQLServer reference src/Frameworks/AzureKeyVault
 }
 
 $applicationPortAdapters = @()
-if ($USE_SQLSERVER) { $applicationPortAdapters += "src/Infrastructure/DataBases/SQLServer" }
-if ($USE_MYSQL) { $applicationPortAdapters += "src/Infrastructure/DataBases/MySQL" }
-if ($USE_POSTGRES) { $applicationPortAdapters += "src/Infrastructure/DataBases/PostgreSQL" }
-if ($USE_ORACLE) { $applicationPortAdapters += "src/Infrastructure/DataBases/Oracle" }
-if ($USE_MONGO) { $applicationPortAdapters += "src/Infrastructure/DataBases/MongoDB" }
-if ($USE_RABBITMQ) { $applicationPortAdapters += "src/Infrastructure/Messaging/RabbitMQ" }
-if ($USE_EXTERNAL_APIS) { $applicationPortAdapters += "src/Infrastructure/WebApis" }
-if ($USE_REDIS) { $applicationPortAdapters += "src/Infrastructure/Redis" }
-if ($USE_KEYVAULT) { $applicationPortAdapters += "src/Infrastructure/AzureKeyVault" }
+if ($USE_SQLSERVER) { $applicationPortAdapters += "src/Frameworks/DataBases/SQLServer" }
+if ($USE_MYSQL) { $applicationPortAdapters += "src/Frameworks/DataBases/MySQL" }
+if ($USE_POSTGRES) { $applicationPortAdapters += "src/Frameworks/DataBases/PostgreSQL" }
+if ($USE_ORACLE) { $applicationPortAdapters += "src/Frameworks/DataBases/Oracle" }
+if ($USE_MONGO) { $applicationPortAdapters += "src/Frameworks/DataBases/MongoDB" }
+if ($USE_RABBITMQ) { $applicationPortAdapters += "src/Frameworks/Messaging/RabbitMQ" }
+if ($USE_EXTERNAL_APIS) { $applicationPortAdapters += "src/Adapters/WebApis" }
+if ($USE_REDIS) { $applicationPortAdapters += "src/Frameworks/Redis" }
+if ($USE_KEYVAULT) { $applicationPortAdapters += "src/Frameworks/AzureKeyVault" }
 foreach ($adapter in $applicationPortAdapters) {
-    dotnet add $adapter reference src/Application/Abstractions
+    dotnet add $adapter reference src/UseCases/Abstractions
 }
 
-# API depends on IoC
-dotnet add src/Presentation/Api reference src/Presentation/IoC
+# API host depends on IoC
+dotnet add src/Frameworks/WebApi reference src/Frameworks/IoC
 
 # Tests
-dotnet add tests/UnitTests reference src/Application/Abstractions
-dotnet add tests/UnitTests reference src/Domain
-dotnet add tests/UnitTests reference src/Application/Commands
-dotnet add tests/UnitTests reference src/Application/Queries
-dotnet add tests/UnitTests reference src/Application/Models
-dotnet add tests/UnitTests reference src/Application/Validators
+dotnet add tests/UnitTests reference src/UseCases/Abstractions
+dotnet add tests/UnitTests reference src/Entities
+dotnet add tests/UnitTests reference src/UseCases/Commands
+dotnet add tests/UnitTests reference src/UseCases/Queries
+dotnet add tests/UnitTests reference src/UseCases/Models
+dotnet add tests/UnitTests reference src/UseCases/Validators
 
 # =========================
 # ADD PACKAGES
 # =========================
 
-# Application sub-projects
-dotnet add src/Application/Commands package FluentValidation
-dotnet add src/Application/Commands package Microsoft.Extensions.DependencyInjection.Abstractions
-dotnet add src/Application/Commands package DependencyInjection.ReflectionExtensions
+# UseCases sub-projects
+dotnet add src/UseCases/Commands package FluentValidation
+dotnet add src/UseCases/Commands package Microsoft.Extensions.DependencyInjection.Abstractions
+dotnet add src/UseCases/Commands package DependencyInjection.ReflectionExtensions
 
-dotnet add src/Application/Models package FluentValidation
-dotnet add src/Application/Models package Microsoft.Extensions.DependencyInjection.Abstractions
-dotnet add src/Application/Models package DependencyInjection.ReflectionExtensions
+dotnet add src/UseCases/Models package FluentValidation
+dotnet add src/UseCases/Models package Microsoft.Extensions.DependencyInjection.Abstractions
+dotnet add src/UseCases/Models package DependencyInjection.ReflectionExtensions
 
-dotnet add src/Application/Abstractions package Microsoft.Extensions.DependencyInjection.Abstractions
-dotnet add src/Application/Abstractions package DependencyInjection.ReflectionExtensions
+dotnet add src/UseCases/Abstractions package Microsoft.Extensions.DependencyInjection.Abstractions
+dotnet add src/UseCases/Abstractions package DependencyInjection.ReflectionExtensions
 
-dotnet add src/Application/Queries package FluentValidation
-dotnet add src/Application/Queries package Microsoft.Extensions.DependencyInjection.Abstractions
-dotnet add src/Application/Queries package DependencyInjection.ReflectionExtensions
+dotnet add src/UseCases/Queries package FluentValidation
+dotnet add src/UseCases/Queries package Microsoft.Extensions.DependencyInjection.Abstractions
+dotnet add src/UseCases/Queries package DependencyInjection.ReflectionExtensions
 
-dotnet add src/Application/Validators package FluentValidation
-dotnet add src/Application/Validators package Microsoft.Extensions.DependencyInjection.Abstractions
-dotnet add src/Application/Validators package DependencyInjection.ReflectionExtensions
+dotnet add src/UseCases/Validators package FluentValidation
+dotnet add src/UseCases/Validators package Microsoft.Extensions.DependencyInjection.Abstractions
+dotnet add src/UseCases/Validators package DependencyInjection.ReflectionExtensions
 
 # Controllers needs ASP.NET Core framework reference (ControllerBase, [ApiController], etc.)
-$controllersCsproj = "src/Presentation/Controllers/$ProjectName.Controllers.csproj"
+$controllersCsproj = "src/Adapters/Controllers/$ProjectName.Controllers.csproj"
 [xml]$controllersXml = Get-Content $controllersCsproj
 if (-not ($controllersXml.Project.ItemGroup | Where-Object { $_.FrameworkReference.Include -eq "Microsoft.AspNetCore.App" })) {
     $itemGroup = $controllersXml.CreateElement("ItemGroup")
@@ -383,78 +385,83 @@ if (-not ($controllersXml.Project.ItemGroup | Where-Object { $_.FrameworkReferen
 }
 
 # IoC
-dotnet add src/Presentation/IoC package Microsoft.Extensions.DependencyInjection
-dotnet add src/Presentation/IoC package FluentValidation
-dotnet add src/Presentation/IoC package DependencyInjection.ReflectionExtensions
-dotnet add src/Presentation/IoC package CoreJsonWebToken
+dotnet add src/Frameworks/IoC package Microsoft.Extensions.DependencyInjection
+dotnet add src/Frameworks/IoC package FluentValidation
+dotnet add src/Frameworks/IoC package DependencyInjection.ReflectionExtensions
+dotnet add src/Frameworks/IoC package CoreJsonWebToken
 if ($USE_REDIS) {
-    dotnet add src/Infrastructure/Redis package StackExchange.Redis
-    dotnet add src/Infrastructure/Redis package Microsoft.Extensions.Options
-    dotnet add src/Infrastructure/Redis package Microsoft.Extensions.DependencyInjection.Abstractions
+    dotnet add src/Frameworks/Redis package StackExchange.Redis
+    dotnet add src/Frameworks/Redis package Microsoft.Extensions.Options
+    dotnet add src/Frameworks/Redis package Microsoft.Extensions.DependencyInjection.Abstractions
 }
 
-# Infrastructure
+# Frameworks: persistencia
 if ($USE_SQLSERVER) {
-    dotnet add src/Infrastructure/DataBases/SQLServer package Microsoft.EntityFrameworkCore
-    dotnet add src/Infrastructure/DataBases/SQLServer package Microsoft.EntityFrameworkCore.SqlServer
-    dotnet add src/Infrastructure/DataBases/SQLServer package Dapper
-    dotnet add src/Infrastructure/DataBases/SQLServer package Microsoft.Extensions.DependencyInjection.Abstractions
-    dotnet add src/Infrastructure/DataBases/SQLServer package DependencyInjection.ReflectionExtensions
-    dotnet add src/Infrastructure/DataBases/SQLServer package Serilog.AspNetCore
-    dotnet add src/Infrastructure/DataBases/SQLServer package Serilog.Sinks.MSSqlServer
+    dotnet add src/Frameworks/DataBases/SQLServer package Microsoft.EntityFrameworkCore
+    dotnet add src/Frameworks/DataBases/SQLServer package Microsoft.EntityFrameworkCore.SqlServer
+    dotnet add src/Frameworks/DataBases/SQLServer package Dapper
+    dotnet add src/Frameworks/DataBases/SQLServer package Microsoft.Extensions.DependencyInjection.Abstractions
+    dotnet add src/Frameworks/DataBases/SQLServer package Microsoft.Extensions.Options.ConfigurationExtensions
+    dotnet add src/Frameworks/DataBases/SQLServer package DependencyInjection.ReflectionExtensions
+    dotnet add src/Frameworks/DataBases/SQLServer package Serilog.AspNetCore
+    dotnet add src/Frameworks/DataBases/SQLServer package Serilog.Sinks.MSSqlServer
 }
 if ($USE_MYSQL) {
-    dotnet add src/Infrastructure/DataBases/MySQL package Microsoft.EntityFrameworkCore
-    dotnet add src/Infrastructure/DataBases/MySQL package Pomelo.EntityFrameworkCore.MySql
-    dotnet add src/Infrastructure/DataBases/MySQL package Dapper
-    dotnet add src/Infrastructure/DataBases/MySQL package Microsoft.Extensions.DependencyInjection.Abstractions
-    dotnet add src/Infrastructure/DataBases/MySQL package DependencyInjection.ReflectionExtensions
+    dotnet add src/Frameworks/DataBases/MySQL package Microsoft.EntityFrameworkCore
+    dotnet add src/Frameworks/DataBases/MySQL package Pomelo.EntityFrameworkCore.MySql
+    dotnet add src/Frameworks/DataBases/MySQL package Dapper
+    dotnet add src/Frameworks/DataBases/MySQL package Microsoft.Extensions.DependencyInjection.Abstractions
+    dotnet add src/Frameworks/DataBases/MySQL package Microsoft.Extensions.Options.ConfigurationExtensions
+    dotnet add src/Frameworks/DataBases/MySQL package DependencyInjection.ReflectionExtensions
 }
 if ($USE_POSTGRES) {
-    dotnet add src/Infrastructure/DataBases/PostgreSQL package Microsoft.EntityFrameworkCore
-    dotnet add src/Infrastructure/DataBases/PostgreSQL package Npgsql.EntityFrameworkCore.PostgreSQL
-    dotnet add src/Infrastructure/DataBases/PostgreSQL package Dapper
-    dotnet add src/Infrastructure/DataBases/PostgreSQL package Microsoft.Extensions.DependencyInjection.Abstractions
-    dotnet add src/Infrastructure/DataBases/PostgreSQL package DependencyInjection.ReflectionExtensions
+    dotnet add src/Frameworks/DataBases/PostgreSQL package Microsoft.EntityFrameworkCore
+    dotnet add src/Frameworks/DataBases/PostgreSQL package Npgsql.EntityFrameworkCore.PostgreSQL
+    dotnet add src/Frameworks/DataBases/PostgreSQL package Dapper
+    dotnet add src/Frameworks/DataBases/PostgreSQL package Microsoft.Extensions.DependencyInjection.Abstractions
+    dotnet add src/Frameworks/DataBases/PostgreSQL package Microsoft.Extensions.Options.ConfigurationExtensions
+    dotnet add src/Frameworks/DataBases/PostgreSQL package DependencyInjection.ReflectionExtensions
 }
 if ($USE_ORACLE) {
-    dotnet add src/Infrastructure/DataBases/Oracle package Microsoft.EntityFrameworkCore
-    dotnet add src/Infrastructure/DataBases/Oracle package Oracle.EntityFrameworkCore
-    dotnet add src/Infrastructure/DataBases/Oracle package Dapper
-    dotnet add src/Infrastructure/DataBases/Oracle package Microsoft.Extensions.DependencyInjection.Abstractions
-    dotnet add src/Infrastructure/DataBases/Oracle package DependencyInjection.ReflectionExtensions
+    dotnet add src/Frameworks/DataBases/Oracle package Microsoft.EntityFrameworkCore
+    dotnet add src/Frameworks/DataBases/Oracle package Oracle.EntityFrameworkCore
+    dotnet add src/Frameworks/DataBases/Oracle package Dapper
+    dotnet add src/Frameworks/DataBases/Oracle package Microsoft.Extensions.DependencyInjection.Abstractions
+    dotnet add src/Frameworks/DataBases/Oracle package Microsoft.Extensions.Options.ConfigurationExtensions
+    dotnet add src/Frameworks/DataBases/Oracle package DependencyInjection.ReflectionExtensions
 }
 if ($USE_MONGO) {
-    dotnet add src/Infrastructure/DataBases/MongoDB package MongoDB.Driver
-    dotnet add src/Infrastructure/DataBases/MongoDB package Microsoft.Extensions.DependencyInjection.Abstractions
-    dotnet add src/Infrastructure/DataBases/MongoDB package DependencyInjection.ReflectionExtensions
+    dotnet add src/Frameworks/DataBases/MongoDB package MongoDB.Driver
+    dotnet add src/Frameworks/DataBases/MongoDB package Microsoft.Extensions.DependencyInjection.Abstractions
+    dotnet add src/Frameworks/DataBases/MongoDB package Microsoft.Extensions.Options.ConfigurationExtensions
+    dotnet add src/Frameworks/DataBases/MongoDB package DependencyInjection.ReflectionExtensions
 }
 
 # RabbitMQ
 if ($USE_RABBITMQ) {
-    dotnet add src/Infrastructure/Messaging/RabbitMQ package RabbitMQ.Client
-    dotnet add src/Infrastructure/Messaging/RabbitMQ package Microsoft.Extensions.DependencyInjection.Abstractions
-    dotnet add src/Infrastructure/Messaging/RabbitMQ package DependencyInjection.ReflectionExtensions
+    dotnet add src/Frameworks/Messaging/RabbitMQ package RabbitMQ.Client
+    dotnet add src/Frameworks/Messaging/RabbitMQ package Microsoft.Extensions.DependencyInjection.Abstractions
+    dotnet add src/Frameworks/Messaging/RabbitMQ package DependencyInjection.ReflectionExtensions
 }
 
-# External Services
+# External Services (gateways)
 if ($USE_EXTERNAL_APIS) {
-    dotnet add src/Infrastructure/WebApis package Microsoft.Extensions.DependencyInjection.Abstractions
-    dotnet add src/Infrastructure/WebApis package DependencyInjection.ReflectionExtensions
+    dotnet add src/Adapters/WebApis package Microsoft.Extensions.DependencyInjection.Abstractions
+    dotnet add src/Adapters/WebApis package DependencyInjection.ReflectionExtensions
 }
 
 # Azure Key Vault
 if ($USE_KEYVAULT) {
-    dotnet add src/Infrastructure/AzureKeyVault package Azure.Identity
-    dotnet add src/Infrastructure/AzureKeyVault package Azure.Security.KeyVault.Secrets
-    dotnet add src/Infrastructure/AzureKeyVault package Microsoft.Extensions.Options
-    dotnet add src/Infrastructure/AzureKeyVault package Microsoft.Extensions.DependencyInjection.Abstractions
-    dotnet add src/Infrastructure/AzureKeyVault package DependencyInjection.ReflectionExtensions
+    dotnet add src/Frameworks/AzureKeyVault package Azure.Identity
+    dotnet add src/Frameworks/AzureKeyVault package Azure.Security.KeyVault.Secrets
+    dotnet add src/Frameworks/AzureKeyVault package Microsoft.Extensions.Options
+    dotnet add src/Frameworks/AzureKeyVault package Microsoft.Extensions.DependencyInjection.Abstractions
+    dotnet add src/Frameworks/AzureKeyVault package DependencyInjection.ReflectionExtensions
 }
 
-# API
-dotnet add src/Presentation/Api package Scalar.AspNetCore
-dotnet add src/Presentation/Api package Swashbuckle.AspNetCore
+# API host
+dotnet add src/Frameworks/WebApi package Scalar.AspNetCore
+dotnet add src/Frameworks/WebApi package Swashbuckle.AspNetCore
 
 # Tests
 dotnet add tests/UnitTests package FluentAssertions
@@ -463,24 +470,24 @@ dotnet add tests/UnitTests package FluentAssertions
 # CREATE BASE FOLDERS
 # =========================
 
-# Domain structure
-New-Item -ItemType Directory -Path "src/Domain/Entities"
-New-Item -ItemType Directory -Path "src/Domain/ValueObjects"
-New-Item -ItemType Directory -Path "src/Domain/Enums"
-New-Item -ItemType Directory -Path "src/Domain/Interfaces"
-New-Item -ItemType Directory -Path "src/Infrastructure/DataBases/Options" -Force
+# Entities structure
+New-Item -ItemType Directory -Path "src/Entities/Entities"
+New-Item -ItemType Directory -Path "src/Entities/ValueObjects"
+New-Item -ItemType Directory -Path "src/Entities/Enums"
+New-Item -ItemType Directory -Path "src/Entities/Interfaces"
+New-Item -ItemType Directory -Path "src/Frameworks/DataBases/Options" -Force
 
-# Keep domain folders visible in Visual Studio Solution Explorer
-"" | Set-Content "src/Domain/Entities/.gitkeep"
-"" | Set-Content "src/Domain/ValueObjects/.gitkeep"
-"" | Set-Content "src/Domain/Enums/.gitkeep"
-"" | Set-Content "src/Domain/Interfaces/.gitkeep"
+# Keep entity folders visible in Visual Studio Solution Explorer
+"" | Set-Content "src/Entities/Entities/.gitkeep"
+"" | Set-Content "src/Entities/ValueObjects/.gitkeep"
+"" | Set-Content "src/Entities/Enums/.gitkeep"
+"" | Set-Content "src/Entities/Interfaces/.gitkeep"
 
-# API structure
+# API host structure
 
-New-Item -ItemType Directory -Path "src/Presentation/Api/Middleware" -Force
-New-Item -ItemType Directory -Path "src/Presentation/Api/Configurations" -Force
-New-Item -ItemType Directory -Path "src/Presentation/Api/Properties" -Force
+New-Item -ItemType Directory -Path "src/Frameworks/WebApi/Middleware" -Force
+New-Item -ItemType Directory -Path "src/Frameworks/WebApi/Configurations" -Force
+New-Item -ItemType Directory -Path "src/Frameworks/WebApi/Properties" -Force
 
 # launchSettings.json (puertos determin�sticos por proyecto para evitar choques)
 @"
@@ -507,7 +514,7 @@ New-Item -ItemType Directory -Path "src/Presentation/Api/Properties" -Force
     }
   }
 }
-"@ | Set-Content "src/Presentation/Api/Properties/launchSettings.json"
+"@ | Set-Content "src/Frameworks/WebApi/Properties/launchSettings.json"
 
 # appsettings.json
 @"
@@ -516,20 +523,20 @@ New-Item -ItemType Directory -Path "src/Presentation/Api/Properties" -Force
         "EnvironmentName": "Production" /*Development, Staging, Production*/
     }
 }
-"@ | Set-Content "src/Presentation/Api/appsettings.json"
+"@ | Set-Content "src/Frameworks/WebApi/appsettings.json"
 
 # appsettings.Development.json
 $dataBaseOptionsDevList = @()
-if ($USE_SQLSERVER) { $dataBaseOptionsDevList += '        "SQLServer": "Server=[Server];Database=[Database];User Id=sa;Password=[Password];MultipleActiveResultSets=true;encrypt=false;"' }
-if ($USE_MYSQL) { $dataBaseOptionsDevList += '        "MySql": "Server=[Server];Database=[Database];User Id=[User];Password=[Password];"' }
-if ($USE_POSTGRES) { $dataBaseOptionsDevList += '        "PostgreSql": "Host=[Server];Database=[Database];Username=[User];Password=[Password];"' }
-if ($USE_ORACLE) { $dataBaseOptionsDevList += '        "Oracle": "Data Source=(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=[Server])(PORT=1521))(CONNECT_DATA=(SERVICE_NAME=[Service])));User Id=[User];Password=[Password];"' }
-if ($USE_MONGO) { $dataBaseOptionsDevList += '        "MongoDb": "mongodb://[User]:[Password]@[Server]:27017/[Database]"' }
+if ($USE_SQLSERVER) { $dataBaseOptionsDevList += '        "SQLServer": { "Server": null, "Database": null, "User": null, "Password": null, "Port": 1433 }' }
+if ($USE_MYSQL) { $dataBaseOptionsDevList += '        "MySql": { "Server": null, "Database": null, "User": null, "Password": null, "Port": 3306 }' }
+if ($USE_POSTGRES) { $dataBaseOptionsDevList += '        "PostgreSql": { "Server": null, "Database": null, "User": null, "Password": null, "Port": 5432 }' }
+if ($USE_ORACLE) { $dataBaseOptionsDevList += '        "Oracle": { "Server": null, "Database": null, "User": null, "Password": null, "Port": 1521 }' }
+if ($USE_MONGO) { $dataBaseOptionsDevList += '        "MongoDb": { "Server": null, "Database": null, "User": null, "Password": null, "Port": 27017 }' }
 $dataBaseOptionsDev = $dataBaseOptionsDevList -join ",`r`n"
 
 $devAppSettings = @"
 {
-    "DataBaseOptions": {
+    "DatabaseConnection": {
 $dataBaseOptionsDev
     },
     "JwtOptions": {
@@ -551,20 +558,20 @@ $dataBaseOptionsDev
     }
 }
 "@
-$devAppSettings | Set-Content "src/Presentation/Api/appsettings.Development.json"
+$devAppSettings | Set-Content "src/Frameworks/WebApi/appsettings.Development.json"
 
 # appsettings.Production.json
 $dataBaseOptionsProdList = @()
-if ($USE_SQLSERVER) { $dataBaseOptionsProdList += '        "SQLServer": "Server=[Server];Database=[Database];User Id=sa;Password=[Password];MultipleActiveResultSets=true;encrypt=false;"' }
-if ($USE_MYSQL) { $dataBaseOptionsProdList += '        "MySql": "Server=[Server];Database=[Database];User Id=[User];Password=[Password];"' }
-if ($USE_POSTGRES) { $dataBaseOptionsProdList += '        "PostgreSql": "Host=[Server];Database=[Database];Username=[User];Password=[Password];"' }
-if ($USE_ORACLE) { $dataBaseOptionsProdList += '        "Oracle": "Data Source=(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=[Server])(PORT=1521))(CONNECT_DATA=(SERVICE_NAME=[Service])));User Id=[User];Password=[Password];"' }
-if ($USE_MONGO) { $dataBaseOptionsProdList += '        "MongoDb": "mongodb://[User]:[Password]@[Server]:27017/[Database]"' }
+if ($USE_SQLSERVER) { $dataBaseOptionsProdList += '        "SQLServer": { "Server": null, "Database": null, "User": null, "Password": null, "Port": 1433 }' }
+if ($USE_MYSQL) { $dataBaseOptionsProdList += '        "MySql": { "Server": null, "Database": null, "User": null, "Password": null, "Port": 3306 }' }
+if ($USE_POSTGRES) { $dataBaseOptionsProdList += '        "PostgreSql": { "Server": null, "Database": null, "User": null, "Password": null, "Port": 5432 }' }
+if ($USE_ORACLE) { $dataBaseOptionsProdList += '        "Oracle": { "Server": null, "Database": null, "User": null, "Password": null, "Port": 1521 }' }
+if ($USE_MONGO) { $dataBaseOptionsProdList += '        "MongoDb": { "Server": null, "Database": null, "User": null, "Password": null, "Port": 27017 }' }
 $dataBaseOptionsProd = $dataBaseOptionsProdList -join ",`r`n"
 
 $prodAppSettings = @"
 {
-    "DataBaseOptions": {
+    "DatabaseConnection": {
 $dataBaseOptionsProd
     },
     "JwtOptions": {
@@ -586,13 +593,13 @@ $dataBaseOptionsProd
     }
 }
 "@
-$prodAppSettings | Set-Content "src/Presentation/Api/appsettings.Production.json"
+$prodAppSettings | Set-Content "src/Frameworks/WebApi/appsettings.Production.json"
 
 # CREATE BASIC FILES
 # =========================
 
 # RegisterServices class in Abstractions Project
-New-Item -ItemType Directory -Path "src/Application/Abstractions/Shared" -Force | Out-Null
+New-Item -ItemType Directory -Path "src/UseCases/Abstractions/Shared" -Force | Out-Null
 @"
 using System;
 using System.Collections.Generic;
@@ -757,7 +764,7 @@ namespace $ProjectName.Abstractions.Shared
 
     }
 }
-"@ | Set-Content "src/Application/Abstractions/Shared/RegisterServices.cs"
+"@ | Set-Content "src/UseCases/Abstractions/Shared/RegisterServices.cs"
 
 # DependencyContainer class in Commands Project
 @"
@@ -772,7 +779,7 @@ namespace $ProjectName.Commands
         }
     }
 }
-"@ | Set-Content "src/Application/Commands/DependencyContainer.cs"
+"@ | Set-Content "src/UseCases/Commands/DependencyContainer.cs"
 
 # GlobalUsings Commands
 @"
@@ -780,7 +787,7 @@ global using System.Reflection;
 global using $ProjectName.Abstractions.Shared;
 global using Microsoft.Extensions.DependencyInjection;
 
-"@ | Set-Content "src/Application/Commands/GlobalUsings.cs"
+"@ | Set-Content "src/UseCases/Commands/GlobalUsings.cs"
 
 # DependencyContainer class in Queries Project
 @"
@@ -795,7 +802,7 @@ namespace $ProjectName.Queries
         }
     }
 }
-"@ | Set-Content "src/Application/Queries/DependencyContainer.cs"
+"@ | Set-Content "src/UseCases/Queries/DependencyContainer.cs"
 
 # GlobalUsings Queries
 @"
@@ -803,7 +810,7 @@ global using System.Reflection;
 global using $ProjectName.Abstractions.Shared;
 global using Microsoft.Extensions.DependencyInjection;
 
-"@ | Set-Content "src/Application/Queries/GlobalUsings.cs"
+"@ | Set-Content "src/UseCases/Queries/GlobalUsings.cs"
 
 # DependencyContainers
 
@@ -820,7 +827,7 @@ namespace $ProjectName.Validators
         }
     }
 }
-"@ | Set-Content "src/Application/Validators/DependencyContainer.cs"
+"@ | Set-Content "src/UseCases/Validators/DependencyContainer.cs"
 
 # DependencyContainer class in Infrastructure Projects
 $sqlServerDependencyContainer = @"
@@ -828,8 +835,9 @@ namespace $ProjectName.SqlServer
 {
     public static class DependencyContainer
     {
-        public static IServiceCollection AddSqlServerInfrastructure(this IServiceCollection services)
-        {
+        public static IServiceCollection AddSqlServer(this IServiceCollection services, IConfiguration configuration)
+        { 
+            services.Configure<DatabaseConnection>(configuration.GetSection(DatabaseConnection.SectionKey));
             services.AddServicesCurrentAssembly();
             services.ConfigureSerilog();
             return services;
@@ -864,8 +872,9 @@ namespace $ProjectName.MySql
 {
     public static class DependencyContainer
     {
-        public static IServiceCollection AddMySqlInfrastructure(this IServiceCollection services)
+        public static IServiceCollection AddMySql(this IServiceCollection services, IConfiguration configuration)
         {
+            services.Configure<DatabaseConnection>(configuration.GetSection(DatabaseConnection.SectionKey));
             services.AddServicesCurrentAssembly();
             return services;
         }
@@ -878,8 +887,9 @@ namespace $ProjectName.PostgreSql
 {
     public static class DependencyContainer
     {
-        public static IServiceCollection AddPostgreSqlInfrastructure(this IServiceCollection services)
+        public static IServiceCollection AddPostgreSql(this IServiceCollection services, IConfiguration configuration)
         {
+            services.Configure<DatabaseConnection>(configuration.GetSection(DatabaseConnection.SectionKey));
             services.AddServicesCurrentAssembly();
             return services;
         }
@@ -892,8 +902,9 @@ namespace $ProjectName.Oracle
 {
     public static class DependencyContainer
     {
-        public static IServiceCollection AddOracleInfrastructure(this IServiceCollection services)
+        public static IServiceCollection AddOracle(this IServiceCollection services, IConfiguration configuration)
         {
+            services.Configure<DatabaseConnection>(configuration.GetSection(DatabaseConnection.SectionKey));
             services.AddServicesCurrentAssembly();
             return services;
         }
@@ -906,8 +917,9 @@ namespace $ProjectName.MongoDb
 {
     public static class DependencyContainer
     {
-        public static IServiceCollection AddMongoInfrastructure(this IServiceCollection services)
+        public static IServiceCollection AddMongoDb(this IServiceCollection services, IConfiguration configuration)
         {
+            services.Configure<DatabaseConnection>(configuration.GetSection(DatabaseConnection.SectionKey));
             services.AddServicesCurrentAssembly();
             return services;
         }
@@ -918,106 +930,113 @@ namespace $ProjectName.MongoDb
 $mongoDbGlobalUsings = @"
 global using System.Reflection;
 global using $ProjectName.Abstractions.Shared;
+global using Microsoft.Extensions.Configuration;
 global using Microsoft.Extensions.DependencyInjection;
+global using $ProjectName.MongoDb.Models;
 
 "@
 
 if ($USE_SQLSERVER) {
-    $sqlServerDependencyContainer | Set-Content "src/Infrastructure/DataBases/SQLServer/DependencyContainer.cs"
-    $sqlServerSerilogConfiguration | Set-Content "src/Infrastructure/DataBases/SQLServer/SerilogConfiguration.cs"
-    New-Item -ItemType Directory -Path "src/Infrastructure/DataBases/SQLServer/Models" -Force | Out-Null
+    $sqlServerDependencyContainer | Set-Content "src/Frameworks/DataBases/SQLServer/DependencyContainer.cs"
+    $sqlServerSerilogConfiguration | Set-Content "src/Frameworks/DataBases/SQLServer/SerilogConfiguration.cs"
+    New-Item -ItemType Directory -Path "src/Frameworks/DataBases/SQLServer/Models" -Force | Out-Null
     @"
 namespace $ProjectName.SqlServer.Models
 {
     public sealed class DatabaseConnection
-    {
+    {   
+        public const string SectionKey = "DatabaseConnection:SQLServer";
         public string User { get; set; }
         public string Password { get; set; }
         public int Port { get; set; } = 1433;
-        public string Host { get; set; }
+        public string Server { get; set; }
         public string Database { get; set; }
 
-        public string ConnectionString => `$"Server={Host},{Port};Database={Database};User Id={User};Password={Password};MultipleActiveResultSets=true;encrypt=false;";
+        public string ConnectionString => `$"Server={Server},{Port};Database={Database};User Id={User};Password={Password};MultipleActiveResultSets=true;encrypt=false;";
     }
 }
-"@ | Set-Content "src/Infrastructure/DataBases/SQLServer/Models/DatabaseConnection.cs"
+"@ | Set-Content "src/Frameworks/DataBases/SQLServer/Models/DatabaseConnection.cs"
 }
 if ($USE_MYSQL) {
-    $mySqlDependencyContainer | Set-Content "src/Infrastructure/DataBases/MySQL/DependencyContainer.cs"
-    New-Item -ItemType Directory -Path "src/Infrastructure/DataBases/MySQL/Models" -Force | Out-Null
+    $mySqlDependencyContainer | Set-Content "src/Frameworks/DataBases/MySQL/DependencyContainer.cs"
+    New-Item -ItemType Directory -Path "src/Frameworks/DataBases/MySQL/Models" -Force | Out-Null
     @"
 namespace $ProjectName.MySql.Models
 {
     public sealed class DatabaseConnection
     {
+        public const string SectionKey = "DatabaseConnection:MySql";
         public string User { get; set; }
         public string Password { get; set; }
         public int Port { get; set; } = 3306;
-        public string Host { get; set; }
+        public string Server { get; set; }
         public string Database { get; set; }
 
-        public string ConnectionString => `$"Server={Host};Port={Port};Database={Database};User Id={User};Password={Password};";
+        public string ConnectionString => `$"Server={Server};Port={Port};Database={Database};User Id={User};Password={Password};";
     }
 }
-"@ | Set-Content "src/Infrastructure/DataBases/MySQL/Models/DatabaseConnection.cs"
+"@ | Set-Content "src/Frameworks/DataBases/MySQL/Models/DatabaseConnection.cs"
 }
 if ($USE_POSTGRES) {
-    $postgreSqlDependencyContainer | Set-Content "src/Infrastructure/DataBases/PostgreSQL/DependencyContainer.cs"
-    New-Item -ItemType Directory -Path "src/Infrastructure/DataBases/PostgreSQL/Models" -Force | Out-Null
+    $postgreSqlDependencyContainer | Set-Content "src/Frameworks/DataBases/PostgreSQL/DependencyContainer.cs"
+    New-Item -ItemType Directory -Path "src/Frameworks/DataBases/PostgreSQL/Models" -Force | Out-Null
     @"
 namespace $ProjectName.PostgreSql.Models
 {
     public sealed class DatabaseConnection
     {
+        public const string SectionKey = "DatabaseConnection:PostgreSql";
         public string User { get; set; }
         public string Password { get; set; }
         public int Port { get; set; } = 5432;
-        public string Host { get; set; }
+        public string Server { get; set; }
         public string Database { get; set; }
 
-        public string ConnectionString => `$"Host={Host};Port={Port};Database={Database};Username={User};Password={Password};";
+        public string ConnectionString => `$"Host={Server};Port={Port};Database={Database};Username={User};Password={Password};";
     }
 }
-"@ | Set-Content "src/Infrastructure/DataBases/PostgreSQL/Models/DatabaseConnection.cs"
+"@ | Set-Content "src/Frameworks/DataBases/PostgreSQL/Models/DatabaseConnection.cs"
 }
 if ($USE_ORACLE) {
-    $oracleDependencyContainer | Set-Content "src/Infrastructure/DataBases/Oracle/DependencyContainer.cs"
-    New-Item -ItemType Directory -Path "src/Infrastructure/DataBases/Oracle/Models" -Force | Out-Null
+    $oracleDependencyContainer | Set-Content "src/Frameworks/DataBases/Oracle/DependencyContainer.cs"
+    New-Item -ItemType Directory -Path "src/Frameworks/DataBases/Oracle/Models" -Force | Out-Null
     @"
 namespace $ProjectName.Oracle.Models
 {
     public sealed class DatabaseConnection
     {
+        public const string SectionKey = "DatabaseConnection:Oracle";
         public string User { get; set; }
         public string Password { get; set; }
         public int Port { get; set; } = 1521;
-        public string Host { get; set; }
+        public string Server { get; set; }
         public string Database { get; set; }
 
-        public string ConnectionString => `$"Data Source=(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST={Host})(PORT={Port}))(CONNECT_DATA=(SERVICE_NAME={Database})));User Id={User};Password={Password};";
+        public string ConnectionString => `$"Data Source=(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST={Server})(PORT={Port}))(CONNECT_DATA=(SERVICE_NAME={Database})));User Id={User};Password={Password};";
     }
 }
-"@ | Set-Content "src/Infrastructure/DataBases/Oracle/Models/DatabaseConnection.cs"
+"@ | Set-Content "src/Frameworks/DataBases/Oracle/Models/DatabaseConnection.cs"
 }
 if ($USE_MONGO) {
-    $mongoDbDependencyContainer | Set-Content "src/Infrastructure/DataBases/MongoDB/DependencyContainer.cs"
-    $mongoDbGlobalUsings | Set-Content "src/Infrastructure/DataBases/MongoDB/GlobalUsings.cs"
-    New-Item -ItemType Directory -Path "src/Infrastructure/DataBases/MongoDB/Models" -Force | Out-Null
+    $mongoDbDependencyContainer | Set-Content "src/Frameworks/DataBases/MongoDB/DependencyContainer.cs"
+    $mongoDbGlobalUsings | Set-Content "src/Frameworks/DataBases/MongoDB/GlobalUsings.cs"
+    New-Item -ItemType Directory -Path "src/Frameworks/DataBases/MongoDB/Models" -Force | Out-Null
     @"
 namespace $ProjectName.MongoDb.Models
 {
     public sealed class DatabaseConnection
     {
+        public const string SectionKey = "DatabaseConnection:MongoDb";
         public string User { get; set; }
         public string Password { get; set; }
         public int Port { get; set; } = 27017;
-        public string Host { get; set; }
+        public string Server { get; set; }
         public string Database { get; set; }
 
-        public string ConnectionString => `$"mongodb://{User}:{Password}@{Host}:{Port}/{Database}";
+        public string ConnectionString => `$"mongodb://{User}:{Password}@{Server}:{Port}/{Database}";
     }
 }
-"@ | Set-Content "src/Infrastructure/DataBases/MongoDB/Models/DatabaseConnection.cs"
+"@ | Set-Content "src/Frameworks/DataBases/MongoDB/Models/DatabaseConnection.cs"
 }
 
 # DependencyContainer class in RabbitMQ Project (opcional)
@@ -1043,8 +1062,8 @@ global using Microsoft.Extensions.DependencyInjection;
 "@
 
 if ($USE_RABBITMQ) {
-    $rabbitMqDependencyContainer | Set-Content "src/Infrastructure/Messaging/RabbitMQ/DependencyContainer.cs"
-    $rabbitMqGlobalUsings | Set-Content "src/Infrastructure/Messaging/RabbitMQ/GlobalUsings.cs"
+    $rabbitMqDependencyContainer | Set-Content "src/Frameworks/Messaging/RabbitMQ/DependencyContainer.cs"
+    $rabbitMqGlobalUsings | Set-Content "src/Frameworks/Messaging/RabbitMQ/GlobalUsings.cs"
 }
 
 # DependencyContainer class in WebApis Project (opcional)
@@ -1070,12 +1089,12 @@ global using Microsoft.Extensions.DependencyInjection;
 "@
 
 if ($USE_EXTERNAL_APIS) {
-    $webApisDependencyContainer | Set-Content "src/Infrastructure/WebApis/DependencyContainer.cs"
-    $webApisGlobalUsings | Set-Content "src/Infrastructure/WebApis/GlobalUsings.cs"
+    $webApisDependencyContainer | Set-Content "src/Adapters/WebApis/DependencyContainer.cs"
+    $webApisGlobalUsings | Set-Content "src/Adapters/WebApis/GlobalUsings.cs"
 }
 
 if ($USE_REDIS) {
-    New-Item -ItemType Directory -Path "src/Infrastructure/Redis/Options", "src/Application/Abstractions/Caching" -Force | Out-Null
+    New-Item -ItemType Directory -Path "src/Frameworks/Redis/Options", "src/UseCases/Abstractions/Caching" -Force | Out-Null
 
     @"
 global using System.Linq.Expressions;
@@ -1086,7 +1105,7 @@ global using Microsoft.Extensions.Options;
 global using StackExchange.Redis;
 global using $ProjectName.Abstractions.Caching;
 global using $ProjectName.Redis.Options;
-"@ | Set-Content "src/Infrastructure/Redis/GlobalUsings.cs"
+"@ | Set-Content "src/Frameworks/Redis/GlobalUsings.cs"
 
     @"
 namespace $ProjectName.Redis;
@@ -1105,11 +1124,11 @@ public static class DependencyContainer
             configuration.KeepAlive = 180;
             return ConnectionMultiplexer.Connect(configuration);
         });
-        services.AddSingleton<ICacheService, CacheService>();
+        services.AddSingleton<ICacheGateway, CacheGateway>();
         return services;
     }
 }
-"@ | Set-Content "src/Infrastructure/Redis/DependencyContainer.cs"
+"@ | Set-Content "src/Frameworks/Redis/DependencyContainer.cs"
 
     @"
 namespace $ProjectName.Redis.Options;
@@ -1121,29 +1140,29 @@ public class RedisOptions
     public string Environment { get; set; }
     public int DiasCache { get; set; }
 }
-"@ | Set-Content "src/Infrastructure/Redis/Options/RedisOptions.cs"
+"@ | Set-Content "src/Frameworks/Redis/Options/RedisOptions.cs"
 
     @"
 using System.Linq.Expressions;
 
 namespace $ProjectName.Abstractions.Caching;
 
-public interface ICacheService
+public interface ICacheGateway
 {
     Task<T> GetOrSetAsync<T>(Expression<Func<Task<T>>> expression);
     Task InvalidateAsync(params Expression[] expressions);
 }
-"@ | Set-Content "src/Application/Abstractions/Caching/ICacheService.cs"
+"@ | Set-Content "src/UseCases/Abstractions/Caching/ICacheGateway.cs"
 
-    $redisCacheService = @'
+    $redisCacheGateway = @'
 namespace __PROJECT_NAME__.Redis;
 
-internal class CacheService : ICacheService
+internal class CacheGateway : ICacheGateway
 {
     private readonly IOptions<RedisOptions> RedisOptions;
     private readonly IDatabase DataBase;
 
-    public CacheService(IOptions<RedisOptions> redisOptions, IConnectionMultiplexer connection)
+    public CacheGateway(IOptions<RedisOptions> redisOptions, IConnectionMultiplexer connection)
     {
         RedisOptions = redisOptions;
         DataBase = connection.GetDatabase();
@@ -1195,7 +1214,7 @@ internal class CacheService : ICacheService
     private string BuildKey(string key) => $"{RedisOptions.Value.Environment}|{key}";
 }
 '@
-    $redisCacheService.Replace('__PROJECT_NAME__', $ProjectName) | Set-Content "src/Infrastructure/Redis/CacheService.cs"
+    $redisCacheGateway.Replace('__PROJECT_NAME__', $ProjectName) | Set-Content "src/Frameworks/Redis/CacheGateway.cs"
 
     $redisExpressionConditionExtractor = @'
 namespace __PROJECT_NAME__.Redis;
@@ -1389,7 +1408,7 @@ public class ExpressionConditionExtractor : ExpressionVisitor
     }
 }
 '@
-    $redisExpressionConditionExtractor.Replace('__PROJECT_NAME__', $ProjectName) | Set-Content "src/Infrastructure/Redis/ExpressionConditionExtractor.cs"
+    $redisExpressionConditionExtractor.Replace('__PROJECT_NAME__', $ProjectName) | Set-Content "src/Frameworks/Redis/ExpressionConditionExtractor.cs"
 }
 
 # Azure Key Vault project (opcional)
@@ -1400,7 +1419,6 @@ namespace $ProjectName.AzureKeyVault
     {
         public static IServiceCollection AddAzureKeyVault(this IServiceCollection services)
         {
-            services.AddServicesCurrentAssembly();
             services.AddSingleton<IKeyVaultSecretProvider, KeyVaultSecretProvider>();
             return services;
         }
@@ -1442,6 +1460,10 @@ namespace $ProjectName.AzureKeyVault.Options
 $azureKeyVaultSecretProviderInterface = @"
 namespace $ProjectName.AzureKeyVault.Providers
 {
+    /// <summary>
+    /// Define el contrato para obtener secretos de Azure Key Vault.
+    /// Permite sustituir la implementación y facilita las pruebas unitarias.
+    /// </summary>
     public interface IKeyVaultSecretProvider
     {
         /// <summary>
@@ -1476,6 +1498,12 @@ namespace $ProjectName.AzureKeyVault.Providers
 $azureKeyVaultSecretProvider = @"
 namespace $ProjectName.AzureKeyVault.Providers
 {
+    /// <summary>
+    /// Proveedor de secretos de Azure Key Vault para uso interno de la capa Frameworks
+    /// (connection strings, credenciales de herramientas de infraestructura o
+    /// servicios externos). Es un detalle técnico, no un puerto del núcleo;
+    /// la interfaz facilita las pruebas y la sustitución de la implementación.
+    /// </summary>
     public sealed class KeyVaultSecretProvider : IKeyVaultSecretProvider
     {
         private static readonly JsonSerializerOptions SerializerOptions = new()
@@ -1501,13 +1529,23 @@ namespace $ProjectName.AzureKeyVault.Providers
             });
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Obtiene el valor en texto del secreto configurado en KeyVaultOptions.
+        /// </summary>
+        /// <param name="cancellationToken">Token de cancelación.</param>
+        /// <returns>Valor del secreto.</returns>
         public Task<string> GetSecretAsync(CancellationToken cancellationToken = default)
         {
             return GetSecretAsync(Options.KeyVaultName, Options.SecretName, cancellationToken);
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Obtiene el valor en texto del secreto indicado.
+        /// </summary>
+        /// <param name="keyVaultName">Nombre del Key Vault (sin .vault.azure.net).</param>
+        /// <param name="secretName">Nombre del secreto.</param>
+        /// <param name="cancellationToken">Token de cancelación.</param>
+        /// <returns>Valor del secreto.</returns>
         public async Task<string> GetSecretAsync(string keyVaultName, string secretName, CancellationToken cancellationToken = default)
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(keyVaultName);
@@ -1519,7 +1557,14 @@ namespace $ProjectName.AzureKeyVault.Providers
             return response.Value.Value;
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Obtiene un secreto del Key Vault indicado y lo deserializa.
+        /// </summary>
+        /// <typeparam name="T">Tipo esperado del JSON del secreto.</typeparam>
+        /// <param name="keyVaultName">Nombre del Key Vault (sin .vault.azure.net).</param>
+        /// <param name="secretName">Nombre del secreto.</param>
+        /// <param name="cancellationToken">Token de cancelación.</param>
+        /// <returns>Instancia deserializada o null si no se pudo obtener.</returns>
         public async Task<T> GetSecretAsync<T>(string keyVaultName, string secretName, CancellationToken cancellationToken = default) where T : class
         {
             string json = await GetSecretAsync(keyVaultName, secretName, cancellationToken).ConfigureAwait(false);
@@ -1530,15 +1575,15 @@ namespace $ProjectName.AzureKeyVault.Providers
 "@
 
 if ($USE_KEYVAULT) {
-    New-Item -ItemType Directory -Path "src/Infrastructure/AzureKeyVault/Models" -Force | Out-Null
-    New-Item -ItemType Directory -Path "src/Infrastructure/AzureKeyVault/Options" -Force | Out-Null
-    New-Item -ItemType Directory -Path "src/Infrastructure/AzureKeyVault/Providers" -Force | Out-Null
-    "" | Set-Content "src/Infrastructure/AzureKeyVault/Models/.gitkeep"
-    $azureKeyVaultDependencyContainer | Set-Content "src/Infrastructure/AzureKeyVault/DependencyContainer.cs"
-    $azureKeyVaultGlobalUsings | Set-Content "src/Infrastructure/AzureKeyVault/GlobalUsings.cs"
-    $azureKeyVaultOptions | Set-Content "src/Infrastructure/AzureKeyVault/Options/KeyVaultOptions.cs"
-    $azureKeyVaultSecretProviderInterface | Set-Content "src/Infrastructure/AzureKeyVault/Providers/IKeyVaultSecretProvider.cs"
-    $azureKeyVaultSecretProvider | Set-Content "src/Infrastructure/AzureKeyVault/Providers/KeyVaultSecretProvider.cs"
+    New-Item -ItemType Directory -Path "src/Frameworks/AzureKeyVault/Models" -Force | Out-Null
+    New-Item -ItemType Directory -Path "src/Frameworks/AzureKeyVault/Options" -Force | Out-Null
+    New-Item -ItemType Directory -Path "src/Frameworks/AzureKeyVault/Providers" -Force | Out-Null
+    "" | Set-Content "src/Frameworks/AzureKeyVault/Models/.gitkeep"
+    $azureKeyVaultDependencyContainer | Set-Content "src/Frameworks/AzureKeyVault/DependencyContainer.cs"
+    $azureKeyVaultGlobalUsings | Set-Content "src/Frameworks/AzureKeyVault/GlobalUsings.cs"
+    $azureKeyVaultOptions | Set-Content "src/Frameworks/AzureKeyVault/Options/KeyVaultOptions.cs"
+    $azureKeyVaultSecretProviderInterface | Set-Content "src/Frameworks/AzureKeyVault/Providers/IKeyVaultSecretProvider.cs"
+    $azureKeyVaultSecretProvider | Set-Content "src/Frameworks/AzureKeyVault/Providers/KeyVaultSecretProvider.cs"
 }
 
 # DependencyContainer class in IoC Project
@@ -1550,7 +1595,6 @@ namespace $ProjectName.IoC
         public static IServiceCollection AddIoC(this IServiceCollection services, IConfiguration configuration)
         {
             services.Configure<EnvironmentOptions>(configuration.GetSection(EnvironmentOptions.SectionKey));
-            services.Configure<DataBaseOptions>(configuration.GetSection(DataBaseOptions.SectionKey));
             $(if($USE_REDIS){"services.Configure<RedisOptions>(configuration.GetSection(RedisOptions.SectionKey));"})
             $(if($USE_KEYVAULT){"services.Configure<KeyVaultOptions>(configuration.GetSection(KeyVaultOptions.SectionKey));"})
             services.AddJwtServices(options => configuration.GetSection(JwtOptions.SectionKey).Bind(options));
@@ -1558,12 +1602,12 @@ namespace $ProjectName.IoC
 
             services.AddCommands()
                     .AddQueries()
-                    .AddValidators()$(if($USE_SQLSERVER){"`n                    .AddSqlServerInfrastructure()"})$(if($USE_MYSQL){"`n                    .AddMySqlInfrastructure()"})$(if($USE_POSTGRES){"`n                    .AddPostgreSqlInfrastructure()"})$(if($USE_ORACLE){"`n                    .AddOracleInfrastructure()"})$(if($USE_MONGO){"`n                    .AddMongoInfrastructure()"})$(if($USE_RABBITMQ){"`n                    .AddRabbitMq()"})$(if($USE_EXTERNAL_APIS){"`n                    .AddWebApis()"})$(if($USE_KEYVAULT){"`n                    .AddAzureKeyVault()"});
+                    .AddValidators()$(if($USE_SQLSERVER){"`n                    .AddSqlServer(configuration)"})$(if($USE_MYSQL){"`n                    .AddMySql(configuration)"})$(if($USE_POSTGRES){"`n                    .AddPostgreSql(configuration)"})$(if($USE_ORACLE){"`n                    .AddOracle(configuration)"})$(if($USE_MONGO){"`n                    .AddMongoDb(configuration)"})$(if($USE_RABBITMQ){"`n                    .AddRabbitMq()"})$(if($USE_EXTERNAL_APIS){"`n                    .AddWebApis()"})$(if($USE_KEYVAULT){"`n                    .AddAzureKeyVault()"});
             return services;
         }
     }
 }
-"@ | Set-Content "src/Presentation/IoC/DependencyContainer.cs"
+"@ | Set-Content "src/Frameworks/IoC/DependencyContainer.cs"
 
 # GlobalUsings
 
@@ -1576,14 +1620,16 @@ global using System;
 
 "@
 
-$validatorsGlobalUsings | Set-Content "src/Application/Validators/GlobalUsings.cs"
+$validatorsGlobalUsings | Set-Content "src/UseCases/Validators/GlobalUsings.cs"
 
 # GlobalUsings Infrastructure
 $dbGlobalUsings = @"
 global using System.Reflection;
 global using $ProjectName.Abstractions.Shared;
+global using Microsoft.Extensions.Configuration;
 global using Microsoft.Extensions.DependencyInjection;
 global using System;
+global using __MODELS_NAMESPACE__;
 
 "@
 
@@ -1597,19 +1643,20 @@ global using Serilog;
 global using Serilog.Sinks.MSSqlServer;
 global using System;
 global using System.Data;
+global using $ProjectName.SqlServer.Models;
 $(if($USE_KEYVAULT){"global using $ProjectName.AzureKeyVault.Providers;"})
 
 "@
-    $sqlServerGlobalUsings | Set-Content "src/Infrastructure/DataBases/SQLServer/GlobalUsings.cs"
+    $sqlServerGlobalUsings | Set-Content "src/Frameworks/DataBases/SQLServer/GlobalUsings.cs"
 }
 if ($USE_MYSQL) {
-    $dbGlobalUsings | Set-Content "src/Infrastructure/DataBases/MySQL/GlobalUsings.cs"
+    $dbGlobalUsings.Replace('__MODELS_NAMESPACE__', "$ProjectName.MySql.Models") | Set-Content "src/Frameworks/DataBases/MySQL/GlobalUsings.cs"
 }
 if ($USE_POSTGRES) {
-    $dbGlobalUsings | Set-Content "src/Infrastructure/DataBases/PostgreSQL/GlobalUsings.cs"
+    $dbGlobalUsings.Replace('__MODELS_NAMESPACE__', "$ProjectName.PostgreSql.Models") | Set-Content "src/Frameworks/DataBases/PostgreSQL/GlobalUsings.cs"
 }
 if ($USE_ORACLE) {
-    $dbGlobalUsings | Set-Content "src/Infrastructure/DataBases/Oracle/GlobalUsings.cs"
+    $dbGlobalUsings.Replace('__MODELS_NAMESPACE__', "$ProjectName.Oracle.Models") | Set-Content "src/Frameworks/DataBases/Oracle/GlobalUsings.cs"
 }
 
 # GlobalUsings class in IoC Project
@@ -1635,7 +1682,7 @@ $(if($USE_REDIS){"global using $ProjectName.Redis;"})
 $(if($USE_REDIS){"global using $ProjectName.Redis.Options;"})
 
 "@
-$iocGlobalUsings | Set-Content "src/Presentation/IoC/GlobalUsings.cs"
+$iocGlobalUsings | Set-Content "src/Frameworks/IoC/GlobalUsings.cs"
 
 # GlobalUsings Abstractions
 @"
@@ -1645,37 +1692,22 @@ global using System.Linq;
 global using System.Reflection;
 global using Microsoft.Extensions.DependencyInjection;
 
-"@ | Set-Content "src/Application/Abstractions/GlobalUsings.cs"
+"@ | Set-Content "src/UseCases/Abstractions/GlobalUsings.cs"
 
 # GlobalUsings Controllers
 $controllersGlobalUsings = @"
 global using Microsoft.AspNetCore.Mvc;
 global using Microsoft.AspNetCore.Http;
 "@
-$controllersGlobalUsings | Set-Content "src/Presentation/Controllers/GlobalUsings.cs"
+$controllersGlobalUsings | Set-Content "src/Adapters/Controllers/GlobalUsings.cs"
 
-# GlobalUsings Domain
+# GlobalUsings Entities
 $domainGlobalUsings = @"
 "@
-$domainGlobalUsings | Set-Content "src/Domain/GlobalUsings.cs"
+$domainGlobalUsings | Set-Content "src/Entities/GlobalUsings.cs"
 
-# DataBaseOptions class in IoC
-New-Item -ItemType Directory -Path "src/Presentation/IoC/Options" -Force | Out-Null
-$dataBaseOptions = @"
-namespace $ProjectName.IoC.Options
-{
-    public class DataBaseOptions
-    {
-        public const string SectionKey = nameof(DataBaseOptions);
-$(if($USE_SQLSERVER){"        public string SQLServer { get; set; }"})
-$(if($USE_MYSQL){"        public string MySql { get; set; }"})
-$(if($USE_POSTGRES){"        public string PostgreSql { get; set; }"})
-$(if($USE_ORACLE){"        public string Oracle { get; set; }"})
-$(if($USE_MONGO){"        public string MongoDb { get; set; }"})
-    }
-}
-"@
-$dataBaseOptions | Set-Content "src/Presentation/IoC/Options/DataBaseOptions.cs"
+# Options classes in IoC
+New-Item -ItemType Directory -Path "src/Frameworks/IoC/Options" -Force | Out-Null
 
 # EnvironmentOptions class in IoC
 $environmentOptions = @"
@@ -1688,7 +1720,7 @@ namespace $ProjectName.IoC.Options
     }
 }
 "@
-$environmentOptions | Set-Content "src/Presentation/IoC/Options/EnvironmentOptions.cs"
+$environmentOptions | Set-Content "src/Frameworks/IoC/Options/EnvironmentOptions.cs"
 
 # GlobalUsings Api
 $apiGlobalUsings = @"
@@ -1706,7 +1738,7 @@ global using $ProjectName.IoC.Options;
 global using System;
 
 "@
-$apiGlobalUsings | Set-Content "src/Presentation/Api/GlobalUsings.cs"
+$apiGlobalUsings | Set-Content "src/Frameworks/WebApi/GlobalUsings.cs"
 
 # GlobalUsings Tests
 @"
@@ -1737,7 +1769,7 @@ namespace $ProjectName.WebApi.Configurations
         }
     }
 }
-"@ | Set-Content "src/Presentation/Api/Configurations/MiddlewaresConfiguration.cs"
+"@ | Set-Content "src/Frameworks/WebApi/Configurations/MiddlewaresConfiguration.cs"
 @"
 namespace $ProjectName.WebApi.Configurations
 {
@@ -1772,7 +1804,7 @@ namespace $ProjectName.WebApi.Configurations
         }
     }
 }
-"@ | Set-Content "src/Presentation/Api/Configurations/ServicesConfiguration.cs"
+"@ | Set-Content "src/Frameworks/WebApi/Configurations/ServicesConfiguration.cs"
 
 @"
 namespace $ProjectName.WebApi.Middleware
@@ -1832,7 +1864,7 @@ namespace $ProjectName.WebApi.Middleware
         }
     }
 }
-"@ | Set-Content "src/Presentation/Api/Middleware/ErrorHandlerMiddleware.cs"
+"@ | Set-Content "src/Frameworks/WebApi/Middleware/ErrorHandlerMiddleware.cs"
 
 # Minimal API starter
 @"
@@ -1840,7 +1872,7 @@ WebApplication.CreateBuilder(args)
     .ConfigureWebApiServices()
     .ConfigureWebApiMiddlewares()
     .Run();
-"@ | Set-Content "src/Presentation/Api/Program.cs"
+"@ | Set-Content "src/Frameworks/WebApi/Program.cs"
 
 # Dockerfile
 @"
@@ -1855,33 +1887,33 @@ ARG Configuration=Release
 WORKDIR /src
 
 # Copy project files
-COPY src/Presentation/Api/$ProjectName.WebApi.csproj src/Presentation/Api/
-COPY src/Application/Abstractions/$ProjectName.Abstractions.csproj src/Application/Abstractions/
-COPY src/Application/Commands/$ProjectName.Commands.csproj src/Application/Commands/
-COPY src/Presentation/Controllers/$ProjectName.Controllers.csproj src/Presentation/Controllers/
-COPY src/Domain/$ProjectName.Domain.csproj src/Domain/
-$(if($USE_SQLSERVER){"COPY src/Infrastructure/DataBases/SQLServer/$ProjectName.SqlServer.csproj src/Infrastructure/DataBases/SQLServer/"})
-$(if($USE_MYSQL){"COPY src/Infrastructure/DataBases/MySQL/$ProjectName.MySql.csproj src/Infrastructure/DataBases/MySQL/"})
-$(if($USE_POSTGRES){"COPY src/Infrastructure/DataBases/PostgreSQL/$ProjectName.PostgreSql.csproj src/Infrastructure/DataBases/PostgreSQL/"})
-$(if($USE_ORACLE){"COPY src/Infrastructure/DataBases/Oracle/$ProjectName.Oracle.csproj src/Infrastructure/DataBases/Oracle/"})
-$(if($USE_MONGO){"COPY src/Infrastructure/DataBases/MongoDB/$ProjectName.MongoDb.csproj src/Infrastructure/DataBases/MongoDB/"})
-COPY src/Presentation/IoC/$ProjectName.IoC.csproj src/Presentation/IoC/
-COPY src/Application/Models/$ProjectName.Models.csproj src/Application/Models/
-COPY src/Application/Queries/$ProjectName.Queries.csproj src/Application/Queries/
-COPY src/Application/Validators/$ProjectName.Validators.csproj src/Application/Validators/
-$(if($USE_RABBITMQ){"COPY src/Infrastructure/Messaging/RabbitMQ/$ProjectName.RabbitMQ.csproj src/Infrastructure/Messaging/RabbitMQ/"})
-$(if($USE_EXTERNAL_APIS){"COPY src/Infrastructure/WebApis/$ProjectName.WebApis.csproj src/Infrastructure/WebApis/"})
-$(if($USE_REDIS){"COPY src/Infrastructure/Redis/$ProjectName.Redis.csproj src/Infrastructure/Redis/"})
-$(if($USE_KEYVAULT){"COPY src/Infrastructure/AzureKeyVault/$ProjectName.AzureKeyVault.csproj src/Infrastructure/AzureKeyVault/"})
+COPY src/Frameworks/WebApi/$ProjectName.WebApi.csproj src/Frameworks/WebApi/
+COPY src/UseCases/Abstractions/$ProjectName.Abstractions.csproj src/UseCases/Abstractions/
+COPY src/UseCases/Commands/$ProjectName.Commands.csproj src/UseCases/Commands/
+COPY src/Adapters/Controllers/$ProjectName.Controllers.csproj src/Adapters/Controllers/
+COPY src/Entities/$ProjectName.Entities.csproj src/Entities/
+$(if($USE_SQLSERVER){"COPY src/Frameworks/DataBases/SQLServer/$ProjectName.SqlServer.csproj src/Frameworks/DataBases/SQLServer/"})
+$(if($USE_MYSQL){"COPY src/Frameworks/DataBases/MySQL/$ProjectName.MySql.csproj src/Frameworks/DataBases/MySQL/"})
+$(if($USE_POSTGRES){"COPY src/Frameworks/DataBases/PostgreSQL/$ProjectName.PostgreSql.csproj src/Frameworks/DataBases/PostgreSQL/"})
+$(if($USE_ORACLE){"COPY src/Frameworks/DataBases/Oracle/$ProjectName.Oracle.csproj src/Frameworks/DataBases/Oracle/"})
+$(if($USE_MONGO){"COPY src/Frameworks/DataBases/MongoDB/$ProjectName.MongoDb.csproj src/Frameworks/DataBases/MongoDB/"})
+COPY src/Frameworks/IoC/$ProjectName.IoC.csproj src/Frameworks/IoC/
+COPY src/UseCases/Models/$ProjectName.Models.csproj src/UseCases/Models/
+COPY src/UseCases/Queries/$ProjectName.Queries.csproj src/UseCases/Queries/
+COPY src/UseCases/Validators/$ProjectName.Validators.csproj src/UseCases/Validators/
+$(if($USE_RABBITMQ){"COPY src/Frameworks/Messaging/RabbitMQ/$ProjectName.RabbitMQ.csproj src/Frameworks/Messaging/RabbitMQ/"})
+$(if($USE_EXTERNAL_APIS){"COPY src/Adapters/WebApis/$ProjectName.WebApis.csproj src/Adapters/WebApis/"})
+$(if($USE_REDIS){"COPY src/Frameworks/Redis/$ProjectName.Redis.csproj src/Frameworks/Redis/"})
+$(if($USE_KEYVAULT){"COPY src/Frameworks/AzureKeyVault/$ProjectName.AzureKeyVault.csproj src/Frameworks/AzureKeyVault/"})
 
 # Restore dependencies
-RUN dotnet restore src/Presentation/Api/$ProjectName.WebApi.csproj
+RUN dotnet restore src/Frameworks/WebApi/$ProjectName.WebApi.csproj
 
 # Copy all source code
 COPY . .
 
 # Build project
-WORKDIR /src/src/Presentation/Api
+WORKDIR /src/src/Frameworks/WebApi
 RUN dotnet build $ProjectName.WebApi.csproj -c `${Configuration} -o /app/build
 
 # Publish stage
@@ -1896,11 +1928,11 @@ COPY --from=publish /app/publish .
 ENTRYPOINT ["dotnet", "$ProjectName.WebApi.dll"]
 
 # Helper commands:
-# docker build -f src/Presentation/Api/Dockerfile -t "$($ProjectName.ToLower())-api:latest" .
+# docker build -f src/Frameworks/WebApi/Dockerfile -t "$($ProjectName.ToLower())-api:latest" .
 # docker container rm -f "$($ProjectName.ToLower())-api"
 # docker run -d --name "$($ProjectName.ToLower())-api" -p $($DockerPort1):8080 "$($ProjectName.ToLower())-api:latest"
 
-"@ | Set-Content "src/Presentation/Api/Dockerfile"
+"@ | Set-Content "src/Frameworks/WebApi/Dockerfile"
 
 # azure-pipelines.yml
 @'
@@ -1922,16 +1954,16 @@ steps:
         runOptions: inline
         inline: |
             cd /var/www/__PROJECT_DIR__/__PROJECT_NAME__
-            chmod +x src/Presentation/Api/deploy.sh
-            ./src/Presentation/Api/deploy.sh
+            chmod +x src/Frameworks/WebApi/deploy.sh
+            ./src/Frameworks/WebApi/deploy.sh
         failOnStdErr: false
-'@ | Set-Content "src/Presentation/Api/azure-pipelines.yml"
+'@ | Set-Content "src/Frameworks/WebApi/azure-pipelines.yml"
 
 $projectDirName = "api-$($ProjectName.ToLower())"
 $projectSlug = $ProjectName.ToLower().Replace('.', '-').Replace('_', '-')
-$azurePipelinesContent = Get-Content -Raw "src/Presentation/Api/azure-pipelines.yml"
+$azurePipelinesContent = Get-Content -Raw "src/Frameworks/WebApi/azure-pipelines.yml"
 $azurePipelinesContent = $azurePipelinesContent.Replace("__PROJECT_DIR__", $projectDirName).Replace("__PROJECT_NAME__", $ProjectName)
-$azurePipelinesContent | Set-Content "src/Presentation/Api/azure-pipelines.yml"
+$azurePipelinesContent | Set-Content "src/Frameworks/WebApi/azure-pipelines.yml"
 
 # deploy.sh
 $deployScript = @'
@@ -1984,17 +2016,17 @@ echo "Deploy finalizado correctamente"
 echo "====================================="
 '@
 
-$deployDir = Split-Path "src/Presentation/Api/deploy.sh" -Parent
+$deployDir = Split-Path "src/Frameworks/WebApi/deploy.sh" -Parent
 if (-not (Test-Path $deployDir)) {
     New-Item -ItemType Directory -Path $deployDir -Force | Out-Null
 }
-$deployScript | Set-Content "src/Presentation/Api/deploy.sh"
+$deployScript | Set-Content "src/Frameworks/WebApi/deploy.sh"
 
-if (Test-Path "src/Presentation/Api/deploy.sh") {
-    $deployScriptContent = Get-Content -Raw "src/Presentation/Api/deploy.sh"
+if (Test-Path "src/Frameworks/WebApi/deploy.sh") {
+    $deployScriptContent = Get-Content -Raw "src/Frameworks/WebApi/deploy.sh"
     if ($deployScriptContent) {
         $deployScriptContent = $deployScriptContent.Replace("__PROJECT_DIR__", $projectDirName).Replace("__PROJECT_NAME__", $ProjectName).Replace("__PROJECT_SLUG__", $projectSlug).Replace("__DOCKER_PORT_1__", "$DockerPort1").Replace("__DOCKER_PORT_2__", "$DockerPort2").Replace("__DOCKER_PORT_3__", "$DockerPort3").Replace("__DOCKER_PORT_4__", "$DockerPort4")
-        $deployScriptContent | Set-Content "src/Presentation/Api/deploy.sh"
+        $deployScriptContent | Set-Content "src/Frameworks/WebApi/deploy.sh"
     }
 }
 
@@ -2050,16 +2082,16 @@ cambia; las capas de afuera son detalles técnicos que puedes sustituir.
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│  Presentation (UI / API)                                │
-│  Controllers, Minimal APIs, middlewares, swagger...     │  ← capa externa
+│  Frameworks & Drivers (detalles técnicos)               │
+│  ASP.NET Core host, EF Core, Redis, RabbitMQ, IoC...    │  ← capa externa
 ├─────────────────────────────────────────────────────────┤
-│  Infrastructure (adaptadores)                           │
-│  EF Core, repositorios, APIs externas, colas...         │  ← detalles técnicos
+│  Interface Adapters (adaptadores)                       │
+│  Controllers, gateways de APIs externas...              │
 ├─────────────────────────────────────────────────────────┤
-│  Application (casos de uso)                             │
-│  Commands, queries, use cases, validaciones, DTOs...    │  ← orquestación
+│  Use Cases (reglas de aplicación)                       │
+│  Commands, queries, use cases, validaciones, DTOs...    │
 ├─────────────────────────────────────────────────────────┤
-│  Domain (reglas de negocio)                             │
+│  Entities (reglas de negocio de empresa)                │
 │  Entidades, value objects, interfaces de puertos...     │  ← centro
 └─────────────────────────────────────────────────────────┘
 ```
@@ -2067,59 +2099,58 @@ cambia; las capas de afuera son detalles técnicos que puedes sustituir.
 > **Regla:** las flechas de dependencia apuntan hacia abajo. La capa de
 > arriba puede conocer a la de abajo, pero nunca al revés.
 
-### 2.1 Domain — el centro
+### 2.1 Entities — el centro
 
-Contiene las reglas de negocio puras. No conoce ASP.NET Core, EF Core,
-HTTP, JSON, etc.
+Contiene las reglas de negocio puras (enterprise business rules). No
+conoce ASP.NET Core, EF Core, HTTP, JSON, etc.
 
 - `Entities/`: objetos con identidad (`Order`, `User`).
 - `ValueObjects/`: objetos inmutables (`Email`, `Money`).
 - `Enums/`: enumeraciones de negocio.
-- `Interfaces/`: **puertos** que expresan lo que el dominio necesita,
+- `Interfaces/`: **puertos** que expresan lo que el negocio necesita,
   p. ej. `IOrderRepository`, `IEmailSender`.
 
 **Regla:** si tienes que importar `Microsoft.EntityFrameworkCore` aquí,
 algo está mal.
 
-### 2.2 Application — los casos de uso
+### 2.2 Use Cases — las reglas de aplicación
 
-Orquesta el dominio para resolver una necesidad concreta del usuario.
+Orquesta las entidades para resolver una necesidad concreta del usuario.
 
 - `Commands/`: comandos que mutan estado (`CreateOrderCommand`).
 - `Queries/`: consultas que leen estado (`GetOrderByIdQuery`).
 - `Models/`: DTOs y modelos de transporte entre capas.
 - `Validators/`: reglas de validación de entrada con FluentValidation.
 - `Abstractions/`: proyecto de puertos de entrada y salida de la aplicación,
-  como contratos de casos de uso, `IUnitOfWork` e `ICacheService`.
-  Referencia Domain y Models, nunca adaptadores.
+  como contratos de casos de uso, `IUnitOfWork` e `ICacheGateway`.
+  Referencia Entities y Models, nunca adaptadores ni frameworks.
 
 Commands y Queries referencian Abstractions y Models. Los adaptadores
 referencian Abstractions para implementar estos puertos y acceder a sus DTOs.
-Los puertos propios del negocio permanecen en Domain/Interfaces.
+Los puertos propios del negocio permanecen en Entities/Interfaces.
 
 Un caso de uso no sabe que existe `DbContext`; solo conoce interfaces.
 
-### 2.3 Infrastructure — los adaptadores
+### 2.3 Interface Adapters — los adaptadores
 
-Implementa los puertos de Domain y Application.
+Convierten los datos entre el formato de los casos de uso y el formato
+de los agentes externos (web, servicios).
 
-- `DataBases/`: EF Core, Dapper, repositorios, migraciones, opciones.
-  - `SQLServer/`: Implementación específica para SQL Server.
-  - `MySQL/`: Implementación específica para MySQL.
-  - `PostgreSQL/`: Implementación específica para PostgreSQL.
-  - `Oracle/`: Implementación específica para Oracle.
-- `Adapters/`: APIs externas, colas de mensajes, servicios de correo, etc.
+- `Controllers/`: controladores ASP.NET Core que exponen endpoints HTTP.
+- `WebApis/`: gateways que implementan puertos consumiendo APIs externas
+  o servicios web.
 
-Es la única capa que conoce conexiones de base de datos, ORM y APIs
-externas.
+Los adaptadores implementan puertos de Entities y UseCases, pero no
+conocen detalles de frameworks: un controller no sabe qué ORM se usa y
+un gateway no sabe cómo se configura el `HttpClient`.
 
 ### 2.3.1 Consumo de APIs externas con `IHttpClientFactory`
 
 Cuando la aplicación consuma APIs externas o servicios web, usa
 `IHttpClientFactory` en lugar de crear instancias de `HttpClient` a mano.
 Registra el factory en la composición raíz con `services.AddHttpClient()`
-y utilízalo únicamente dentro de adaptadores de Infrastructure
-(`src/Infrastructure/WebApis`).
+y utilízalo únicamente dentro de los gateways de Adapters
+(`src/Adapters/WebApis`).
 
 Ventajas:
 
@@ -2131,7 +2162,7 @@ Ventajas:
 
 > **Regla:** los Controllers y Use Cases no deben inyectar
 > `IHttpClientFactory` directamente. Solicitan un puerto definido en
-> Domain/Application y lo implementa un adaptador HTTP en Infrastructure.
+> Entities/UseCases y lo implementa un gateway HTTP en Adapters.
 
 > **Estrategia de persistencia:** por convención, los **Commands**
 > (escritura) usan **Entity Framework Core** para aprovechar el
@@ -2139,13 +2170,26 @@ Ventajas:
 > (lectura) usan **Dapper** para leer de forma ligera y eficiente,
 > especialmente cuando se proyectan DTOs planos.
 
-### 2.4 Presentation — la entrega
+### 2.4 Frameworks & Drivers — los detalles
 
-Punto de entrada de la API.
+La capa más externa: frameworks, drivers y la composición raíz.
 
-- `Api/`: host ASP.NET Core, middlewares, configuraciones, Program.cs.
-- `Controllers/`: controladores que exponen endpoints HTTP.
+- `WebApi/`: host ASP.NET Core, middlewares, configuraciones, Program.cs.
+- `DataBases/`: EF Core, Dapper, repositorios, migraciones, opciones.
+  - `SQLServer/`: Implementación específica para SQL Server.
+  - `MySQL/`: Implementación específica para MySQL.
+  - `PostgreSQL/`: Implementación específica para PostgreSQL.
+  - `Oracle/`: Implementación específica para Oracle.
+  - `MongoDB/`: Implementación específica para MongoDB.
+- `Messaging/`: colas de mensajes (RabbitMQ).
+- `Redis/`: caché distribuida.
+- `AzureKeyVault/`: gestión de secretos.
 - `IoC/`: composición raíz donde se registran implementaciones concretas.
+
+Es la única capa que conoce connection strings, ORM y configuración de
+frameworks. Por pragmatismo, las implementaciones de repositorios viven
+junto a su tecnología de persistencia (p. ej. `DataBases/SQLServer`);
+conceptualmente actúan como gateways hacia la base de datos.
 
 ---
 
@@ -2154,27 +2198,28 @@ Punto de entrada de la API.
 > Las dependencias del código fuente solo pueden apuntar hacia adentro.
 
 ```
-Presentation   ──►  Application  ──►  Domain
-Infrastructure ──►  Application  ──►  Domain
-Infrastructure ──►  Domain
+Frameworks ──►  Adapters  ──►  UseCases  ──►  Entities
+Frameworks ──►  UseCases  ──►  Entities
+Frameworks ──►  Entities
 ```
 
 Nunca al revés:
 
-- ❌ `Domain` no referencia `Application`, `Infrastructure` ni `Presentation`.
-- ❌ `Application` no referencia `Infrastructure` ni `Presentation`.
-- ✅ `Infrastructure` y `Presentation` sí referencian capas internas.
+- ❌ `Entities` no referencia `UseCases`, `Adapters` ni `Frameworks`.
+- ❌ `UseCases` no referencia `Adapters` ni `Frameworks`.
+- ❌ `Adapters` no referencia `Frameworks`.
+- ✅ `Frameworks` sí referencia capas internas.
 
 ### 3.1 ¿Cómo se invierte la dependencia?
 
 Ejemplo: crear un pedido necesita persistirlo en base de datos.
 
-1. `Domain/Interfaces/Orders/IOrderRepository.cs` define el puerto.
-2. `Infrastructure/DataBase/Orders/OrderRepository.cs` implementa el puerto.
-3. `Application/Commands/Orders/CreateOrder/CreateOrderUseCase.cs` depende
+1. `Entities/Interfaces/Orders/IOrderRepository.cs` define el puerto.
+2. `Frameworks/DataBases/SQLServer/Orders/OrderRepository.cs` implementa el puerto.
+3. `UseCases/Commands/Orders/CreateOrder/CreateOrderUseCase.cs` depende
    de `IOrderRepository`.
-4. `Presentation/IoC/DependencyContainer.cs` registra la implementación.
-5. `Presentation/Controllers/Orders/OrdersController.cs` expone el endpoint.
+4. `Frameworks/IoC/DependencyContainer.cs` registra la implementación.
+5. `Adapters/Controllers/Orders/OrdersController.cs` expone el endpoint.
 
 ### Cuándo usar `Query`/`Command` vs tipos primitivos
 
@@ -2259,12 +2304,12 @@ subcarpetas con el mismo nombre dentro de cada capa.
 
 ```text
 src
-├── Domain
+├── Entities
 │   ├── Entities/Orders/
 │   │   └── Order.cs
 │   └── Interfaces/Orders/
 │       └── IOrderRepository.cs
-├── Application
+├── UseCases
 │   ├── Commands/Orders/CreateOrder/
 │   │   ├── CreateOrderCommand.cs
 │   │   ├── CreateOrderUseCase.cs
@@ -2275,12 +2320,12 @@ src
 │   │   └── OrderDto.cs
 │   └── Validators/Orders/
 │       └── CreateOrderValidator.cs
-├── Infrastructure
-│   └── DataBase/Orders/
-│       └── OrderRepository.cs
-└── Presentation
-    └── Controllers/Orders/
-        └── OrdersController.cs
+├── Adapters
+│   └── Controllers/Orders/
+│       └── OrdersController.cs
+└── Frameworks
+    └── DataBases/SQLServer/Orders/
+        └── OrderRepository.cs
 
 tests/UnitTests/Orders/CreateOrder
 ├── CreateOrderUseCaseTests.cs
@@ -2292,23 +2337,26 @@ los archivos de una feature, la organización está mal.
 
 ## 🔑 Cómo encaja en Hexagonal
 
-- **Domain** → el núcleo: entidades y contratos (puertos).
-- **Application** → casos de uso (commands, queries, use cases, DTOs, validadores).
-- **Infrastructure** → adaptadores concretos (repositorios, persistencia, mensajería).
-- **Presentation** → capa externa (controllers, endpoints).
+- **Entities** → el núcleo: entidades y contratos (puertos).
+- **UseCases** → casos de uso (commands, queries, use cases, DTOs, validadores).
+- **Adapters** → adaptadores de interfaz (controllers, gateways de APIs externas).
+- **Frameworks** → detalles técnicos (persistencia, mensajería, host web, IoC).
 - **Tests** → organizados también por feature, validando use cases y reglas.
 
 ## ✅ Buenas prácticas
 
 - **Mantener independencia por feature**: cada carpeta de `Orders`, `Customers`, etc. debe contener todo lo necesario para esa funcionalidad.
-- **Puertos en el núcleo**: contratos de negocio en Domain/Interfaces;
-    contratos de aplicación en Application/Abstractions, nunca en Infrastructure.
-- **UseCases en Application**: orquestan lógica de negocio usando puertos.
-- **Adaptadores en Infrastructure**: implementan los puertos (`OrderRepository`).
-- **APIs externas con `IHttpClientFactory`**: los adaptadores HTTP deben
+- **Puertos en el núcleo**: contratos de negocio en Entities/Interfaces;
+    contratos de aplicación en UseCases/Abstractions, nunca en Adapters ni Frameworks.
+- **Casos de uso en UseCases**: orquestan lógica de negocio usando puertos.
+- **Adaptadores en Adapters**: implementan los puertos hacia el exterior
+  (`OrdersController`, `OrderGateway`).
+- **Persistencia en Frameworks**: los repositorios (`OrderRepository`)
+  viven junto a su tecnología (EF Core, Dapper) en `Frameworks/DataBases`.
+- **APIs externas con `IHttpClientFactory`**: los gateways HTTP deben
   usar `IHttpClientFactory` registrado mediante `AddHttpClient()`; nunca
   crees instancias de `HttpClient` manualmente.
-- **Controllers en Presentation**: exponen los casos de uso hacia el exterior.
+- **Controllers en Adapters**: exponen los casos de uso hacia el exterior.
 - **Tests alineados**: cada feature tiene sus pruebas en la misma estructura.
 
 ---
@@ -2321,33 +2369,37 @@ los archivos de una feature, la organización está mal.
 
 /{ProjectName}
   /src
-    /Presentation
-      /Api                             ASP.NET Core Web API host
-        /Configurations
-        /Middleware
-        /Properties
-      /Controllers                     Adaptadores HTTP
-      /IoC                             Composición de dependencias
-    /Application
-            /Abstractions                    Puertos de entrada y salida
-                /Caching                       ICacheService (si se selecciona Redis)
-      /Commands                        Comandos (write side)
-      /Queries                         Consultas (read side)
-      /Models                          DTOs
-      /Validators                      Reglas de validación
-    /Domain
+    /Entities                          Reglas de negocio de empresa (capa central)
       /Entities
       /ValueObjects
       /Enums
       /Interfaces
-    /Infrastructure
-      /DataBases                        Persistencia (EF Core, repositorios)
-        /SQLServer                      Implementación SQL Server
-        /MySQL                          Implementación MySQL
-        /PostgreSQL                     Implementación PostgreSQL
-        /Oracle                         Implementación Oracle
+    /UseCases                          Reglas de aplicación
+      /Abstractions                    Puertos de entrada y salida
+        /Caching                       ICacheGateway (si se selecciona Redis)
+      /Commands                        Comandos (write side)
+      /Queries                         Consultas (read side)
+      /Models                          DTOs
+      /Validators                      Reglas de validación
+    /Adapters                          Interface Adapters
+      /Controllers                     Controladores HTTP
+      /WebApis                         Gateways hacia APIs externas (opcional)
+    /Frameworks                        Frameworks & Drivers
+      /WebApi                          ASP.NET Core Web API host
+        /Configurations
+        /Middleware
+        /Properties
+      /IoC                             Composición de dependencias
+      /DataBases                       Persistencia (EF Core, repositorios)
+        /SQLServer                     Implementación SQL Server
+        /MySQL                         Implementación MySQL
+        /PostgreSQL                    Implementación PostgreSQL
+        /Oracle                        Implementación Oracle
+        /MongoDB                       Implementación MongoDB
         /Options
-            /Redis                            Adaptador de caché opcional
+      /Messaging/RabbitMQ              Mensajería (opcional)
+      /Redis                           Caché distribuida (opcional)
+      /AzureKeyVault                   Secretos (opcional)
   /tests
     /UnitTests
   /documentation
@@ -2358,16 +2410,16 @@ Referencias entre proyectos:
 
 | Proyecto        | Referencia a                       |
 |-----------------|------------------------------------|
-| Domain          | *(ninguna)*                        |
-| Models          | Domain                             |
-| Abstractions    | Domain, Models                     |
-| Commands/Queries | Domain, Abstractions, Models       |
-| Validators      | Domain, Commands, Models           |
-| Infrastructure  | Domain, Abstractions (Models transitivo) |
-| Controllers     | Application                        |
-| IoC             | Application, Infrastructure        |
-| Api             | IoC (Controllers transitivo)        |
-| UnitTests       | Domain, Application, Validators    |
+| Entities        | *(ninguna)*                        |
+| Models          | Entities                           |
+| Abstractions    | Entities, Models                   |
+| Commands/Queries | Entities, Abstractions, Models    |
+| Validators      | Entities, Commands, Models         |
+| Controllers     | UseCases (Commands, Queries, Models, Abstractions) |
+| WebApis, DataBases, Messaging, Redis, KeyVault | Entities, Abstractions |
+| IoC             | UseCases, Adapters, Frameworks     |
+| WebApi (host)   | IoC (Controllers transitivo)       |
+| UnitTests       | Entities, UseCases, Validators     |
 
 ---
 
@@ -2377,40 +2429,40 @@ Referencias entre proyectos:
 Cliente HTTP
    │
    ▼
-Presentation/Api                (routing, middlewares, swagger)
+Frameworks/WebApi               (routing, middlewares, swagger)
    │
    ▼
-Presentation/Controllers        (endpoint que expone el caso de uso)
+Adapters/Controllers            (endpoint que expone el caso de uso)
    │
    ▼
-Application/Commands o Queries  (caso de uso)
+UseCases/Commands o Queries     (caso de uso)
    │
    ▼
-Application/Validators          (valida entrada)
+UseCases/Validators             (valida entrada)
    │
    ▼
-Domain/Interfaces o Application/Abstractions (puerto)
+Entities/Interfaces o UseCases/Abstractions (puerto)
    │
    ▼
-Infrastructure/DataBase         (EF Core, repositorios)
+Frameworks/DataBases            (EF Core, repositorios)
    │
    ▼
-Domain/Entities                 (reglas de negocio)
+Entities                        (reglas de negocio)
 ```
 
 Reglas prácticas:
 
-- Los **Controllers** no llaman directamente a `DataBase`; invocan un
+- Los **Controllers** no llaman directamente a `DataBases`; invocan un
   **Use Case** (representado por un `Command` o `Query`).
 - Los constructores de los **Controllers** y **Use Cases** solo reciben
-  **interfaces**; nunca clases concretas de infraestructura.
+  **interfaces**; nunca clases concretas de frameworks.
 - Los **Commands** mutan estado (`Create`, `Update`, `Delete`) y
   devuelven el resultado mínimo necesario.
 - Los **Queries** solo leen; nunca mutan estado.
 - Los **Validators** no acceden a la base de datos.
-- **Infrastructure** es el único lugar que habla con la BD, APIs externas,
-  colas o caché.
-- El flujo de retorno mapea entidades a DTOs (`Application/Models`) antes
+- **Adapters** y **Frameworks** son las únicas capas que hablan con la BD,
+  APIs externas, colas o caché.
+- El flujo de retorno mapea entidades a DTOs (`UseCases/Models`) antes
   de salir por el Controller.
 
 ---
@@ -2419,29 +2471,30 @@ Reglas prácticas:
 
 Sigue estos pasos para mantener el orden de capas y Vertical Slice:
 
-1. **Domain:** define entidades, value objects e interfaces de puertos.
-   - `Domain/Interfaces/{Feature}/I{Feature}Repository.cs`
-   - `Domain/Entities/{Feature}/{Entity}.cs`
+1. **Entities:** define entidades, value objects e interfaces de puertos.
+   - `Entities/Interfaces/{Feature}/I{Feature}Repository.cs`
+   - `Entities/Entities/{Feature}/{Entity}.cs`
 
-2. **Application:** crea el comando/consulta, caso de uso, validator y DTOs.
-    - `Application/Abstractions/{Feature}/I{UseCase}.cs` para puertos de entrada.
-    - `Application/Abstractions/{Feature}/I{Service}.cs` para puertos de salida de aplicación.
-   - `Application/Commands/{Feature}/{Action}/{Action}Command.cs` (solo si tiene 2+ parámetros)
-   - `Application/Commands/{Feature}/{Action}/{Action}UseCase.cs`
-   - `Application/Commands/{Feature}/{Action}/{Action}Result.cs`
-   - `Application/Queries/{Feature}/{Action}/{Action}Query.cs` (solo si tiene 2+ parámetros)
-   - `Application/Queries/{Feature}/{Action}/{Action}UseCase.cs`
-   - `Application/Validators/{Feature}/{Action}Validator.cs`
-   - `Application/Models/{Feature}/{Entity}Dto.cs`
+2. **UseCases:** crea el comando/consulta, caso de uso, validator y DTOs.
+   - `UseCases/Abstractions/{Feature}/I{UseCase}.cs` para puertos de entrada.
+   - `UseCases/Abstractions/{Feature}/I{Feature}Gateway.cs` para puertos de salida (gateways).
+   - `UseCases/Commands/{Feature}/{Action}/{Action}Command.cs` (solo si tiene 2+ parámetros)
+   - `UseCases/Commands/{Feature}/{Action}/{Action}UseCase.cs`
+   - `UseCases/Commands/{Feature}/{Action}/{Action}Result.cs`
+   - `UseCases/Queries/{Feature}/{Action}/{Action}Query.cs` (solo si tiene 2+ parámetros)
+   - `UseCases/Queries/{Feature}/{Action}/{Action}UseCase.cs`
+   - `UseCases/Validators/{Feature}/{Action}Validator.cs`
+   - `UseCases/Models/{Feature}/{Entity}Dto.cs`
 
-3. **Infrastructure:** implementa el puerto.
-   - `Infrastructure/DataBase/{Feature}/{Entity}Repository.cs`
+3. **Adapters:** crea el endpoint o gateway.
+   - `Adapters/Controllers/{Feature}/{Feature}sController.cs`
+   - `Adapters/WebApis/{Feature}/{Feature}WebApi.cs` (si consume una API externa)
 
-4. **Presentation:** crea el endpoint.
-   - `Presentation/Controllers/{Feature}/{Feature}sController.cs`
+4. **Frameworks:** implementa el puerto de persistencia.
+   - `Frameworks/DataBases/{Provider}/{Feature}/{Entity}Repository.cs`
 
 5. **IoC:** registra la implementación si la inyección automática no la
-   encuentra.
+   encuentra (`Frameworks/IoC/DependencyContainer.cs`).
 
 6. **Tests:** prueba el use case y el validator sin levantar la API ni la
    base de datos real.
@@ -2456,8 +2509,8 @@ Sigue estos pasos para mantener el orden de capas y Vertical Slice:
 - ❌ Lógica de negocio en controladores o endpoints.
 - ❌ Usar `DbContext`, `SqlConnection` o instanciar `HttpClient`
   directamente dentro de use cases; usa `IHttpClientFactory` desde
-  adaptadores de Infrastructure.
-- ❌ Definir interfaces de repositorios en Infrastructure.
+  gateways de Adapters o implementaciones en Frameworks.
+- ❌ Definir interfaces de repositorios en Adapters o Frameworks.
 - ❌ Exponer entidades de dominio directamente como respuesta HTTP.
 - ❌ Crear carpetas genéricas grandes como `Services/`, `Models/`,
   `Helpers/` fuera de una feature.
@@ -2473,7 +2526,7 @@ Sigue estos pasos para mantener el orden de capas y Vertical Slice:
 ## 9. Beneficios de esta combinación
 
 - **Cambios localizados:** una feature vive junta; tocarla no rompe otras.
-- **Testabilidad:** Domain y Application se prueban sin infraestructura.
+- **Testabilidad:** Entities y UseCases se prueban sin frameworks.
 - **Sustituibilidad:** cambiar EF Core por Dapper (o viceversa), SQL Server por Postgres,
   o REST por gRPC es un cambio en una capa externa.
 - **Escalabilidad cognitiva:** un desarrollador solo necesita entender la
@@ -2587,11 +2640,10 @@ Para más detalles, consulta [architecture-guide.md](architecture-guide.md).
 
 ```text
 src/
-├── Domain/                    # Dominio y reglas de negocio
-├── Application/              # Casos de uso (Commands, Queries, Validators)
-├── Infrastructure/           # Implementaciones (DataBases, Messaging)
-├── Presentation/             # API, Controllers, IoC
-└── IoC/                      # Inyección de dependencias
+├── Entities/                  # Reglas de negocio de empresa (capa central)
+├── UseCases/                  # Reglas de aplicación (Commands, Queries, Validators, Models, Abstractions)
+├── Adapters/                  # Controllers y gateways de APIs externas
+└── Frameworks/                # WebApi host, DataBases, Messaging, Redis, KeyVault, IoC
 ```
 
 ## Configuración
@@ -2605,7 +2657,7 @@ Edita los archivos `appsettings.json` para configurar:
 ## Ejecutar
 
 ```bash
-dotnet run --project src/Presentation/Api
+dotnet run --project src/Frameworks/WebApi
 ```
 
 ## Tests
