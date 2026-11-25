@@ -14,6 +14,9 @@ Write-Host "Creating Console project: $ProjectName"
 New-Item -ItemType Directory -Path $ProjectName | Out-Null
 Set-Location $ProjectName
 
+# Skills folder (root)
+New-Item -ItemType Directory -Path "skills" -Force | Out-Null
+
 # Solution (.slnx format for solution folders support)
 $slnxContent = @"
 <Solution>

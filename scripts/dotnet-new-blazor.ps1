@@ -58,6 +58,9 @@ Write-Host "  Docker host ports -> $DockerPort1, $DockerPort2, $DockerPort3, $Do
 New-Item -ItemType Directory -Path $ProjectName -Force | Out-Null
 Set-Location $ProjectName
 
+# Skills folder (root)
+New-Item -ItemType Directory -Path "skills" -Force | Out-Null
+
 New-Item -ItemType Directory -Path "src" -Force | Out-Null
 New-Item -ItemType Directory -Path "tests" -Force | Out-Null
 

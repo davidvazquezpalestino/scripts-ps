@@ -120,6 +120,9 @@ Write-Host "  Docker host ports -> $DockerPort1, $DockerPort2, $DockerPort3, $Do
 New-Item -ItemType Directory -Path $ProjectName
 Set-Location $ProjectName
 
+# Skills folder (root)
+New-Item -ItemType Directory -Path "skills" -Force | Out-Null
+
 # Solution
 dotnet new sln -n "$ProjectName"
 
